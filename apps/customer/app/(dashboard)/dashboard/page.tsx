@@ -7,7 +7,10 @@ import {
 import { SensorCard } from "@/components/dashboard/SensorCard";
 
 export default function DashboardPage() {
-  const activeAlerts = mockAlerts.filter((a) => !a.resolvedAt);
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const recentAlerts = mockAlerts.filter(
+    (a) => new Date(a.triggeredAt).getTime() >= cutoff,
+  );
   const onlineCount = mockSensors.filter((s) => s.status === "online").length;
   const offlineCount = mockSensors.length - onlineCount;
 
@@ -45,12 +48,12 @@ export default function DashboardPage() {
           </span>
         </SummaryItem>
 
-        {activeAlerts.length > 0 && (
+        {recentAlerts.length > 0 && (
           <>
             <div className="h-8 w-px bg-border" />
-            <SummaryItem label="Active Alerts">
+            <SummaryItem label="Alerts (24h)">
               <span className="text-sm font-semibold text-red-600">
-                {activeAlerts.length}
+                {recentAlerts.length}
               </span>
             </SummaryItem>
           </>
@@ -63,7 +66,7 @@ export default function DashboardPage() {
           const alertConfig = mockAlertConfigs.find(
             (c) => c.sensorId === sensor.id,
           );
-          const hasActiveAlert = activeAlerts.some(
+          const hasActiveAlert = recentAlerts.some(
             (a) => a.sensorId === sensor.id,
           );
           return (
