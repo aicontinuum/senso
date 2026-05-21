@@ -43,15 +43,14 @@ export default async function AlertDetailPage({
       ? (config?.maxTemp ?? 0)
       : (config?.minTemp ?? 0);
 
-  const chartData = readings.map((r) => ({
-    time: new Date(r.recordedAt).toLocaleString("en-GB", {
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    temp: r.temperature,
-  }));
+  const chartData = readings.map((r) => {
+    const d = new Date(r.recordedAt);
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const hour = String(d.getUTCHours()).padStart(2, "0");
+    const minute = String(d.getUTCMinutes()).padStart(2, "0");
+    return { time: `${day}/${month}, ${hour}:${minute}`, temp: r.temperature };
+  });
 
   return (
     <div>
