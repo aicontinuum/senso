@@ -1,0 +1,9 @@
+{
+  "name": "senso",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:customer": "npm run dev --workspace=apps/customer",
+    "dev:admin": "npm run dev --workspace=apps/admin"
+  }
+}
