@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { mockAlerts, mockSensors } from "@senso/mock-data";
 
 function formatDateTime(iso: string): string {
@@ -36,9 +37,14 @@ export default function AlertsPage() {
           </thead>
           <tbody>
             {sorted.map((alert) => (
-              <tr key={alert.id} className="border-b last:border-0">
+              <tr key={alert.id} className="relative border-b last:border-0 hover:bg-muted/40">
                 <td className="px-4 py-3 font-medium">
-                  {sensorMap[alert.sensorId] ?? alert.sensorId}
+                  <Link
+                    href={`/alerts/${alert.id}`}
+                    className="before:absolute before:inset-0"
+                  >
+                    {sensorMap[alert.sensorId] ?? alert.sensorId}
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {alert.type === "above_max" ? "Too high" : "Too low"}
