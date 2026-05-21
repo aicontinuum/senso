@@ -33,18 +33,14 @@ export default function AlertsPage() {
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Temperature</th>
               <th className="px-4 py-3">Triggered</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((alert) => (
-              <tr key={alert.id} className="relative border-b last:border-0 hover:bg-muted/40">
+              <tr key={alert.id} className="border-b last:border-0 hover:bg-muted/40">
                 <td className="px-4 py-3 font-medium">
-                  <Link
-                    href={`/alerts/${alert.id}`}
-                    className="before:absolute before:inset-0"
-                  >
-                    {sensorMap[alert.sensorId] ?? alert.sensorId}
-                  </Link>
+                  {sensorMap[alert.sensorId] ?? alert.sensorId}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {alert.type === "above_max" ? "Too high" : "Too low"}
@@ -53,12 +49,20 @@ export default function AlertsPage() {
                 <td className="px-4 py-3 text-muted-foreground">
                   {formatDateTime(alert.triggeredAt)}
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <Link
+                    href={`/alerts/${alert.id}`}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    →
+                  </Link>
+                </td>
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={5}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   No alerts recorded.
