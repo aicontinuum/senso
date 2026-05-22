@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -87,7 +88,7 @@ export function Sidebar({
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 space-y-1 px-2 py-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {NAV_ITEMS.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
@@ -112,6 +113,19 @@ export function Sidebar({
           );
         })}
       </nav>
+      {/* Logout */}
+      <div className="shrink-0 border-t px-2 py-3">
+        <button
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+            collapsed && "md:justify-center md:gap-0",
+          )}
+          title={collapsed ? "Logout" : undefined}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className={cn(collapsed && "md:hidden")}>Logout</span>
+        </button>
+      </div>
     </aside>
   );
 }
