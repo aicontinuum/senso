@@ -13,7 +13,7 @@ import {
   formatReadingTime,
 } from "@/lib/temperature";
 
-const MOCK_NOW = new Date("2025-05-21T17:00:00.000Z").getTime();
+const MOCK_NOW = new Date("2025-05-22T03:00:00.000Z").getTime();
 
 type RangeValue = "12h" | "24h" | "3d" | "7d";
 

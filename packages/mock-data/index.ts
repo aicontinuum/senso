@@ -21,7 +21,7 @@ export const mockGateway: Gateway = {
   customerId: 'customer_001',
   name: 'Al Noor Main Site',
   status: 'online',
-  lastSeen: '2025-05-21T17:00:00.000Z',
+  lastSeen: '2025-05-22T03:00:00.000Z',
   firmwareVersion: '1.2.4',
 };
 
@@ -35,7 +35,7 @@ const buildReadings = (
   variance: number,
   overrides: TempOverride[] = [],
 ): Reading[] => {
-  const now = new Date('2025-05-21T17:00:00.000Z');
+  const now = new Date('2025-05-22T03:00:00.000Z');
   return Array.from({ length: 672 }, (_, i) => {
     const ts = new Date(now.getTime() - (671 - i) * 15 * 60 * 1000);
     const tsMs = ts.getTime();
@@ -59,7 +59,7 @@ const medicineFridgeReadings   = buildReadings('sensor_003',  6.1,  0.4, [
   { from: '2025-05-21T09:00:00.000Z', to: '2025-05-21T10:00:00.000Z', baseTemp: 9.5, variance: 0.3 },
 ]);
 const labFreezerReadings       = buildReadings('sensor_004', -18.5, 1.2, [
-  { from: '2025-05-21T14:15:00.000Z', to: '2025-05-21T17:00:00.000Z', baseTemp: -12.5, variance: 0.8 },
+  { from: '2025-05-21T14:15:00.000Z', to: '2025-05-22T03:00:00.000Z', baseTemp: -12.5, variance: 0.8 },
 ]);
 const vaccineFridge1Readings   = buildReadings('sensor_005',  4.5,  0.6);
 const vaccineFridge2Readings   = buildReadings('sensor_006',  5.1,  0.7);
