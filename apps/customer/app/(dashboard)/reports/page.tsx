@@ -255,7 +255,7 @@ export default function ReportsPage() {
       <div className="print:hidden mb-6 space-y-4">
         <h1 className="text-2xl font-bold">Reports</h1>
 
-        <div className="flex flex-wrap gap-6 items-start">
+        <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-medium mb-2">Time range</p>
             <div className="flex gap-2">
