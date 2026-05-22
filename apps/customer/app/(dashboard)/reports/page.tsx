@@ -278,7 +278,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div>
+          <div className="w-fit">
             <p className="text-sm font-medium mb-2">Sensors</p>
             <label className="flex items-center gap-2 text-sm cursor-pointer mb-2">
               <input
@@ -292,7 +292,7 @@ export default function ReportsPage() {
               </span>
             </label>
             <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2">
-              <div className="grid grid-cols-1 gap-y-1.5 sm:grid-cols-2 sm:gap-x-4">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
                 {mockSensors.map((s) => (
                   <label
                     key={s.id}
