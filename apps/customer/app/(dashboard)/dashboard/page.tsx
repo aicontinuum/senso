@@ -20,7 +20,7 @@ export default function DashboardPage() {
       <h1 className="mb-6 text-2xl font-bold">Dashboard</h1>
 
       {/* Summary bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-6 rounded-lg border bg-card px-5 py-4">
+      <div className="mb-6 grid grid-cols-3 divide-x rounded-lg border bg-card">
         <SummaryItem label="Gateway">
           <span className="flex items-center gap-1.5 text-sm font-medium">
             <span
@@ -34,8 +34,6 @@ export default function DashboardPage() {
           </span>
         </SummaryItem>
 
-        <div className="h-8 w-px bg-border" />
-
         <SummaryItem label="Sensors">
           <span className="text-sm font-medium">
             <span className="text-green-700">{onlineCount} online</span>
@@ -48,8 +46,6 @@ export default function DashboardPage() {
             )}
           </span>
         </SummaryItem>
-
-        <div className="h-8 w-px bg-border" />
 
         <SummaryItem label="Alerts (past 24h)">
           {recentAlerts.length > 0 ? (
@@ -93,7 +89,7 @@ function SummaryItem({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-0.5 px-4 py-4 sm:px-5">
       <span className="text-xs text-muted-foreground">{label}</span>
       {children}
     </div>
