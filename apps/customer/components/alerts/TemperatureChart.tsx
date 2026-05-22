@@ -41,14 +41,15 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
   ];
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <LineChart data={data} margin={{ top: 8, right: 40, bottom: 4, left: 0 }}>
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 48, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis
           dataKey="time"
-          tick={{ fontSize: 11, fill: "#6b7280" }}
+          tick={{ fontSize: 10, fill: "#6b7280", textAnchor: "end" }}
           tickLine={false}
           interval={Math.max(0, Math.floor(data.length / 6) - 1)}
+          angle={-35}
         />
         <YAxis
           domain={domain}
@@ -68,9 +69,11 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
           strokeWidth={1.5}
           label={{
             value: thresholdLabel,
-            position: "right",
+            position: "insideLeft",
             fill: "#ef4444",
             fontSize: 11,
+            dx: 4,
+            dy: -8,
           }}
         />
         <Line
