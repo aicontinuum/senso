@@ -36,6 +36,7 @@ export interface Sensor {
   name: string;
   status: DeviceStatus;
   lastReading?: Reading;
+  batteryLevel?: number; // 0–100
 }
 
 export interface AlertConfig {

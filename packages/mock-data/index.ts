@@ -79,6 +79,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Cold Storage A',
     status: 'online',
+    batteryLevel: 85,
     lastReading: coldStorageAReadings[coldStorageAReadings.length - 1],
   },
   {
@@ -87,6 +88,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Cold Storage B',
     status: 'online',
+    batteryLevel: 91,
     lastReading: coldStorageBReadings[coldStorageBReadings.length - 1],
   },
   {
@@ -95,6 +97,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Medicine Fridge',
     status: 'online',
+    batteryLevel: 67,
     lastReading: medicineFridgeReadings[medicineFridgeReadings.length - 1],
   },
   {
@@ -103,6 +106,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Lab Freezer',
     status: 'offline',
+    batteryLevel: 12,
     lastReading: labFreezerReadings[labFreezerReadings.length - 1],
   },
   {
@@ -111,6 +115,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Vaccine Fridge 1',
     status: 'online',
+    batteryLevel: 78,
     lastReading: vaccineFridge1Readings[vaccineFridge1Readings.length - 1],
   },
   {
@@ -119,6 +124,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Vaccine Fridge 2',
     status: 'online',
+    batteryLevel: 83,
     lastReading: vaccineFridge2Readings[vaccineFridge2Readings.length - 1],
   },
   {
@@ -127,6 +133,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Dispensary Fridge',
     status: 'online',
+    batteryLevel: 55,
     lastReading: dispensaryFridgeReadings[dispensaryFridgeReadings.length - 1],
   },
   {
@@ -135,6 +142,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Compounding Unit',
     status: 'online',
+    batteryLevel: 94,
     lastReading: compoundingUnitReadings[compoundingUnitReadings.length - 1],
   },
   {
@@ -143,6 +151,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Blood Bank',
     status: 'online',
+    batteryLevel: 71,
     lastReading: bloodBankReadings[bloodBankReadings.length - 1],
   },
   {
@@ -151,6 +160,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Staff Refrigerator',
     status: 'online',
+    batteryLevel: 48,
     lastReading: staffFridgeReadings[staffFridgeReadings.length - 1],
   },
   {
@@ -159,6 +169,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Biologics Storage',
     status: 'online',
+    batteryLevel: 88,
     lastReading: biologicsReadings[biologicsReadings.length - 1],
   },
   {
@@ -167,6 +178,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Sample Cooler',
     status: 'online',
+    batteryLevel: 63,
     lastReading: sampleCoolerReadings[sampleCoolerReadings.length - 1],
   },
   {
@@ -175,6 +187,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'IV Solutions Fridge',
     status: 'offline',
+    batteryLevel: 8,
     lastReading: ivSolutionsReadings[ivSolutionsReadings.length - 1],
   },
   {
@@ -183,6 +196,7 @@ export const mockSensors: Sensor[] = [
     customerId: 'customer_001',
     name: 'Controlled Meds Cabinet',
     status: 'online',
+    batteryLevel: 76,
     lastReading: controlledMedsReadings[controlledMedsReadings.length - 1],
   },
 ];

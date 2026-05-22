@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Sensor, AlertConfig } from "@senso/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +29,10 @@ export function SensorCard({
     isOutOfRange(temp, alertConfig.minTemp, alertConfig.maxTemp);
 
   return (
-    <div
+    <Link
+      href={`/sensors/${sensor.id}`}
       className={cn(
-        "rounded-lg border bg-card p-5 shadow-sm",
+        "block rounded-lg border bg-card p-5 shadow-sm transition-colors hover:bg-accent/40",
         isOffline && "opacity-70",
         outOfRange && "border-red-400",
       )}
@@ -92,7 +94,7 @@ export function SensorCard({
           </div>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
