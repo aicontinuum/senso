@@ -280,32 +280,34 @@ export default function ReportsPage() {
 
           <div>
             <p className="text-sm font-medium mb-2">Sensors</p>
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={toggleAll}
-                  className="accent-primary"
-                />
-                <span className="font-medium">
-                  {allSelected ? "Deselect all" : "Select all"}
-                </span>
-              </label>
-              {mockSensors.map((s) => (
-                <label
-                  key={s.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(s.id)}
-                    onChange={() => toggleSensor(s.id)}
-                    className="accent-primary"
-                  />
-                  <span>{s.name}</span>
-                </label>
-              ))}
+            <label className="flex items-center gap-2 text-sm cursor-pointer mb-2">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                className="accent-primary"
+              />
+              <span className="font-medium">
+                {allSelected ? "Deselect all" : "Select all"}
+              </span>
+            </label>
+            <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2">
+              <div className="grid grid-cols-1 gap-y-1.5 sm:grid-cols-2 sm:gap-x-4">
+                {mockSensors.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex min-w-0 items-center gap-2 text-sm cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(s.id)}
+                      onChange={() => toggleSensor(s.id)}
+                      className="accent-primary shrink-0"
+                    />
+                    <span className="truncate">{s.name}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
