@@ -48,6 +48,7 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
           dataKey="time"
           tick={{ fontSize: 11, fill: "#6b7280" }}
           tickLine={false}
+          interval={Math.max(0, Math.floor(data.length / 6) - 1)}
         />
         <YAxis
           domain={domain}

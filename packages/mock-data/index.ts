@@ -31,8 +31,8 @@ const buildReadings = (
   variance: number,
 ): Reading[] => {
   const now = new Date('2025-05-21T17:00:00.000Z');
-  return Array.from({ length: 10 }, (_, i) => {
-    const ts = new Date(now.getTime() - (9 - i) * 2.5 * 60 * 60 * 1000);
+  return Array.from({ length: 96 }, (_, i) => {
+    const ts = new Date(now.getTime() - (95 - i) * 15 * 60 * 1000);
     const offset = (Math.random() * 2 - 1) * variance;
     return {
       id: `reading_${sensorId}_${i + 1}`,
