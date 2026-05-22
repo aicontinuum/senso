@@ -313,7 +313,7 @@ export default function ReportsPage() {
 
       {/* Report output */}
       {generated && (
-        <div className="print:fixed print:inset-0 print:z-50 print:bg-white print:p-8 print:overflow-auto">
+        <div>
           {/* Screen-only action bar */}
           <div className="print:hidden flex items-center justify-between mb-4 pb-2 border-b border-border">
             <p className="text-sm text-muted-foreground">

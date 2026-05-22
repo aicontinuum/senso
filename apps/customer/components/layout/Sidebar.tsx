@@ -40,7 +40,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r bg-card transition-all duration-200",
+        "flex h-full flex-col border-r bg-card transition-all duration-200 print:hidden",
         // Mobile: fixed overlay, slides in/out
         "fixed left-0 top-0 z-30 w-56",
         mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",

@@ -9,7 +9,7 @@ interface Props {
 
 export function Header({ onMenuClick }: Props) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-4 sm:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-4 sm:px-6 print:hidden">
       <button
         onClick={onMenuClick}
         className="rounded-md p-1.5 hover:bg-accent md:hidden"
