@@ -33,10 +33,18 @@ export default async function AlertDetailPage({
 
   const sensor = mockSensors.find((s) => s.id === alert.sensorId);
   const config = mockAlertConfigs.find((c) => c.sensorId === alert.sensorId);
-  const readings = (mockReadings[alert.sensorId] ?? []).sort(
-    (a, b) =>
-      new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
-  );
+  const alertTime = new Date(alert.triggeredAt).getTime();
+  const windowStart = alertTime - 12 * 60 * 60 * 1000;
+  const windowEnd = alertTime + 12 * 60 * 60 * 1000;
+  const readings = (mockReadings[alert.sensorId] ?? [])
+    .filter((r) => {
+      const t = new Date(r.recordedAt).getTime();
+      return t >= windowStart && t <= windowEnd;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
+    );
 
   const threshold =
     alert.type === "above_max"

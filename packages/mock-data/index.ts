@@ -26,19 +26,28 @@ export const mockGateway: Gateway = {
 };
 
 // 672 readings = 7 days × 24 h × 4 per hour (every 15 min)
+// overrides: time windows where temperature is forced to a different base/variance
+type TempOverride = { from: string; to: string; baseTemp: number; variance: number };
+
 const buildReadings = (
   sensorId: string,
   baseTemp: number,
   variance: number,
+  overrides: TempOverride[] = [],
 ): Reading[] => {
   const now = new Date('2025-05-21T17:00:00.000Z');
   return Array.from({ length: 672 }, (_, i) => {
     const ts = new Date(now.getTime() - (671 - i) * 15 * 60 * 1000);
-    const offset = (Math.random() * 2 - 1) * variance;
+    const tsMs = ts.getTime();
+    const ov = overrides.find(
+      o => tsMs >= new Date(o.from).getTime() && tsMs <= new Date(o.to).getTime(),
+    );
+    const b = ov ? ov.baseTemp : baseTemp;
+    const v = ov ? ov.variance : variance;
     return {
       id: `reading_${sensorId}_${i + 1}`,
       sensorId,
-      temperature: Math.round((baseTemp + offset) * 10) / 10,
+      temperature: Math.round((b + (Math.random() * 2 - 1) * v) * 10) / 10,
       recordedAt: ts.toISOString(),
     };
   });
@@ -46,8 +55,12 @@ const buildReadings = (
 
 const coldStorageAReadings     = buildReadings('sensor_001',  4.2,  0.8);
 const coldStorageBReadings     = buildReadings('sensor_002',  3.9,  0.6);
-const medicineFridgeReadings   = buildReadings('sensor_003',  6.1,  0.4);
-const labFreezerReadings       = buildReadings('sensor_004', -18.5, 1.2);
+const medicineFridgeReadings   = buildReadings('sensor_003',  6.1,  0.4, [
+  { from: '2025-05-21T09:00:00.000Z', to: '2025-05-21T10:00:00.000Z', baseTemp: 9.5, variance: 0.3 },
+]);
+const labFreezerReadings       = buildReadings('sensor_004', -18.5, 1.2, [
+  { from: '2025-05-21T14:15:00.000Z', to: '2025-05-21T17:00:00.000Z', baseTemp: -12.5, variance: 0.8 },
+]);
 const vaccineFridge1Readings   = buildReadings('sensor_005',  4.5,  0.6);
 const vaccineFridge2Readings   = buildReadings('sensor_006',  5.1,  0.7);
 const dispensaryFridgeReadings = buildReadings('sensor_007',  4.8,  0.5);
