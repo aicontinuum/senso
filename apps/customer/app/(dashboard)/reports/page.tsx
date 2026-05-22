@@ -168,6 +168,11 @@ export default function ReportsPage() {
 
   const rangeMs = RANGES.find((r) => r.value === range)!.ms;
 
+  async function handlePrint() {
+    const doc = await buildReportPDF(reportSensors, rangeMs);
+    doc.output("dataurlnewwindow");
+  }
+
   async function handleShare() {
     const doc = await buildReportPDF(reportSensors, rangeMs);
     const fileName = `monitoring-report-${new Date(MOCK_NOW).toISOString().split("T")[0]}.pdf`;
@@ -322,7 +327,7 @@ export default function ReportsPage() {
             </p>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted"
               >
                 Print
