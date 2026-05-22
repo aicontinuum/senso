@@ -77,7 +77,7 @@ export default function DashboardPage() {
             (c) => c.sensorId === sensor.id,
           );
           const hasActiveAlert = recentAlerts.some(
-            (a) => a.sensorId === sensor.id,
+            (a) => a.sensorId === sensor.id && !a.resolvedAt,
           );
           return (
             <SensorCard
