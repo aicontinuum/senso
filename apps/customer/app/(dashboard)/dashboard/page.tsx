@@ -7,7 +7,8 @@ import {
 import { SensorCard } from "@/components/dashboard/SensorCard";
 
 export default function DashboardPage() {
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const MOCK_NOW = new Date("2025-05-22T03:00:00.000Z").getTime();
+  const cutoff = MOCK_NOW - 24 * 60 * 60 * 1000;
   const recentAlerts = mockAlerts.filter(
     (a) => new Date(a.triggeredAt).getTime() >= cutoff,
   );
@@ -48,16 +49,17 @@ export default function DashboardPage() {
           </span>
         </SummaryItem>
 
-        {recentAlerts.length > 0 && (
-          <>
-            <div className="h-8 w-px bg-border" />
-            <SummaryItem label="Alerts (24h)">
-              <span className="text-sm font-semibold text-red-600">
-                {recentAlerts.length}
-              </span>
-            </SummaryItem>
-          </>
-        )}
+        <div className="h-8 w-px bg-border" />
+
+        <SummaryItem label="Alerts (past 24h)">
+          {recentAlerts.length > 0 ? (
+            <span className="text-sm font-medium text-red-600">
+              {recentAlerts.length} alert{recentAlerts.length > 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="text-sm font-medium text-green-700">None</span>
+          )}
+        </SummaryItem>
       </div>
 
       {/* Sensor grid */}
