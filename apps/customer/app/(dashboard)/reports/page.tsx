@@ -44,6 +44,7 @@ export default function ReportsPage() {
   );
   const [generated, setGenerated] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
 
   const allSelected = selectedIds.size === mockSensors.length;
 
@@ -81,6 +82,129 @@ export default function ReportsPage() {
       setShareOpen((v) => !v);
     }
   }
+  function downloadCSV() {
+    setDownloadOpen(false);
+    const lines: string[] = [
+      `"Monitoring Report - ${mockCustomer.name}"`,
+      `"Period: ${periodLabel(rangeMs)}"`,
+      `"Generated: ${fmtDateTime(MOCK_NOW)}"`,
+      "",
+    ];
+    for (const { sensor, config, readings } of reportSensors) {
+      lines.push(`"${sensor.name}"`);
+      if (config) lines.push(`"Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}"`);
+      lines.push('"Date / Time","Temperature","Status"');
+      for (const r of readings) {
+        const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
+        lines.push(`"${formatReadingTime(r.recordedAt)}","${formatTemp(r.temperature)}","${out ? "Out of range" : "OK"}"`);
+      }
+      lines.push("");
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `monitoring-report-${new Date(MOCK_NOW).toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadPDF() {
+    setDownloadOpen(false);
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+    const margin = 14;
+    const contentWidth = 210 - margin * 2;
+    const pageH = 297;
+    const bottomMargin = 15;
+    const col1 = margin;
+    const col2 = margin + 65;
+    const col3 = margin + 105;
+
+    const drawTableHeader = (y: number): number => {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100, 100, 100);
+      doc.text("Date / Time", col1, y);
+      doc.text("Temperature", col2, y);
+      doc.text("Status", col3, y);
+      doc.setTextColor(0, 0, 0);
+      const lineY = y + 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, lineY, margin + contentWidth, lineY);
+      return lineY + 3;
+    };
+
+    let isFirst = true;
+    for (const { sensor, config, readings } of reportSensors) {
+      if (!isFirst) doc.addPage();
+      isFirst = false;
+      let y = margin;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Monitoring Report", margin, y);
+      y += 6;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(mockCustomer.name, margin, y);
+      y += 5;
+      doc.text(`Period: ${periodLabel(rangeMs)}`, margin, y);
+      y += 5;
+      doc.text(`Generated: ${fmtDateTime(MOCK_NOW)}`, margin, y);
+      y += 7;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, y, margin + contentWidth, y);
+      y += 5;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(sensor.name, margin, y);
+      if (config) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}`, margin + 55, y);
+      }
+      y += 7;
+
+      if (readings.length === 0) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "italic");
+        doc.text("No readings in this period", margin, y);
+        continue;
+      }
+
+      y = drawTableHeader(y);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+
+      for (const r of readings) {
+        if (y > pageH - bottomMargin) {
+          doc.addPage();
+          y = drawTableHeader(margin);
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+        }
+        const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
+        doc.setTextColor(80, 80, 80);
+        doc.text(formatReadingTime(r.recordedAt), col1, y);
+        doc.setTextColor(0, 0, 0);
+        doc.text(formatTemp(r.temperature), col2, y);
+        if (out) {
+          doc.setTextColor(220, 38, 38);
+        } else {
+          doc.setTextColor(22, 163, 74);
+        }
+        doc.text(out ? "Out of range" : "OK", col3, y);
+        doc.setTextColor(0, 0, 0);
+        y += 4.5;
+      }
+    }
+
+    doc.save(`monitoring-report-${new Date(MOCK_NOW).toISOString().split("T")[0]}.pdf`);
+  }
+
   const cutoff = MOCK_NOW - rangeMs;
 
   const reportSensors = mockSensors
@@ -209,6 +333,36 @@ export default function ReportsPage() {
                       >
                         Send by email
                       </a>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => setDownloadOpen((v) => !v)}
+                  className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted"
+                >
+                  Download
+                </button>
+                {downloadOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setDownloadOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 bg-background border border-border rounded-md shadow-md text-sm z-20 min-w-[148px]">
+                      <button
+                        onClick={downloadCSV}
+                        className="w-full text-left px-4 py-2 hover:bg-muted rounded-t-md"
+                      >
+                        Download CSV
+                      </button>
+                      <button
+                        onClick={downloadPDF}
+                        className="w-full text-left px-4 py-2 hover:bg-muted rounded-b-md"
+                      >
+                        Download PDF
+                      </button>
                     </div>
                   </>
                 )}
