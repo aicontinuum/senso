@@ -15,11 +15,13 @@ import {
 
 const MOCK_NOW = new Date("2025-05-21T17:00:00.000Z").getTime();
 
-type RangeValue = "12h" | "24h";
+type RangeValue = "12h" | "24h" | "3d" | "7d";
 
 const RANGES: { label: string; value: RangeValue; ms: number }[] = [
   { label: "Last 12 hours", value: "12h", ms: 12 * 3_600_000 },
   { label: "Last 24 hours", value: "24h", ms: 24 * 3_600_000 },
+  { label: "Last 3 days",   value: "3d",  ms: 3  * 24 * 3_600_000 },
+  { label: "Last week",     value: "7d",  ms: 7  * 24 * 3_600_000 },
 ];
 
 function fmtDateTime(ms: number): string {
