@@ -405,6 +405,7 @@ export default function ReportsPage() {
                   No readings in this period
                 </p>
               ) : (
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-border">
@@ -444,6 +445,7 @@ export default function ReportsPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           ))}

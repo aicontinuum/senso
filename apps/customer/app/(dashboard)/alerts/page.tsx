@@ -25,7 +25,7 @@ export default function AlertsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-bold">Alerts</h1>
 
-      <div className="rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/40 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
