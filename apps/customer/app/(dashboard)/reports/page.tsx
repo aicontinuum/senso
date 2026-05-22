@@ -43,6 +43,7 @@ export default function ReportsPage() {
     new Set(mockSensors.map((s) => s.id))
   );
   const [generated, setGenerated] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const allSelected = selectedIds.size === mockSensors.length;
 
@@ -64,6 +65,22 @@ export default function ReportsPage() {
   }
 
   const rangeMs = RANGES.find((r) => r.value === range)!.ms;
+
+  async function handleShare() {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: `Monitoring Report — ${mockCustomer.name}`,
+          text: `Temperature monitoring report for ${mockCustomer.name}. Period: ${periodLabel(rangeMs)}`,
+          url: window.location.href,
+        });
+      } catch {
+        // user cancelled or share was dismissed
+      }
+    } else {
+      setShareOpen((v) => !v);
+    }
+  }
   const cutoff = MOCK_NOW - rangeMs;
 
   const reportSensors = mockSensors
@@ -158,12 +175,45 @@ export default function ReportsPage() {
               {reportSensors.length} sensor{reportSensors.length !== 1 ? "s" : ""}{" "}
               · {RANGES.find((r) => r.value === range)!.label}
             </p>
-            <button
-              onClick={() => window.print()}
-              className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted"
-            >
-              Print / Export
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.print()}
+                className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted"
+              >
+                Print
+              </button>
+              <div className="relative">
+                <button
+                  onClick={handleShare}
+                  className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted"
+                >
+                  Export
+                </button>
+                {shareOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShareOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 bg-background border border-border rounded-md shadow-md text-sm z-20 min-w-[160px]">
+                      <button
+                        onClick={() => { window.print(); setShareOpen(false); }}
+                        className="w-full text-left px-4 py-2 hover:bg-muted rounded-t-md"
+                      >
+                        Save as PDF
+                      </button>
+                      <a
+                        href={`mailto:?subject=${encodeURIComponent(`Monitoring Report — ${mockCustomer.name}`)}&body=${encodeURIComponent(`Temperature monitoring report for ${mockCustomer.name}.\n\nPeriod: ${periodLabel(rangeMs)}\nGenerated: ${fmtDateTime(MOCK_NOW)}`)}`}
+                        onClick={() => setShareOpen(false)}
+                        className="block px-4 py-2 hover:bg-muted rounded-b-md"
+                      >
+                        Send by email
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           {reportSensors.map(({ sensor, config, readings }, i) => (
