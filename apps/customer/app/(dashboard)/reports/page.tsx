@@ -75,7 +75,11 @@ async function buildReportPDF(sensors: ReportSensor[], rangeMs: number) {
     isFirst = false;
     let y = margin;
 
-    doc.setFontSize(14);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(sensor.name, margin, y);
+    y += 7;
+    doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text("Monitoring Report", margin, y);
     y += 6;
@@ -91,15 +95,12 @@ async function buildReportPDF(sensors: ReportSensor[], rangeMs: number) {
     doc.line(margin, y, margin + contentWidth, y);
     y += 5;
 
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text(sensor.name, margin, y);
     if (config) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.text(`Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}`, margin + 55, y);
+      doc.text(`Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}`, margin, y);
+      y += 7;
     }
-    y += 7;
 
     if (readings.length === 0) {
       doc.setFontSize(9);
@@ -403,7 +404,8 @@ export default function ReportsPage() {
             >
               {/* Per-page header — repeats on every printed page */}
               <div className="mb-3">
-                <h2 className="text-xl font-bold">Monitoring Report</h2>
+                <h2 className="text-2xl font-bold">{sensor.name}</h2>
+                <h3 className="text-base font-semibold mt-1">Monitoring Report</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {mockCustomer.name}
                 </p>
@@ -417,14 +419,11 @@ export default function ReportsPage() {
 
               <hr className="mb-4 border-border" />
 
-              <div className="flex items-baseline gap-3 mb-3">
-                <h3 className="text-base font-semibold">{sensor.name}</h3>
-                {config && (
-                  <span className="text-sm text-muted-foreground">
-                    Threshold: {formatThreshold(config.minTemp, config.maxTemp)}
-                  </span>
-                )}
-              </div>
+              {config && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  Threshold: {formatThreshold(config.minTemp, config.maxTemp)}
+                </p>
+              )}
 
               {readings.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
