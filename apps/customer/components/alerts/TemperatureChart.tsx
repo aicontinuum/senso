@@ -23,10 +23,32 @@ interface Props {
   alertType: AlertType;
 }
 
+function TwoLineTick({
+  x,
+  y,
+  payload,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+}) {
+  if (!payload || x === undefined || y === undefined) return null;
+  // format is "21/05, 14:30" — split into time (first) and date (second)
+  const [date, time] = payload.value.split(", ");
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text textAnchor="middle" fill="#6b7280" fontSize={10}>
+        <tspan x="0" dy="0.9em">{time}</tspan>
+        <tspan x="0" dy="1.3em">{date}</tspan>
+      </text>
+    </g>
+  );
+}
+
 export function TemperatureChart({ data, threshold, alertType }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="h-[280px]" />;
+  if (!mounted) return <div className="h-[300px]" />;
   const thresholdLabel =
     alertType === "above_max" ? `Max: ${threshold}°C` : `Min: ${threshold}°C`;
 
@@ -41,15 +63,14 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
   ];
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 48, left: 0 }}>
+    <ResponsiveContainer width="100%" height={320}>
+      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 52, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis
           dataKey="time"
-          tick={{ fontSize: 10, fill: "#6b7280", textAnchor: "end" }}
+          tick={<TwoLineTick />}
           tickLine={false}
-          interval={Math.max(0, Math.floor(data.length / 6) - 1)}
-          angle={-35}
+          interval={Math.ceil((data.length - 1) / 5)}
         />
         <YAxis
           domain={domain}
