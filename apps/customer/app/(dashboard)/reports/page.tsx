@@ -37,6 +37,107 @@ function periodLabel(rangeMs: number): string {
   return `${fmtDateTime(MOCK_NOW - rangeMs)} – ${fmtDateTime(MOCK_NOW)}`;
 }
 
+type ReportSensor = {
+  sensor: { name: string };
+  config: { minTemp: number; maxTemp: number } | undefined;
+  readings: { id: string; temperature: number; recordedAt: string }[];
+};
+
+async function buildReportPDF(sensors: ReportSensor[], rangeMs: number) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+
+  const margin = 14;
+  const contentWidth = 210 - margin * 2;
+  const pageH = 297;
+  const bottomMargin = 15;
+  const col1 = margin;
+  const col2 = margin + 65;
+  const col3 = margin + 105;
+
+  const drawTableHeader = (y: number): number => {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Date / Time", col1, y);
+    doc.text("Temperature", col2, y);
+    doc.text("Status", col3, y);
+    doc.setTextColor(0, 0, 0);
+    const lineY = y + 3;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, lineY, margin + contentWidth, lineY);
+    return lineY + 3;
+  };
+
+  let isFirst = true;
+  for (const { sensor, config, readings } of sensors) {
+    if (!isFirst) doc.addPage();
+    isFirst = false;
+    let y = margin;
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Monitoring Report", margin, y);
+    y += 6;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(mockCustomer.name, margin, y);
+    y += 5;
+    doc.text(`Period: ${periodLabel(rangeMs)}`, margin, y);
+    y += 5;
+    doc.text(`Generated: ${fmtDateTime(MOCK_NOW)}`, margin, y);
+    y += 7;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, margin + contentWidth, y);
+    y += 5;
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text(sensor.name, margin, y);
+    if (config) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}`, margin + 55, y);
+    }
+    y += 7;
+
+    if (readings.length === 0) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "italic");
+      doc.text("No readings in this period", margin, y);
+      continue;
+    }
+
+    y = drawTableHeader(y);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+
+    for (const r of readings) {
+      if (y > pageH - bottomMargin) {
+        doc.addPage();
+        y = drawTableHeader(margin);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+      }
+      const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
+      doc.setTextColor(80, 80, 80);
+      doc.text(formatReadingTime(r.recordedAt), col1, y);
+      doc.setTextColor(0, 0, 0);
+      doc.text(formatTemp(r.temperature), col2, y);
+      if (out) {
+        doc.setTextColor(220, 38, 38);
+      } else {
+        doc.setTextColor(22, 163, 74);
+      }
+      doc.text(out ? "Out of range" : "OK", col3, y);
+      doc.setTextColor(0, 0, 0);
+      y += 4.5;
+    }
+  }
+
+  return doc;
+}
+
 export default function ReportsPage() {
   const [range, setRange] = useState<RangeValue>("24h");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -68,20 +169,30 @@ export default function ReportsPage() {
   const rangeMs = RANGES.find((r) => r.value === range)!.ms;
 
   async function handleShare() {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    const doc = await buildReportPDF(reportSensors, rangeMs);
+    const fileName = `monitoring-report-${new Date(MOCK_NOW).toISOString().split("T")[0]}.pdf`;
+    const blob = doc.output("blob");
+    const file = new File([blob], fileName, { type: "application/pdf" });
+
+    if (typeof navigator === "undefined") return;
+
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: `Monitoring Report — ${mockCustomer.name}` });
+      } catch { /* user cancelled */ }
+    } else if (typeof navigator.share === "function") {
+      // Basic share without file support — send text summary
       try {
         await navigator.share({
           title: `Monitoring Report — ${mockCustomer.name}`,
-          text: `Temperature monitoring report for ${mockCustomer.name}. Period: ${periodLabel(rangeMs)}`,
-          url: window.location.href,
+          text: `Temperature monitoring report for ${mockCustomer.name}.\n\nPeriod: ${periodLabel(rangeMs)}\nGenerated: ${fmtDateTime(MOCK_NOW)}`,
         });
-      } catch {
-        // user cancelled or share was dismissed
-      }
+      } catch { /* user cancelled */ }
     } else {
       setShareOpen((v) => !v);
     }
   }
+
   function downloadCSV() {
     setDownloadOpen(false);
     const lines: string[] = [
@@ -111,97 +222,7 @@ export default function ReportsPage() {
 
   async function downloadPDF() {
     setDownloadOpen(false);
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "mm", format: "a4" });
-
-    const margin = 14;
-    const contentWidth = 210 - margin * 2;
-    const pageH = 297;
-    const bottomMargin = 15;
-    const col1 = margin;
-    const col2 = margin + 65;
-    const col3 = margin + 105;
-
-    const drawTableHeader = (y: number): number => {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(100, 100, 100);
-      doc.text("Date / Time", col1, y);
-      doc.text("Temperature", col2, y);
-      doc.text("Status", col3, y);
-      doc.setTextColor(0, 0, 0);
-      const lineY = y + 3;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, lineY, margin + contentWidth, lineY);
-      return lineY + 3;
-    };
-
-    let isFirst = true;
-    for (const { sensor, config, readings } of reportSensors) {
-      if (!isFirst) doc.addPage();
-      isFirst = false;
-      let y = margin;
-
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("Monitoring Report", margin, y);
-      y += 6;
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text(mockCustomer.name, margin, y);
-      y += 5;
-      doc.text(`Period: ${periodLabel(rangeMs)}`, margin, y);
-      y += 5;
-      doc.text(`Generated: ${fmtDateTime(MOCK_NOW)}`, margin, y);
-      y += 7;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, y, margin + contentWidth, y);
-      y += 5;
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text(sensor.name, margin, y);
-      if (config) {
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}`, margin + 55, y);
-      }
-      y += 7;
-
-      if (readings.length === 0) {
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "italic");
-        doc.text("No readings in this period", margin, y);
-        continue;
-      }
-
-      y = drawTableHeader(y);
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-
-      for (const r of readings) {
-        if (y > pageH - bottomMargin) {
-          doc.addPage();
-          y = drawTableHeader(margin);
-          doc.setFontSize(8);
-          doc.setFont("helvetica", "normal");
-        }
-        const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
-        doc.setTextColor(80, 80, 80);
-        doc.text(formatReadingTime(r.recordedAt), col1, y);
-        doc.setTextColor(0, 0, 0);
-        doc.text(formatTemp(r.temperature), col2, y);
-        if (out) {
-          doc.setTextColor(220, 38, 38);
-        } else {
-          doc.setTextColor(22, 163, 74);
-        }
-        doc.text(out ? "Out of range" : "OK", col3, y);
-        doc.setTextColor(0, 0, 0);
-        y += 4.5;
-      }
-    }
-
+    const doc = await buildReportPDF(reportSensors, rangeMs);
     doc.save(`monitoring-report-${new Date(MOCK_NOW).toISOString().split("T")[0]}.pdf`);
   }
 
