@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   mockGateway,
   mockSensors,
@@ -5,6 +6,7 @@ import {
   mockAlerts,
 } from "@senso/mock-data";
 import { SensorCard } from "@/components/dashboard/SensorCard";
+import { Plus } from "lucide-react";
 
 export default function DashboardPage() {
   const MOCK_NOW = new Date("2025-05-22T03:00:00.000Z").getTime();
@@ -17,7 +19,17 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Dashboard</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <Link
+          href="/setup"
+          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          title="Add sensor or gateway"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Add Device</span>
+        </Link>
+      </div>
 
       {/* Summary bar */}
       <div className="mb-6 grid grid-cols-3 divide-x rounded-lg border bg-card">
