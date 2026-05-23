@@ -23,20 +23,24 @@ function billingLabel(status: Customer['billingStatus']) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+const MOCK_NOW = new Date('2025-05-22T03:00:00.000Z').getTime();
+const cutoff24h = MOCK_NOW - 24 * 60 * 60 * 1000;
+
 export default function AdminDashboardPage() {
   const sensorsOnline  = mockSensors.filter(s => s.status === 'online').length;
   const sensorsOffline = mockSensors.filter(s => s.status === 'offline').length;
-  const activeAlerts   = mockAlerts.filter(a => !a.resolvedAt).length;
+  const recentAlerts   = mockAlerts.filter(a => new Date(a.triggeredAt).getTime() >= cutoff24h).length;
 
   const activeCount    = mockCustomers.filter(c => c.billingStatus === 'active').length;
   const overdueCount   = mockCustomers.filter(c => c.billingStatus === 'overdue').length;
   const suspendedCount = mockCustomers.filter(c => c.billingStatus === 'suspended').length;
 
   const rows = mockCustomers.map(customer => {
-    const gateways      = mockGateways.filter(g => g.customerId === customer.id);
-    const sensorCount   = mockSensors.filter(s => s.customerId === customer.id).length;
-    const alertCount    = mockAlerts.filter(
-      a => !a.resolvedAt && mockSensors.find(s => s.id === a.sensorId)?.customerId === customer.id,
+    const gateways    = mockGateways.filter(g => g.customerId === customer.id);
+    const sensorCount = mockSensors.filter(s => s.customerId === customer.id).length;
+    const sensorIds   = new Set(mockSensors.filter(s => s.customerId === customer.id).map(s => s.id));
+    const alertCount  = mockAlerts.filter(
+      a => new Date(a.triggeredAt).getTime() >= cutoff24h && sensorIds.has(a.sensorId),
     ).length;
     return { customer, gateways, sensorCount, alertCount };
   });
@@ -71,11 +75,11 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="px-6 py-5">
-          <p className="text-sm font-medium text-muted-foreground">Active Alerts</p>
-          <p className={`mt-1 text-3xl font-bold ${activeAlerts > 0 ? 'text-red-600' : ''}`}>
-            {activeAlerts}
+          <p className="text-sm font-medium text-muted-foreground">Alerts (past 24h)</p>
+          <p className={`mt-1 text-3xl font-bold ${recentAlerts > 0 ? 'text-red-600' : ''}`}>
+            {recentAlerts}
           </p>
-          <p className="mt-2 text-sm text-muted-foreground">unresolved</p>
+          <p className="mt-2 text-sm text-muted-foreground">across all customers</p>
         </div>
       </div>
 
@@ -92,7 +96,7 @@ export default function AdminDashboardPage() {
                 <th className="px-6 py-3 font-medium">Billing</th>
                 <th className="px-6 py-3 font-medium">Gateway</th>
                 <th className="px-6 py-3 font-medium">Sensors</th>
-                <th className="px-6 py-3 font-medium">Active Alerts</th>
+                <th className="px-6 py-3 font-medium">Alerts (past 24h)</th>
               </tr>
             </thead>
             <tbody className="divide-y">
