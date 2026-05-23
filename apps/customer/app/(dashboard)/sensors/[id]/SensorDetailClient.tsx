@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { X, Plus, Pencil } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway } from "@senso/types";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function SensorDetailClient({ sensor, config, gateway }: Props) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
   const [minTemp, setMinTemp] = useState(String(config.minTemp));
@@ -99,12 +101,12 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
 
   return (
     <div className="max-w-lg">
-      <Link
-        href="/dashboard"
+      <button
+        onClick={() => router.back()}
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Dashboard
-      </Link>
+        ← Back
+      </button>
 
       <div className="mt-4 mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{name}</h1>
