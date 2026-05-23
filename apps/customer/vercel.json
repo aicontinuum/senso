@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "out",
   "cleanUrls": true,
   "redirects": [
     { "source": "/", "destination": "/dashboard", "permanent": false }
