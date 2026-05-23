@@ -14,6 +14,8 @@ import {
 } from "@/lib/temperature";
 
 const MOCK_NOW = new Date("2025-05-22T03:00:00.000Z").getTime();
+const CUSTOMER_ID = 'customer_001';
+const customerSensors = mockSensors.filter(s => s.customerId === CUSTOMER_ID);
 
 type RangeValue = "12h" | "24h" | "3d" | "7d";
 
@@ -144,17 +146,17 @@ async function buildReportPDF(sensors: ReportSensor[], rangeMs: number) {
 export default function ReportsPage() {
   const [range, setRange] = useState<RangeValue>("24h");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(mockSensors.map((s) => s.id))
+    new Set(customerSensors.map((s) => s.id))
   );
   const [generated, setGenerated] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
 
-  const allSelected = selectedIds.size === mockSensors.length;
+  const allSelected = selectedIds.size === customerSensors.length;
 
   function toggleAll() {
     setSelectedIds(
-      allSelected ? new Set() : new Set(mockSensors.map((s) => s.id))
+      allSelected ? new Set() : new Set(customerSensors.map((s) => s.id))
     );
     setGenerated(false);
   }
@@ -236,12 +238,12 @@ export default function ReportsPage() {
 
   const cutoff = MOCK_NOW - rangeMs;
 
-  const reportSensors = mockSensors
+  const reportSensors = customerSensors
     .filter((s) => selectedIds.has(s.id))
     .map((s) => ({
       sensor: s,
       config: mockAlertConfigs.find((c) => c.sensorId === s.id),
-      readings: mockReadings[s.id]
+      readings: (mockReadings[s.id] ?? [])
         .filter((r) => new Date(r.recordedAt).getTime() >= cutoff)
         .sort(
           (a, b) =>
@@ -293,7 +295,7 @@ export default function ReportsPage() {
             </label>
             <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2">
               <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
-                {mockSensors.map((s) => (
+                {customerSensors.map((s) => (
                   <label
                     key={s.id}
                     className="flex min-w-0 items-center gap-2 text-sm cursor-pointer"

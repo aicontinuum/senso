@@ -8,14 +8,18 @@ import {
 import { SensorCard } from "@/components/dashboard/SensorCard";
 import { Plus } from "lucide-react";
 
+const CUSTOMER_ID = 'customer_001';
+
 export default function DashboardPage() {
   const MOCK_NOW = new Date("2025-05-22T03:00:00.000Z").getTime();
   const cutoff = MOCK_NOW - 24 * 60 * 60 * 1000;
+  const customerSensors = mockSensors.filter((s) => s.customerId === CUSTOMER_ID);
+  const customerSensorIds = new Set(customerSensors.map((s) => s.id));
   const recentAlerts = mockAlerts.filter(
-    (a) => new Date(a.triggeredAt).getTime() >= cutoff,
+    (a) => new Date(a.triggeredAt).getTime() >= cutoff && customerSensorIds.has(a.sensorId),
   );
-  const onlineCount = mockSensors.filter((s) => s.status === "online").length;
-  const offlineCount = mockSensors.length - onlineCount;
+  const onlineCount = customerSensors.filter((s) => s.status === "online").length;
+  const offlineCount = customerSensors.length - onlineCount;
 
   return (
     <div>
@@ -72,7 +76,7 @@ export default function DashboardPage() {
 
       {/* Sensor grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {mockSensors.map((sensor) => {
+        {customerSensors.map((sensor) => {
           const alertConfig = mockAlertConfigs.find(
             (c) => c.sensorId === sensor.id,
           );
