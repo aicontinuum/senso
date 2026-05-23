@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Pencil } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway } from "@senso/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ interface Props {
 }
 
 export function SensorDetailClient({ sensor, config, gateway }: Props) {
+  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
   const [minTemp, setMinTemp] = useState(String(config.minTemp));
   const [maxTemp, setMaxTemp] = useState(String(config.maxTemp));
@@ -33,7 +34,22 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
     temp !== undefined &&
     isOutOfRange(temp, Number(minTemp), Number(maxTemp));
 
+  function startEditing() {
+    setEditing(true);
+    setSaved(false);
+  }
+
+  function cancelEditing() {
+    setName(sensor.name);
+    setMinTemp(String(config.minTemp));
+    setMaxTemp(String(config.maxTemp));
+    setEmails(config.emailRecipients);
+    setNewEmail("");
+    setEditing(false);
+  }
+
   function handleSave() {
+    setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -115,88 +131,147 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
       </section>
 
       {/* Settings */}
-      <section className="mb-4 space-y-5 rounded-lg border bg-card p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Settings
-        </p>
-
-        <Field label="Sensor Name">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Min Temp (°C)">
-            <input
-              type="number"
-              value={minTemp}
-              onChange={(e) => setMinTemp(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
-          <Field label="Max Temp (°C)">
-            <input
-              type="number"
-              value={maxTemp}
-              onChange={(e) => setMaxTemp(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
+      <section className="mb-4 rounded-lg border bg-card p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Settings
+          </p>
+          {!editing ? (
+            <button
+              onClick={startEditing}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </button>
+          ) : (
+            <button
+              onClick={cancelEditing}
+              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              Cancel
+            </button>
+          )}
         </div>
 
-        <Field label="Alert Recipients">
+        <div className="space-y-5">
+          {/* Name */}
           <div className="space-y-1.5">
-            {emails.map((email) => (
-              <div
-                key={email}
-                className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-              >
-                <span className="truncate">{email}</span>
-                <button
-                  onClick={() =>
-                    setEmails((prev) => prev.filter((e) => e !== email))
-                  }
-                  className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  aria-label={`Remove ${email}`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-            <div className="flex gap-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Sensor Name
+            </p>
+            {editing ? (
               <input
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addEmail()}
-                placeholder="Add email address"
-                className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               />
-              <button
-                onClick={addEmail}
-                className="flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </button>
-            </div>
+            ) : (
+              <p className="text-sm font-medium">{name}</p>
+            )}
           </div>
-        </Field>
 
-        <button
-          onClick={handleSave}
-          className={cn(
-            "w-full rounded-md px-4 py-2 text-sm font-medium transition-colors",
-            saved
-              ? "bg-green-600 text-white"
-              : "bg-primary text-primary-foreground hover:bg-primary/90",
+          {/* Thresholds */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Temperature Threshold
+            </p>
+            {editing ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Min (°C)</p>
+                  <input
+                    type="number"
+                    value={minTemp}
+                    onChange={(e) => setMinTemp(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Max (°C)</p>
+                  <input
+                    type="number"
+                    value={maxTemp}
+                    onChange={(e) => setMaxTemp(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm font-medium">
+                {formatThreshold(Number(minTemp), Number(maxTemp))}
+              </p>
+            )}
+          </div>
+
+          {/* Email recipients */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Alert Recipients
+            </p>
+            {editing ? (
+              <div className="space-y-1.5">
+                {emails.map((email) => (
+                  <div
+                    key={email}
+                    className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                  >
+                    <span className="truncate">{email}</span>
+                    <button
+                      onClick={() =>
+                        setEmails((prev) => prev.filter((e) => e !== email))
+                      }
+                      className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      aria-label={`Remove ${email}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addEmail()}
+                    placeholder="Add email address"
+                    className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <button
+                    onClick={addEmail}
+                    className="flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {emails.map((email) => (
+                  <p key={email} className="text-sm font-medium">
+                    {email}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {editing && (
+            <button
+              onClick={handleSave}
+              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Save Changes
+            </button>
           )}
-        >
-          {saved ? "Saved ✓" : "Save Changes"}
-        </button>
+
+          {saved && !editing && (
+            <p className="text-center text-xs font-medium text-green-700">
+              ✓ Changes saved
+            </p>
+          )}
+        </div>
       </section>
 
       {/* Device info */}
@@ -205,9 +280,6 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
           Device Info
         </p>
         <div className="space-y-2 text-sm">
-          <InfoRow label="Threshold">
-            {formatThreshold(config.minTemp, config.maxTemp)}
-          </InfoRow>
           <InfoRow label="Gateway">{gateway.name}</InfoRow>
           {sensor.lastReading && (
             <InfoRow label={isOffline ? "Last seen" : "Last reading"}>
@@ -236,23 +308,6 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
           )}
         </div>
       </section>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-muted-foreground">
-        {label}
-      </label>
-      {children}
     </div>
   );
 }
