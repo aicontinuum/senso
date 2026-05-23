@@ -1,9 +1,1 @@
-{
-  "buildCommand": "npm run build --workspace=apps/customer",
-  "outputDirectory": "apps/customer/out",
-  "installCommand": "npm install",
-  "cleanUrls": true,
-  "redirects": [
-    { "source": "/", "destination": "/dashboard", "permanent": false }
-  ]
-}
+{}
