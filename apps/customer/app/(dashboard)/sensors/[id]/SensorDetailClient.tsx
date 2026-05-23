@@ -76,6 +76,12 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
       setEmailError("This email is already in the list");
       return;
     }
+    if (globalEmails.includes(e)) {
+      setEmailError(
+        "This email already receives alerts via account-wide settings",
+      );
+      return;
+    }
     setEmails((prev) => [...prev, e]);
     setNewEmail("");
     setEmailError("");
