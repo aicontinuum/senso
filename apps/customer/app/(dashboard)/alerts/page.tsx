@@ -11,12 +11,17 @@ function formatDateTime(iso: string): string {
   });
 }
 
+const CUSTOMER_ID = 'customer_001';
+
 export default function AlertsPage() {
+  const customerSensorIds = new Set(
+    mockSensors.filter(s => s.customerId === CUSTOMER_ID).map(s => s.id),
+  );
   const sensorMap = Object.fromEntries(
-    mockSensors.map((s) => [s.id, s.name]),
+    mockSensors.filter(s => s.customerId === CUSTOMER_ID).map((s) => [s.id, s.name]),
   );
 
-  const sorted = [...mockAlerts].sort(
+  const sorted = [...mockAlerts].filter(a => customerSensorIds.has(a.sensorId)).sort(
     (a, b) =>
       new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime(),
   );

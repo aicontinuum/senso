@@ -8,8 +8,14 @@ import {
 } from "@senso/mock-data";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 
+const CUSTOMER_SENSOR_IDS = new Set(
+  mockSensors.filter(s => s.customerId === 'customer_001').map(s => s.id),
+);
+
 export function generateStaticParams() {
-  return mockAlerts.map((a) => ({ id: a.id }));
+  return mockAlerts
+    .filter(a => CUSTOMER_SENSOR_IDS.has(a.sensorId))
+    .map((a) => ({ id: a.id }));
 }
 
 function formatDateTime(iso: string): string {

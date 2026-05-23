@@ -3,7 +3,7 @@ import { mockSensors, mockAlertConfigs, mockGateway } from "@senso/mock-data";
 import { SensorDetailClient } from "./SensorDetailClient";
 
 export function generateStaticParams() {
-  return mockSensors.map((s) => ({ id: s.id }));
+  return mockSensors.filter(s => s.customerId === 'customer_001').map((s) => ({ id: s.id }));
 }
 
 export default async function SensorDetailPage({
