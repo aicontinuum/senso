@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd apps/customer && npm run build",
+  "buildCommand": "npm run build --workspace=apps/customer",
   "outputDirectory": "apps/customer/out",
   "installCommand": "npm install",
   "cleanUrls": true,
