@@ -5,23 +5,7 @@ import {
   mockSensors,
   mockAlerts,
 } from '@senso/mock-data';
-import type { Customer } from '@senso/types';
 
-const STATUS_COLORS: Record<string, string> = {
-  active:    'text-green-600',
-  overdue:   'text-amber-600',
-  suspended: 'text-red-600',
-};
-
-const STATUS_DOT: Record<string, string> = {
-  active:    'bg-green-500',
-  overdue:   'bg-amber-500',
-  suspended: 'bg-red-500',
-};
-
-function billingLabel(status: Customer['billingStatus']) {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
 
 const MOCK_NOW = new Date('2025-05-22T03:00:00.000Z').getTime();
 const cutoff24h = MOCK_NOW - 24 * 60 * 60 * 1000;
@@ -93,7 +77,6 @@ export default function AdminDashboardPage() {
             <thead>
               <tr className="border-b text-left text-muted-foreground">
                 <th className="px-6 py-3 font-medium">Customer</th>
-                <th className="px-6 py-3 font-medium">Billing</th>
                 <th className="px-6 py-3 font-medium">Gateway</th>
                 <th className="px-6 py-3 font-medium">Sensors</th>
                 <th className="px-6 py-3 font-medium">Alerts (past 24h)</th>
@@ -110,12 +93,6 @@ export default function AdminDashboardPage() {
                       {customer.name}
                     </Link>
                     <p className="text-xs text-muted-foreground">{customer.contactEmail}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`flex items-center gap-1.5 font-medium ${STATUS_COLORS[customer.billingStatus]}`}>
-                      <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[customer.billingStatus]}`} />
-                      {billingLabel(customer.billingStatus)}
-                    </span>
                   </td>
                   <td className="px-6 py-4">
                     {gateways.map(g => (
