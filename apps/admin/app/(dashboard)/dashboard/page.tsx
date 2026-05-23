@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   mockCustomers,
+  mockGateways,
   mockSensors,
   mockAlerts,
 } from '@senso/mock-data';
@@ -32,11 +33,12 @@ export default function AdminDashboardPage() {
   const suspendedCount = mockCustomers.filter(c => c.billingStatus === 'suspended').length;
 
   const rows = mockCustomers.map(customer => {
+    const gateways      = mockGateways.filter(g => g.customerId === customer.id);
     const sensorCount   = mockSensors.filter(s => s.customerId === customer.id).length;
     const alertCount    = mockAlerts.filter(
       a => !a.resolvedAt && mockSensors.find(s => s.id === a.sensorId)?.customerId === customer.id,
     ).length;
-    return { customer, sensorCount, alertCount };
+    return { customer, gateways, sensorCount, alertCount };
   });
 
   return (
@@ -88,12 +90,13 @@ export default function AdminDashboardPage() {
               <tr className="border-b text-left text-muted-foreground">
                 <th className="px-6 py-3 font-medium">Customer</th>
                 <th className="px-6 py-3 font-medium">Billing</th>
+                <th className="px-6 py-3 font-medium">Gateway</th>
                 <th className="px-6 py-3 font-medium">Sensors</th>
                 <th className="px-6 py-3 font-medium">Active Alerts</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {rows.map(({ customer, sensorCount, alertCount }) => (
+              {rows.map(({ customer, gateways, sensorCount, alertCount }) => (
                 <tr key={customer.id} className="hover:bg-muted/40 transition-colors">
                   <td className="px-6 py-4">
                     <Link
@@ -109,6 +112,15 @@ export default function AdminDashboardPage() {
                       <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[customer.billingStatus]}`} />
                       {billingLabel(customer.billingStatus)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {gateways.map(g => (
+                      <span key={g.id} className="flex items-center gap-1.5 text-sm">
+                        <span className={`inline-block h-2 w-2 rounded-full ${g.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                        {g.status === 'online' ? 'Online' : 'Offline'}
+                      </span>
+                    ))}
+                    {gateways.length === 0 && <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
                   <td className="px-6 py-4 tabular-nums">
