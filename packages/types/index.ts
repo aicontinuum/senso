@@ -9,6 +9,7 @@ export interface Customer {
   name: string;
   contactName: string;
   contactEmail: string;
+  phone?: string;
   billingStatus: BillingStatus;
   createdAt: string;
 }

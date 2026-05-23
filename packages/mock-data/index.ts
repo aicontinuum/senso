@@ -12,6 +12,7 @@ export const mockCustomer: Customer = {
   name: 'Al Noor Pharmacy',
   contactName: 'Ahmed Al-Mansoori',
   contactEmail: 'ahmed@alnoor-pharmacy.qa',
+  phone: '+974 4444 1234',
   billingStatus: 'active',
   createdAt: '2024-09-01T08:00:00.000Z',
 };
