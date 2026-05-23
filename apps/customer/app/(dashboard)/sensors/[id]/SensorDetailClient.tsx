@@ -25,6 +25,7 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
   const [maxTemp, setMaxTemp] = useState(String(config.maxTemp));
   const [emails, setEmails] = useState<string[]>(config.emailRecipients);
   const [newEmail, setNewEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [saved, setSaved] = useState(false);
 
   const temp = sensor.lastReading?.temperature;
@@ -45,6 +46,7 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
     setMaxTemp(String(config.maxTemp));
     setEmails(config.emailRecipients);
     setNewEmail("");
+    setEmailError("");
     setEditing(false);
   }
 
@@ -54,11 +56,21 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
     setTimeout(() => setSaved(false), 2500);
   }
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+
   function addEmail() {
     const e = newEmail.trim().toLowerCase();
-    if (!e.includes("@") || emails.includes(e)) return;
+    if (!EMAIL_RE.test(e)) {
+      setEmailError("Enter a valid email address (e.g. name@example.com)");
+      return;
+    }
+    if (emails.includes(e)) {
+      setEmailError("This email is already in the list");
+      return;
+    }
     setEmails((prev) => [...prev, e]);
     setNewEmail("");
+    setEmailError("");
   }
 
   const battery = sensor.batteryLevel;
@@ -228,22 +240,33 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
                     </button>
                   </div>
                 ))}
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addEmail()}
-                    placeholder="Add email address"
-                    className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  <button
-                    onClick={addEmail}
-                    className="flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add
-                  </button>
+                <div className="space-y-1">
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => {
+                        setNewEmail(e.target.value);
+                        setEmailError("");
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && addEmail()}
+                      placeholder="name@example.com"
+                      className={cn(
+                        "min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring",
+                        emailError ? "border-red-400 focus:ring-red-400" : "border-input",
+                      )}
+                    />
+                    <button
+                      onClick={addEmail}
+                      className="flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add
+                    </button>
+                  </div>
+                  {emailError && (
+                    <p className="text-xs text-red-600">{emailError}</p>
+                  )}
                 </div>
               </div>
             ) : (
