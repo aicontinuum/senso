@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { X, Plus, Pencil } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway } from "@senso/types";
@@ -26,6 +26,14 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
   const [emails, setEmails] = useState<string[]>(config.emailRecipients);
   const [newEmail, setNewEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [globalEmails, setGlobalEmails] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("senso_global_emails");
+      if (raw) setGlobalEmails(JSON.parse(raw));
+    } catch {}
+  }, []);
   const [saved, setSaved] = useState(false);
 
   const temp = sensor.lastReading?.temperature;
@@ -216,7 +224,33 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
             )}
           </div>
 
-          {/* Email recipients */}
+          {/* Account-wide recipients (read-only) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Account-wide Recipients
+              </p>
+              <Link
+                href="/settings"
+                className="text-xs text-muted-foreground hover:underline underline-offset-2"
+              >
+                Manage in Settings →
+              </Link>
+            </div>
+            {globalEmails.length === 0 ? (
+              <p className="text-sm text-muted-foreground">None set</p>
+            ) : (
+              <div className="space-y-1">
+                {globalEmails.map((email) => (
+                  <p key={email} className="text-sm font-medium">
+                    {email}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Per-sensor email recipients */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">
               Alert Recipients
