@@ -11,8 +11,13 @@ import { Plus } from "lucide-react";
 const CUSTOMER_ID = 'customer_001';
 
 export default function DashboardPage() {
+  const MOCK_NOW = new Date("2025-05-22T03:00:00.000Z").getTime();
+  const cutoff = MOCK_NOW - 24 * 60 * 60 * 1000;
   const customerSensors = mockSensors.filter((s) => s.customerId === CUSTOMER_ID);
   const customerSensorIds = new Set(customerSensors.map((s) => s.id));
+  const recentAlerts = mockAlerts.filter(
+    (a) => new Date(a.triggeredAt).getTime() >= cutoff && customerSensorIds.has(a.sensorId),
+  );
   const activeAlerts = mockAlerts.filter(
     (a) => !a.resolvedAt && customerSensorIds.has(a.sensorId),
   );
@@ -61,10 +66,10 @@ export default function DashboardPage() {
           </span>
         </SummaryItem>
 
-        <SummaryItem label="Active Alerts">
-          {activeAlerts.length > 0 ? (
+        <SummaryItem label="Alerts (past 24h)">
+          {recentAlerts.length > 0 ? (
             <span className="text-sm font-medium text-red-600">
-              {activeAlerts.length} alert{activeAlerts.length > 1 ? "s" : ""}
+              {recentAlerts.length} alert{recentAlerts.length > 1 ? "s" : ""}
             </span>
           ) : (
             <span className="text-sm font-medium text-green-700">None</span>
