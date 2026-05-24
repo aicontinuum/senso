@@ -15,10 +15,6 @@ export default function AdminDashboardPage() {
   const sensorsOffline = mockSensors.filter(s => s.status === 'offline').length;
   const recentAlerts   = mockAlerts.filter(a => new Date(a.triggeredAt).getTime() >= cutoff24h).length;
 
-  const activeCount    = mockCustomers.filter(c => c.billingStatus === 'active').length;
-  const overdueCount   = mockCustomers.filter(c => c.billingStatus === 'overdue').length;
-  const suspendedCount = mockCustomers.filter(c => c.billingStatus === 'suspended').length;
-
   const rows = mockCustomers.map(customer => {
     const gateways    = mockGateways.filter(g => g.customerId === customer.id);
     const sensorCount = mockSensors.filter(s => s.customerId === customer.id).length;
@@ -38,15 +34,6 @@ export default function AdminDashboardPage() {
         <div className="px-6 py-5">
           <p className="text-sm font-medium text-muted-foreground">Customers</p>
           <p className="mt-1 text-3xl font-bold">{mockCustomers.length}</p>
-          <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-            <p><span className="font-medium text-green-600">{activeCount}</span> active</p>
-            {overdueCount > 0 && (
-              <p><span className="font-medium text-amber-600">{overdueCount}</span> overdue</p>
-            )}
-            {suspendedCount > 0 && (
-              <p><span className="font-medium text-red-600">{suspendedCount}</span> suspended</p>
-            )}
-          </div>
         </div>
 
         <div className="px-6 py-5">
