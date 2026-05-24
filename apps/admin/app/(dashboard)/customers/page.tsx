@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   mockCustomers,
   mockGateways,
@@ -59,12 +60,12 @@ export default function CustomersPage() {
                   <td className="px-6 py-4 text-muted-foreground">{formatDate(customer.createdAt)}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3 justify-end">
-                      <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <Link
+                        href={`/customers/${customer.id}`}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
                         View
-                      </button>
-                      <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                        Edit
-                      </button>
+                      </Link>
                       <button className="text-sm text-red-500 hover:text-red-700 transition-colors">
                         Delete
                       </button>
