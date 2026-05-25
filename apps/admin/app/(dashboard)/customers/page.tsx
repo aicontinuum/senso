@@ -25,7 +25,15 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+        <Link
+          href="/customers/new"
+          className="text-sm px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          + New Customer
+        </Link>
+      </div>
 
       <div className="rounded-lg border bg-card shadow-sm">
         <div className="overflow-x-auto">
