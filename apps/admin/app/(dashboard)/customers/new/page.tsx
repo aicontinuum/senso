@@ -15,13 +15,12 @@ type Field = {
 };
 
 const FIELDS: Field[] = [
-  { label: 'Business Name',  key: 'name',           required: true,  placeholder: 'e.g. Al Noor Pharmacy' },
-  { label: 'Contact Name',   key: 'contactName',    required: true,  placeholder: 'Full name of primary contact' },
-  { label: 'Email Address',  key: 'contactEmail',   required: true,  placeholder: 'contact@business.com', type: 'email' },
-  { label: 'Phone',          key: 'phone',          required: false, placeholder: '+974 XXXX XXXX' },
-  { label: 'Username',       key: 'username',       required: true,  placeholder: 'Used to log in to the customer portal' },
-  { label: 'Password',       key: 'password',       required: true,  type: 'password', placeholder: 'Min. 8 characters' },
-  { label: 'Confirm Password', key: 'confirm',      required: true,  type: 'password', placeholder: 'Repeat password' },
+  { label: 'Business Name',    key: 'name',          required: true,  placeholder: 'e.g. Al Noor Pharmacy' },
+  { label: 'Contact Name',     key: 'contactName',   required: true,  placeholder: 'Full name of primary contact' },
+  { label: 'Email Address',    key: 'contactEmail',  required: true,  placeholder: 'contact@business.com', type: 'email' },
+  { label: 'Phone',            key: 'phone',         required: false, placeholder: '+974 XXXX XXXX' },
+  { label: 'Password',         key: 'password',      required: true,  type: 'password', placeholder: 'Min. 8 characters' },
+  { label: 'Confirm Password', key: 'confirm',       required: true,  type: 'password', placeholder: 'Repeat password' },
 ];
 
 export default function NewCustomerPage() {
@@ -29,6 +28,8 @@ export default function NewCustomerPage() {
     Object.fromEntries(FIELDS.map(f => [f.key, '']))
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(false);
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,11 +54,36 @@ export default function NewCustomerPage() {
     return errs;
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    setLoading(true);
+    setServerError('');
+
+    const res = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name,
+        contactName: form.contactName,
+        contactEmail: form.contactEmail,
+        phone: form.phone,
+        password: form.password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setServerError(data.error ?? 'Something went wrong. Please try again.');
+      setLoading(false);
+      return;
+    }
+
     setCreated(true);
+    setLoading(false);
   }
 
   if (created) {
@@ -71,7 +97,7 @@ export default function NewCustomerPage() {
           <p className="font-semibold text-lg">Customer created</p>
           <p className="text-sm text-muted-foreground">
             <span className="font-medium">{form.name}</span> has been added.
-            They can log in with username <span className="font-medium">{form.username}</span>.
+            They can log in with <span className="font-medium">{form.contactEmail}</span>.
           </p>
           <div className="flex justify-center gap-3 pt-2">
             <Link href="/customers" className="text-sm px-4 py-2 rounded-md border border-border hover:bg-muted">
@@ -101,7 +127,7 @@ export default function NewCustomerPage() {
         <div className="border-b px-6 py-4">
           <h2 className="font-semibold">Account Details</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Create login credentials the customer will use to access their portal.
+            Creates a login for the customer portal. They will sign in with their email and this password.
           </p>
         </div>
         <form onSubmit={handleSubmit} noValidate>
@@ -126,12 +152,20 @@ export default function NewCustomerPage() {
               </div>
             ))}
           </div>
+
+          {serverError && (
+            <div className="mx-6 mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {serverError}
+            </div>
+          )}
+
           <div className="border-t px-6 py-4 flex gap-3">
             <button
               type="submit"
-              className="text-sm px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={loading}
+              className="text-sm px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              Create Customer
+              {loading ? 'Creating…' : 'Create Customer'}
             </button>
             <Link
               href="/customers"
