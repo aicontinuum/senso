@@ -25,28 +25,24 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
+  const isLoginPage = pathname.startsWith('/login');
 
-  if (!user && !pathname.startsWith('/login')) {
+  // Not logged in → send to login
+  if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === '/') {
+  // Logged in admin on login page → send to dashboard
+  if (user && isLoginPage && user.app_metadata?.role === 'admin') {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname.startsWith('/login')) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
-  }
-
-  // Admin role check — app_metadata.role must be 'admin'
-  if (user && user.app_metadata?.role !== 'admin' && !pathname.startsWith('/login')) {
-    await supabase.auth.signOut();
+  // Logged in but not admin on a protected page → back to login with error
+  if (user && !isLoginPage && user.app_metadata?.role !== 'admin') {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('error', 'not_admin');

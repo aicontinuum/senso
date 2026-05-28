@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -13,6 +13,12 @@ export default function LoginForm() {
     searchParams.get('error') === 'not_admin' ? 'Your account does not have admin access.' : ''
   );
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('error') === 'not_admin') {
+      createClient().auth.signOut();
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
