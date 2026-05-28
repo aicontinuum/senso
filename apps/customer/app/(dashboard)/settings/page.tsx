@@ -16,11 +16,11 @@ export default async function SettingsPage() {
 
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("id, name, is_online, firmware_version, last_seen, sensors (id, name, is_online)")
+    .select("id, name, is_online, firmware_version, last_seen_at, sensors (id, name, status)")
     .eq("customer_id", customer.id);
 
   const allSensors = (gateways ?? []).flatMap(
-    (g) => (g.sensors ?? []).map((s: { id: string; name: string; is_online: boolean }) => ({
+    (g) => (g.sensors ?? []).map((s: { id: string; name: string; status: string }) => ({
       ...s,
       gatewayId: g.id,
     })),
@@ -41,7 +41,7 @@ export default async function SettingsPage() {
     gatewayId: s.gatewayId,
     customerId: customer.id,
     name: s.name,
-    status: s.is_online ? "online" : "offline",
+    status: s.status as "online" | "offline",
   }));
 
   const gatewayShapes: Gateway[] = (gateways ?? []).map((g) => ({
@@ -49,7 +49,7 @@ export default async function SettingsPage() {
     customerId: customer.id,
     name: g.name ?? "Gateway",
     status: g.is_online ? "online" : "offline",
-    lastSeen: g.last_seen ?? new Date().toISOString(),
+    lastSeen: g.last_seen_at ?? new Date().toISOString(),
     firmwareVersion: g.firmware_version ?? "—",
   }));
 

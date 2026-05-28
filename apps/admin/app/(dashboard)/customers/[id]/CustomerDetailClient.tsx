@@ -19,21 +19,21 @@ type GatewayRow = {
   name: string | null;
   is_online: boolean;
   firmware_version: string | null;
-  last_seen: string | null;
+  last_seen_at: string | null;
 };
 
 type SensorRow = {
   id: string;
   name: string;
-  is_online: boolean;
+  status: string;
   battery_level: number | null;
 };
 
 type AlertConfigRow = {
   id: string;
   sensor_id: string;
-  min_temp: number;
-  max_temp: number;
+  type: string;
+  threshold: number;
 };
 
 interface Props {
@@ -100,17 +100,11 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       <div className="flex items-start justify-between">
         <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
         {!editing ? (
-          <button onClick={() => setEditing(true)} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">
-            Edit
-          </button>
+          <button onClick={() => setEditing(true)} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Edit</button>
         ) : (
           <div className="flex gap-2">
-            <button onClick={() => setEditing(false)} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">
-              Cancel
-            </button>
-            <button onClick={() => setEditing(false)} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">
-              Save
-            </button>
+            <button onClick={() => setEditing(false)} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Cancel</button>
+            <button onClick={() => setEditing(false)} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Save</button>
           </div>
         )}
       </div>
@@ -125,17 +119,16 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
         <div className="mt-5 border-t pt-4">
           <p className="mb-2 text-sm font-medium">Change Password</p>
           <div className="flex gap-2">
-            <input
-              type="password"
-              placeholder="New password"
-              className="w-48 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            />
+            <input type="password" placeholder="New password" className="w-48 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
             <button className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Update</button>
           </div>
         </div>
       </Section>
 
       <Section title="Gateway">
+        {gateways.length === 0 && (
+          <p className="mb-4 text-sm text-muted-foreground">No gateway linked yet.</p>
+        )}
         {gateways.length > 0 && (
           <div className="mb-4 space-y-2">
             {gateways.map(g => (
@@ -145,7 +138,7 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                   <p className="text-xs text-muted-foreground">
                     ID: {g.id}
                     {g.firmware_version && ` · Firmware ${g.firmware_version}`}
-                    {g.last_seen && ` · Last seen ${formatDate(g.last_seen)}`}
+                    {g.last_seen_at && ` · Last seen ${formatDate(g.last_seen_at)}`}
                   </p>
                 </div>
                 <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
@@ -156,17 +149,9 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
             ))}
           </div>
         )}
-        {gateways.length === 0 && (
-          <p className="mb-4 text-sm text-muted-foreground">No gateway linked yet.</p>
-        )}
         <div className="flex gap-2">
-          <input
-            placeholder="Gateway ID or MAC address"
-            className="flex-1 max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">
-            Link Gateway
-          </button>
+          <input placeholder="Gateway ID or MAC address" className="flex-1 max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+          <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Link Gateway</button>
         </div>
       </Section>
 
@@ -189,9 +174,9 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                   <tr key={s.id}>
                     <td className="py-2.5 pr-8 font-medium">{s.name}</td>
                     <td className="py-2.5 pr-8">
-                      <span className={`flex items-center gap-1.5 ${s.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
-                        <span className={`inline-block h-2 w-2 rounded-full ${s.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
-                        {s.is_online ? 'Online' : 'Offline'}
+                      <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-green-700' : 'text-muted-foreground'}`}>
+                        <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                        {s.status === 'online' ? 'Online' : 'Offline'}
                       </span>
                     </td>
                     <td className="py-2.5 text-muted-foreground">
@@ -203,9 +188,7 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
             </table>
           </div>
         )}
-        <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">
-          + Add Sensor
-        </button>
+        <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">+ Add Sensor</button>
       </Section>
 
       <Section title="Alert Thresholds">
@@ -217,16 +200,18 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 pr-8 font-medium">Sensor</th>
-                  <th className="pb-2 pr-8 font-medium">Min</th>
-                  <th className="pb-2 font-medium">Max</th>
+                  <th className="pb-2 pr-8 font-medium">Type</th>
+                  <th className="pb-2 font-medium">Threshold</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {alertConfigs.map(ac => (
                   <tr key={ac.id}>
                     <td className="py-2.5 pr-8">{sensors.find(s => s.id === ac.sensor_id)?.name ?? ac.sensor_id}</td>
-                    <td className="py-2.5 pr-8 font-mono">{ac.min_temp}°C</td>
-                    <td className="py-2.5 font-mono">{ac.max_temp}°C</td>
+                    <td className="py-2.5 pr-8 text-muted-foreground">
+                      {ac.type === 'above_max' ? 'Above max' : ac.type === 'below_min' ? 'Below min' : ac.type}
+                    </td>
+                    <td className="py-2.5 font-mono">{ac.threshold}°C</td>
                   </tr>
                 ))}
               </tbody>

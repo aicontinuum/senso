@@ -19,18 +19,23 @@ export default async function ReportsPage() {
   );
   const sensorIds = sensors.map((s) => s.id);
 
-  const { data: alertConfigs } = sensorIds.length > 0
+  const { data: alertConfigRows } = sensorIds.length > 0
     ? await supabase
         .from("alert_configs")
-        .select("sensor_id, min_temp, max_temp")
+        .select("sensor_id, type, threshold")
         .in("sensor_id", sensorIds)
-    : { data: [] as { sensor_id: string; min_temp: number; max_temp: number }[] };
+    : { data: [] as { sensor_id: string; type: string; threshold: number }[] };
 
-  const configs = (alertConfigs ?? []).map((c) => ({
-    sensorId: c.sensor_id,
-    minTemp: c.min_temp,
-    maxTemp: c.max_temp,
-  }));
+  const configs = sensorIds.map((sid) => {
+    const rows = (alertConfigRows ?? []).filter((c) => c.sensor_id === sid);
+    const belowMin = rows.find((c) => c.type === "below_min");
+    const aboveMax = rows.find((c) => c.type === "above_max");
+    return {
+      sensorId: sid,
+      minTemp: belowMin?.threshold ?? 2,
+      maxTemp: aboveMax?.threshold ?? 8,
+    };
+  });
 
   return (
     <ReportClient

@@ -19,7 +19,6 @@ export default async function AlertsPage() {
 
   const supabase = await createClient();
 
-  // Get all sensor IDs for this customer (via their gateways)
   const { data: gateways } = await supabase
     .from("gateways")
     .select("sensors (id, name)")
@@ -31,13 +30,23 @@ export default async function AlertsPage() {
   const sensorIds = sensors.map((s) => s.id);
   const sensorNameById = new Map(sensors.map((s) => [s.id, s.name]));
 
-  const { data: alertLogs } = sensorIds.length > 0
+  const { data: alertConfigs } = sensorIds.length > 0
+    ? await supabase
+        .from("alert_configs")
+        .select("id, sensor_id")
+        .in("sensor_id", sensorIds)
+    : { data: [] as { id: string; sensor_id: string }[] };
+
+  const alertConfigIds = (alertConfigs ?? []).map((c) => c.id);
+  const configToSensorId = new Map((alertConfigs ?? []).map((c) => [c.id, c.sensor_id]));
+
+  const { data: alertLogs } = alertConfigIds.length > 0
     ? await supabase
         .from("alert_logs")
-        .select("id, sensor_id, triggered_at, resolved_at")
-        .in("sensor_id", sensorIds)
+        .select("id, alert_config_id, triggered_at, is_resolved")
+        .in("alert_config_id", alertConfigIds)
         .order("triggered_at", { ascending: false })
-    : { data: [] as { id: string; sensor_id: string; triggered_at: string; resolved_at: string | null }[] };
+    : { data: [] as { id: string; alert_config_id: string; triggered_at: string; is_resolved: boolean }[] };
 
   return (
     <div>
@@ -54,31 +63,34 @@ export default async function AlertsPage() {
             </tr>
           </thead>
           <tbody>
-            {(alertLogs ?? []).map((alert) => (
-              <tr key={alert.id} className="border-b last:border-0 hover:bg-muted/40">
-                <td className="px-4 py-3 font-medium">
-                  {sensorNameById.get(alert.sensor_id) ?? alert.sensor_id}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {formatDateTime(alert.triggered_at)}
-                </td>
-                <td className="px-4 py-3">
-                  {alert.resolved_at ? (
-                    <span className="text-muted-foreground">Resolved</span>
-                  ) : (
-                    <span className="font-medium text-red-600">Active</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Link
-                    href={`/alerts/${alert.id}`}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    →
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {(alertLogs ?? []).map((alert) => {
+              const sensorId = configToSensorId.get(alert.alert_config_id);
+              return (
+                <tr key={alert.id} className="border-b last:border-0 hover:bg-muted/40">
+                  <td className="px-4 py-3 font-medium">
+                    {sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : alert.alert_config_id}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {formatDateTime(alert.triggered_at)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {alert.is_resolved ? (
+                      <span className="text-muted-foreground">Resolved</span>
+                    ) : (
+                      <span className="font-medium text-red-600">Active</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/alerts/${alert.id}`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      →
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
             {(alertLogs ?? []).length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">

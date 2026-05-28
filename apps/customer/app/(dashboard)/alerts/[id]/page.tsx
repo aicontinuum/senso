@@ -27,27 +27,40 @@ export default async function AlertDetailPage({
 
   const { data: alertLog } = await supabase
     .from("alert_logs")
-    .select("id, sensor_id, triggered_at, resolved_at")
+    .select("id, alert_config_id, triggered_at, is_resolved")
     .eq("id", id)
     .single();
 
   if (!alertLog) notFound();
 
+  // Get alert config to resolve sensor_id and thresholds
+  const { data: alertConfig } = await supabase
+    .from("alert_configs")
+    .select("id, sensor_id, type, threshold")
+    .eq("id", alertLog.alert_config_id)
+    .single();
+
+  if (!alertConfig) notFound();
+
   // Verify ownership: sensor must belong to a gateway owned by this customer
   const { data: sensor } = await supabase
     .from("sensors")
     .select("id, name, gateway_id, gateways!inner (customer_id)")
-    .eq("id", alertLog.sensor_id)
+    .eq("id", alertConfig.sensor_id)
     .single();
 
   if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customer.id) notFound();
 
-  // Fetch alert config for threshold
-  const { data: config } = await supabase
+  // Get all configs for this sensor to derive both min and max thresholds for the chart
+  const { data: allConfigs } = await supabase
     .from("alert_configs")
-    .select("min_temp, max_temp")
-    .eq("sensor_id", alertLog.sensor_id)
-    .single();
+    .select("type, threshold")
+    .eq("sensor_id", alertConfig.sensor_id);
+
+  const belowMin = (allConfigs ?? []).find((c) => c.type === "below_min");
+  const aboveMax = (allConfigs ?? []).find((c) => c.type === "above_max");
+  const minTemp = belowMin?.threshold ?? 2;
+  const maxTemp = aboveMax?.threshold ?? 8;
 
   // Fetch readings ±12h around the alert
   const alertTime = new Date(alertLog.triggered_at).getTime();
@@ -57,26 +70,23 @@ export default async function AlertDetailPage({
   const { data: readings } = await supabase
     .from("readings")
     .select("id, temperature, recorded_at")
-    .eq("sensor_id", alertLog.sensor_id)
+    .eq("sensor_id", alertConfig.sensor_id)
     .gte("recorded_at", windowStart)
     .lte("recorded_at", windowEnd)
     .order("recorded_at", { ascending: true });
 
-  // Derive alert type from readings near the trigger time vs thresholds
-  const triggeringReading = (readings ?? []).reduce<{ temperature: number } | null>((closest, r) => {
-    if (!config) return closest;
-    const diff = Math.abs(new Date(r.recorded_at).getTime() - alertTime);
-    if (!closest) return r;
-    return diff < Math.abs(new Date((closest as { recorded_at?: string }).recorded_at ?? alertLog.triggered_at).getTime() - alertTime) ? r : closest;
-  }, null);
-
-  const temperature = triggeringReading?.temperature;
   const alertType: "above_max" | "below_min" =
-    config && temperature !== undefined
-      ? temperature > config.max_temp ? "above_max" : "below_min"
-      : "above_max";
+    alertConfig.type === "above_max" ? "above_max" : "below_min";
 
-  const threshold = alertType === "above_max" ? (config?.max_temp ?? 0) : (config?.min_temp ?? 0);
+  const threshold = alertConfig.threshold;
+
+  const closestReading = (readings ?? []).reduce<{ temperature: number; recorded_at: string } | null>((best, r) => {
+    if (!best) return r;
+    const diffR = Math.abs(new Date(r.recorded_at).getTime() - alertTime);
+    const diffBest = Math.abs(new Date(best.recorded_at).getTime() - alertTime);
+    return diffR < diffBest ? r : best;
+  }, null);
+  const triggeringTemp = closestReading?.temperature;
 
   const chartData = (readings ?? []).map((r) => {
     const d = new Date(r.recorded_at);
@@ -100,9 +110,9 @@ export default async function AlertDetailPage({
         <h1 className="text-2xl font-bold">{sensor.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {alertType === "above_max" ? "Too high" : "Too low"}
-          {temperature !== undefined && <> · {temperature}°C</>}
+          {triggeringTemp !== undefined && <> · {triggeringTemp}°C</>}
           {" · "}{formatDateTime(alertLog.triggered_at)}
-          {alertLog.resolved_at && <> · Resolved {formatDateTime(alertLog.resolved_at)}</>}
+          {alertLog.is_resolved && <> · Resolved</>}
         </p>
       </div>
 
@@ -111,7 +121,11 @@ export default async function AlertDetailPage({
           <p className="mb-4 text-sm font-medium text-muted-foreground">
             Temperature readings — {sensor.name}
           </p>
-          <TemperatureChart data={chartData} threshold={threshold} alertType={alertType} />
+          <TemperatureChart
+            data={chartData}
+            threshold={threshold}
+            alertType={alertType}
+          />
         </div>
       ) : (
         <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">

@@ -17,7 +17,7 @@ export default async function SensorDetailPage({
 
   const { data: sensorRow } = await supabase
     .from("sensors")
-    .select("id, name, is_online, battery_level, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen, customer_id)")
+    .select("id, name, status, battery_level, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id)")
     .eq("id", id)
     .single();
 
@@ -25,22 +25,25 @@ export default async function SensorDetailPage({
 
   const gw = sensorRow.gateways as unknown as {
     id: string; name: string | null; is_online: boolean;
-    firmware_version: string | null; last_seen: string | null; customer_id: string;
+    firmware_version: string | null; last_seen_at: string | null; customer_id: string;
   };
 
   if (gw.customer_id !== customer.id) notFound();
 
-  const [{ data: configRow }, { data: lastReadingRow }] = await Promise.all([
-    supabase.from("alert_configs").select("id, sensor_id, min_temp, max_temp, email_recipients").eq("sensor_id", id).single(),
+  const [{ data: configRows }, { data: lastReadingRow }] = await Promise.all([
+    supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
     supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(1).single(),
   ]);
+
+  const belowMin = (configRows ?? []).find((c) => c.type === "below_min");
+  const aboveMax = (configRows ?? []).find((c) => c.type === "above_max");
 
   const sensor: Sensor = {
     id: sensorRow.id,
     gatewayId: sensorRow.gateway_id,
     customerId: customer.id,
     name: sensorRow.name,
-    status: sensorRow.is_online ? "online" : "offline",
+    status: sensorRow.status as "online" | "offline",
     batteryLevel: sensorRow.battery_level ?? undefined,
     lastReading: lastReadingRow
       ? { id: lastReadingRow.id, sensorId: id, temperature: lastReadingRow.temperature, recordedAt: lastReadingRow.recorded_at }
@@ -48,11 +51,13 @@ export default async function SensorDetailPage({
   };
 
   const config: AlertConfig = {
-    id: configRow?.id ?? `${id}-config`,
+    id: configRows?.[0]?.id ?? `${id}-config`,
     sensorId: id,
-    minTemp: configRow?.min_temp ?? 2,
-    maxTemp: configRow?.max_temp ?? 8,
-    emailRecipients: Array.isArray(configRow?.email_recipients) ? (configRow.email_recipients as string[]) : [],
+    minTemp: belowMin?.threshold ?? 2,
+    maxTemp: aboveMax?.threshold ?? 8,
+    emailRecipients: Array.isArray(configRows?.[0]?.email_recipients)
+      ? (configRows![0].email_recipients as string[])
+      : [],
   };
 
   const gateway: Gateway = {
@@ -60,7 +65,7 @@ export default async function SensorDetailPage({
     customerId: customer.id,
     name: gw.name ?? "Gateway",
     status: gw.is_online ? "online" : "offline",
-    lastSeen: gw.last_seen ?? new Date().toISOString(),
+    lastSeen: gw.last_seen_at ?? new Date().toISOString(),
     firmwareVersion: gw.firmware_version ?? "—",
   };
 

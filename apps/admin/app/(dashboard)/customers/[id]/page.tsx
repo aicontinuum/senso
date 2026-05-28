@@ -20,21 +20,21 @@ export default async function CustomerDetailPage({
 
   const { data: gateways } = await admin
     .from('gateways')
-    .select('id, name, is_online, firmware_version, last_seen')
+    .select('id, name, is_online, firmware_version, last_seen_at')
     .eq('customer_id', id)
     .order('created_at', { ascending: true });
 
   const gatewayIds = (gateways ?? []).map(g => g.id);
 
   const { data: sensors } = gatewayIds.length > 0
-    ? await admin.from('sensors').select('id, name, is_online, battery_level').in('gateway_id', gatewayIds)
-    : { data: [] as { id: string; name: string; is_online: boolean; battery_level: number | null }[] };
+    ? await admin.from('sensors').select('id, name, status, battery_level').in('gateway_id', gatewayIds)
+    : { data: [] as { id: string; name: string; status: string; battery_level: number | null }[] };
 
   const sensorIds = (sensors ?? []).map(s => s.id);
 
   const { data: alertConfigs } = sensorIds.length > 0
-    ? await admin.from('alert_configs').select('id, sensor_id, min_temp, max_temp').in('sensor_id', sensorIds)
-    : { data: [] as { id: string; sensor_id: string; min_temp: number; max_temp: number }[] };
+    ? await admin.from('alert_configs').select('id, sensor_id, type, threshold').in('sensor_id', sensorIds)
+    : { data: [] as { id: string; sensor_id: string; type: string; threshold: number }[] };
 
   return (
     <CustomerDetailClient
