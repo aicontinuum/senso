@@ -1,15 +1,6 @@
 import { notFound } from 'next/navigation';
-import {
-  mockCustomers,
-  mockGateways,
-  mockSensors,
-  mockAlertConfigs,
-} from '@senso/mock-data';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { CustomerDetailClient } from './CustomerDetailClient';
-
-export function generateStaticParams() {
-  return mockCustomers.map(c => ({ id: c.id }));
-}
 
 export default async function CustomerDetailPage({
   params,
@@ -17,19 +8,40 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const customer = mockCustomers.find(c => c.id === id);
+  const admin = createAdminClient();
+
+  const { data: customer } = await admin
+    .from('customers')
+    .select('id, name, email, contact_name, phone, status, created_at')
+    .eq('id', id)
+    .single();
+
   if (!customer) notFound();
 
-  const gateways    = mockGateways.filter(g => g.customerId === id);
-  const sensors     = mockSensors.filter(s => s.customerId === id);
-  const alertConfigs = mockAlertConfigs.filter(ac => sensors.some(s => s.id === ac.sensorId));
+  const { data: gateways } = await admin
+    .from('gateways')
+    .select('id, name, is_online, firmware_version, last_seen')
+    .eq('customer_id', id)
+    .order('created_at', { ascending: true });
+
+  const gatewayIds = (gateways ?? []).map(g => g.id);
+
+  const { data: sensors } = gatewayIds.length > 0
+    ? await admin.from('sensors').select('id, name, is_online, battery_level').in('gateway_id', gatewayIds)
+    : { data: [] as { id: string; name: string; is_online: boolean; battery_level: number | null }[] };
+
+  const sensorIds = (sensors ?? []).map(s => s.id);
+
+  const { data: alertConfigs } = sensorIds.length > 0
+    ? await admin.from('alert_configs').select('id, sensor_id, min_temp, max_temp').in('sensor_id', sensorIds)
+    : { data: [] as { id: string; sensor_id: string; min_temp: number; max_temp: number }[] };
 
   return (
     <CustomerDetailClient
       customer={customer}
-      gateways={gateways}
-      sensors={sensors}
-      alertConfigs={alertConfigs}
+      gateways={gateways ?? []}
+      sensors={sensors ?? []}
+      alertConfigs={alertConfigs ?? []}
     />
   );
 }

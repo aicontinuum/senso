@@ -3,13 +3,44 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import type { Customer, Gateway, Sensor, AlertConfig } from '@senso/types';
+
+type CustomerRow = {
+  id: string;
+  name: string;
+  email: string;
+  contact_name: string | null;
+  phone: string | null;
+  status: string | null;
+  created_at: string;
+};
+
+type GatewayRow = {
+  id: string;
+  name: string | null;
+  is_online: boolean;
+  firmware_version: string | null;
+  last_seen: string | null;
+};
+
+type SensorRow = {
+  id: string;
+  name: string;
+  is_online: boolean;
+  battery_level: number | null;
+};
+
+type AlertConfigRow = {
+  id: string;
+  sensor_id: string;
+  min_temp: number;
+  max_temp: number;
+};
 
 interface Props {
-  customer: Customer;
-  gateways: Gateway[];
-  sensors: Sensor[];
-  alertConfigs: AlertConfig[];
+  customer: CustomerRow;
+  gateways: GatewayRow[];
+  sensors: SensorRow[];
+  alertConfigs: AlertConfigRow[];
 }
 
 function formatDate(iso: string) {
@@ -54,8 +85,8 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: customer.name,
-    contactName: customer.contactName,
-    contactEmail: customer.contactEmail,
+    contactName: customer.contact_name ?? '',
+    email: customer.email,
     phone: customer.phone ?? '',
   });
   const set = (key: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [key]: v }));
@@ -84,62 +115,71 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
         )}
       </div>
 
-      {/* Account Info */}
       <Section title="Account Info">
         <dl className="space-y-3">
-          <Field label="Business Name"  value={form.name}         editing={editing} onChange={set('name')} />
-          <Field label="Contact Name"   value={form.contactName}  editing={editing} onChange={set('contactName')} />
-          <Field label="Email"          value={form.contactEmail} editing={editing} onChange={set('contactEmail')} />
-          <Field label="Phone"          value={form.phone}        editing={editing} onChange={set('phone')} />
+          <Field label="Business Name" value={form.name}        editing={editing} onChange={set('name')} />
+          <Field label="Contact Name"  value={form.contactName} editing={editing} onChange={set('contactName')} />
+          <Field label="Email"         value={form.email}       editing={editing} onChange={set('email')} />
+          <Field label="Phone"         value={form.phone}       editing={editing} onChange={set('phone')} />
         </dl>
         <div className="mt-5 border-t pt-4">
           <p className="mb-2 text-sm font-medium">Change Password</p>
           <div className="flex gap-2">
-            <input type="password" placeholder="New password"
-              className="w-48 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+            <input
+              type="password"
+              placeholder="New password"
+              className="w-48 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
             <button className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Update</button>
           </div>
         </div>
       </Section>
 
-      {/* Gateway */}
       <Section title="Gateway">
         {gateways.length > 0 && (
           <div className="mb-4 space-y-2">
             {gateways.map(g => (
               <div key={g.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
                 <div>
-                  <p className="font-medium">{g.name}</p>
+                  <p className="font-medium">{g.name ?? g.id}</p>
                   <p className="text-xs text-muted-foreground">
-                    ID: {g.id} · Firmware {g.firmwareVersion} · Last seen {formatDate(g.lastSeen)}
+                    ID: {g.id}
+                    {g.firmware_version && ` · Firmware ${g.firmware_version}`}
+                    {g.last_seen && ` · Last seen ${formatDate(g.last_seen)}`}
                   </p>
                 </div>
-                <span className={`flex items-center gap-1.5 text-xs font-medium ${g.status === 'online' ? 'text-green-700' : 'text-muted-foreground'}`}>
-                  <span className={`inline-block h-2 w-2 rounded-full ${g.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
-                  {g.status === 'online' ? 'Online' : 'Offline'}
+                <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
+                  <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                  {g.is_online ? 'Online' : 'Offline'}
                 </span>
               </div>
             ))}
           </div>
         )}
+        {gateways.length === 0 && (
+          <p className="mb-4 text-sm text-muted-foreground">No gateway linked yet.</p>
+        )}
         <div className="flex gap-2">
-          <input placeholder="Gateway ID or MAC address"
-            className="flex-1 max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+          <input
+            placeholder="Gateway ID or MAC address"
+            className="flex-1 max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
           <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">
             Link Gateway
           </button>
         </div>
       </Section>
 
-      {/* Sensors */}
       <Section title={`Sensors (${sensors.length})`}>
+        {sensors.length === 0 && (
+          <p className="mb-4 text-sm text-muted-foreground">No sensors yet.</p>
+        )}
         {sensors.length > 0 && (
           <div className="mb-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 pr-8 font-medium">Name</th>
-                  <th className="pb-2 pr-8 font-medium">Location</th>
                   <th className="pb-2 pr-8 font-medium">Status</th>
                   <th className="pb-2 font-medium">Battery</th>
                 </tr>
@@ -148,15 +188,14 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                 {sensors.map(s => (
                   <tr key={s.id}>
                     <td className="py-2.5 pr-8 font-medium">{s.name}</td>
-                    <td className="py-2.5 pr-8 text-muted-foreground">—</td>
                     <td className="py-2.5 pr-8">
-                      <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-green-700' : 'text-muted-foreground'}`}>
-                        <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
-                        {s.status === 'online' ? 'Online' : 'Offline'}
+                      <span className={`flex items-center gap-1.5 ${s.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
+                        <span className={`inline-block h-2 w-2 rounded-full ${s.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                        {s.is_online ? 'Online' : 'Offline'}
                       </span>
                     </td>
                     <td className="py-2.5 text-muted-foreground">
-                      {s.batteryLevel != null ? `${s.batteryLevel}%` : '—'}
+                      {s.battery_level != null ? `${s.battery_level}%` : '—'}
                     </td>
                   </tr>
                 ))}
@@ -169,7 +208,6 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
         </button>
       </Section>
 
-      {/* Alert Thresholds */}
       <Section title="Alert Thresholds">
         {alertConfigs.length === 0 ? (
           <p className="text-sm text-muted-foreground">No thresholds configured.</p>
@@ -186,9 +224,9 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
               <tbody className="divide-y">
                 {alertConfigs.map(ac => (
                   <tr key={ac.id}>
-                    <td className="py-2.5 pr-8">{sensors.find(s => s.id === ac.sensorId)?.name ?? ac.sensorId}</td>
-                    <td className="py-2.5 pr-8 font-mono">{ac.minTemp}°C</td>
-                    <td className="py-2.5 font-mono">{ac.maxTemp}°C</td>
+                    <td className="py-2.5 pr-8">{sensors.find(s => s.id === ac.sensor_id)?.name ?? ac.sensor_id}</td>
+                    <td className="py-2.5 pr-8 font-mono">{ac.min_temp}°C</td>
+                    <td className="py-2.5 font-mono">{ac.max_temp}°C</td>
                   </tr>
                 ))}
               </tbody>
