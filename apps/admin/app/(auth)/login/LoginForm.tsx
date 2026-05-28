@@ -9,16 +9,18 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(
-    searchParams.get('error') === 'not_admin' ? 'Your account does not have admin access.' : ''
-  );
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('error') === 'not_admin') {
+      setLoading(false);
+      setError('Your account does not have admin access.');
       createClient().auth.signOut();
+    } else {
+      setError('');
     }
-  }, []);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -10,18 +10,18 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(
-    searchParams.get('error') === 'not_customer'
-      ? 'This account is not registered as a customer.'
-      : ''
-  );
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('error') === 'not_customer') {
+      setLoading(false);
+      setError('This account is not registered as a customer.');
       createClient().auth.signOut();
+    } else {
+      setError('');
     }
-  }, []);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
