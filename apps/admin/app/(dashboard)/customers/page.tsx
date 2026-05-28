@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', {
@@ -10,7 +10,7 @@ function formatDate(iso: string) {
 }
 
 export default async function CustomersPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: customers } = await supabase
     .from('customers')
