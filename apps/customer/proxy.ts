@@ -34,8 +34,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Already logged in on login page → send to dashboard
-  if (user && isLoginPage) {
+  // Already logged in on login page (no error) → send to dashboard
+  if (user && isLoginPage && !request.nextUrl.searchParams.get('error')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

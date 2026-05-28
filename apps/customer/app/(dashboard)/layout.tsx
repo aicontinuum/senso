@@ -14,5 +14,15 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('auth_user_id', user.id)
+    .single();
+
+  if (!customer) {
+    redirect('/login?error=not_customer');
+  }
+
   return <ShellClient>{children}</ShellClient>;
 }
