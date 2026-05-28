@@ -1,9 +1,5 @@
 import Link from 'next/link';
-import {
-  mockCustomers,
-  mockGateways,
-  mockSensors,
-} from '@senso/mock-data';
+import { createClient } from '@/lib/supabase/server';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', {
@@ -13,13 +9,30 @@ function formatDate(iso: string) {
   });
 }
 
-export default function CustomersPage() {
-  const rows = mockCustomers.map(customer => {
-    const gateways    = mockGateways.filter(g => g.customerId === customer.id);
-    const sensorCount = mockSensors.filter(s => s.customerId === customer.id).length;
-    const allOnline   = gateways.length > 0 && gateways.every(g => g.status === 'online');
-    const anyOffline  = gateways.some(g => g.status === 'offline');
-    const gwStatus    = gateways.length === 0 ? 'none' : allOnline ? 'online' : anyOffline ? 'offline' : 'online';
+export default async function CustomersPage() {
+  const supabase = await createClient();
+
+  const { data: customers } = await supabase
+    .from('customers')
+    .select(`
+      id,
+      name,
+      email,
+      contact_name,
+      created_at,
+      gateways (
+        id,
+        is_online,
+        sensors (id)
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  const rows = (customers ?? []).map(customer => {
+    const gateways = customer.gateways ?? [];
+    const sensorCount = gateways.reduce((sum: number, gw: { sensors?: { id: string }[] }) => sum + (gw.sensors?.length ?? 0), 0);
+    const anyOnline = gateways.some((gw: { is_online: boolean }) => gw.is_online);
+    const gwStatus = gateways.length === 0 ? 'none' : anyOnline ? 'online' : 'offline';
     return { customer, sensorCount, gwStatus };
   });
 
@@ -41,7 +54,7 @@ export default function CustomersPage() {
             <thead>
               <tr className="border-b text-left text-muted-foreground">
                 <th className="px-6 py-3 font-medium">Customer</th>
-                <th className="px-6 py-3 font-medium">Username</th>
+                <th className="px-6 py-3 font-medium">Contact</th>
                 <th className="px-6 py-3 font-medium">Sensors</th>
                 <th className="px-6 py-3 font-medium">Gateway</th>
                 <th className="px-6 py-3 font-medium">Date Added</th>
@@ -49,13 +62,20 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                    No customers yet. <Link href="/customers/new" className="underline">Add one.</Link>
+                  </td>
+                </tr>
+              )}
               {rows.map(({ customer, sensorCount, gwStatus }) => (
                 <tr key={customer.id} className="hover:bg-muted/40 transition-colors">
                   <td className="px-6 py-4">
                     <p className="font-medium">{customer.name}</p>
-                    <p className="text-xs text-muted-foreground">{customer.contactEmail}</p>
+                    <p className="text-xs text-muted-foreground">{customer.email}</p>
                   </td>
-                  <td className="px-6 py-4 text-muted-foreground">{customer.contactName}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{customer.contact_name ?? '—'}</td>
                   <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
                   <td className="px-6 py-4">
                     <span className="flex items-center gap-1.5">
@@ -65,7 +85,7 @@ export default function CustomersPage() {
                       </span>
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-muted-foreground">{formatDate(customer.createdAt)}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{formatDate(customer.created_at)}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3 justify-end">
                       <Link
