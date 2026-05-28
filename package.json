@@ -1,0 +1,16 @@
+{
+  "name": "senso",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:customer": "npm run dev --workspace=apps/customer",
+    "dev:admin": "npm run dev --workspace=apps/admin"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.106.2"
+  }
+}
