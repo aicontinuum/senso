@@ -9,19 +9,17 @@ function hasSession(request: NextRequest): boolean {
   );
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLoginPage = pathname.startsWith('/login');
   const session = hasSession(request);
 
-  // No session trying to access protected pages → send to login
   if (!session && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // Already logged in on login page → send to dashboard
   if (session && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
