@@ -16,7 +16,9 @@
     "clsx": "*",
     "tailwind-merge": "*",
     "@senso/mock-data": "*",
-    "@senso/types": "*"
+    "@senso/types": "*",
+    "@supabase/supabase-js": "*",
+    "@supabase/ssr": "*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
