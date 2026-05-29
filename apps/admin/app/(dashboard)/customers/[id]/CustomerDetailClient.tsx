@@ -112,6 +112,11 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
   const [unlinking, setUnlinking] = useState(false);
 
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
   async function linkGateway() {
     setLinkError('');
     const normalised = normaliseMac(macInput);
@@ -141,6 +146,32 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       router.refresh();
     } finally {
       setLinking(false);
+    }
+  }
+
+  async function updatePassword() {
+    setPasswordError('');
+    setPasswordSuccess(false);
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPasswordError(data.error ?? 'Failed to update password');
+        return;
+      }
+      setNewPassword('');
+      setPasswordSuccess(true);
+    } finally {
+      setPasswordSaving(false);
     }
   }
 
@@ -186,9 +217,26 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
         </dl>
         <div className="mt-5 border-t pt-4">
           <p className="mb-2 text-sm font-medium">Change Password</p>
-          <div className="flex gap-2">
-            <input type="password" placeholder="New password" className="w-48 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-            <button className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Update</button>
+          <div className="space-y-1.5">
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => { setNewPassword(e.target.value); setPasswordError(''); setPasswordSuccess(false); }}
+                onKeyDown={e => e.key === 'Enter' && updatePassword()}
+                placeholder="New password"
+                className={`w-48 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${passwordError ? 'border-red-400 focus:ring-red-400' : 'border-border'}`}
+              />
+              <button
+                onClick={updatePassword}
+                disabled={passwordSaving || !newPassword}
+                className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {passwordSaving ? 'Updating…' : 'Update'}
+              </button>
+            </div>
+            {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
+            {passwordSuccess && <p className="text-xs text-green-700">Password updated.</p>}
           </div>
         </div>
       </Section>
