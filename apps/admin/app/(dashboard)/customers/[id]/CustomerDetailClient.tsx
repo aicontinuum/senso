@@ -109,6 +109,8 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const [gwName, setGwName] = useState('');
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState('');
+  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
+  const [unlinking, setUnlinking] = useState(false);
 
   async function linkGateway() {
     setLinkError('');
@@ -135,6 +137,21 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       router.refresh();
     } finally {
       setLinking(false);
+    }
+  }
+
+  async function unlinkGateway(gatewayId: string) {
+    setUnlinking(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/gateways/${gatewayId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setConfirmUnlinkId(null);
+        router.refresh();
+      }
+    } finally {
+      setUnlinking(false);
     }
   }
 
@@ -189,10 +206,37 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                     {g.last_seen_at && ` · Last seen ${formatDate(g.last_seen_at)}`}
                   </p>
                 </div>
-                <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
-                  <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
-                  {g.is_online ? 'Online' : 'Offline'}
-                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
+                    <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                    {g.is_online ? 'Online' : 'Offline'}
+                  </span>
+                  {confirmUnlinkId === g.id ? (
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <span className="text-muted-foreground">Unlink?</span>
+                      <button
+                        onClick={() => unlinkGateway(g.id)}
+                        disabled={unlinking}
+                        className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                      >
+                        {unlinking ? 'Removing…' : 'Yes'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmUnlinkId(null)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmUnlinkId(g.id)}
+                      className="text-xs text-muted-foreground hover:text-red-600"
+                    >
+                      Unlink
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
