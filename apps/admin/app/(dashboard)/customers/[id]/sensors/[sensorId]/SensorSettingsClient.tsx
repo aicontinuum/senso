@@ -26,10 +26,13 @@ interface Props {
   gateways: GatewayOption[];
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border bg-card shadow-sm">
-      <div className="border-b px-6 py-4"><h2 className="font-semibold">{title}</h2></div>
+      <div className="border-b px-6 py-4 flex items-center justify-between">
+        <h2 className="font-semibold">{title}</h2>
+        {action}
+      </div>
       <div className="px-6 py-5">{children}</div>
     </div>
   );
@@ -48,6 +51,7 @@ const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-1
 
 export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
   const router = useRouter();
+  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: sensor.name,
     gatewayId: sensor.gatewayId,
@@ -58,17 +62,32 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
+  const gatewayName = gateways.find(g => g.id === form.gatewayId)?.name ?? form.gatewayId;
+
   const changed =
     form.name !== sensor.name ||
     form.gatewayId !== sensor.gatewayId ||
     Number(form.minTemp) !== sensor.minTemp ||
     Number(form.maxTemp) !== sensor.maxTemp;
 
+  function cancel() {
+    setForm({
+      name: sensor.name,
+      gatewayId: sensor.gatewayId,
+      minTemp: String(sensor.minTemp),
+      maxTemp: String(sensor.maxTemp),
+    });
+    setError('');
+    setSaved(false);
+    setEditing(false);
+  }
+
   async function save() {
     setError('');
     setSaved(false);
-    if (!changed) return;
+    if (!changed) { setEditing(false); return; }
 
+    if (!form.name.trim()) { setError('Sensor name is required'); return; }
     const min = Number(form.minTemp);
     const max = Number(form.maxTemp);
     if (isNaN(min) || isNaN(max)) { setError('Thresholds must be numbers'); return; }
@@ -84,6 +103,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Failed to save'); return; }
       setSaved(true);
+      setEditing(false);
       router.refresh();
     } finally {
       setSaving(false);
@@ -106,54 +126,95 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
         </div>
       </div>
 
-      <Section title="Settings">
+      <Section
+        title="Settings"
+        action={
+          editing ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={cancel}
+                disabled={saving}
+                className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setSaved(false); setEditing(true); }}
+              className="text-sm px-4 py-1.5 rounded-md border border-border hover:bg-muted"
+            >
+              Edit
+            </button>
+          )
+        }
+      >
         <dl className="space-y-4">
           <Row label="Sensor Name">
-            <input
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className={inputCls}
-            />
+            {editing ? (
+              <input
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                className={inputCls}
+              />
+            ) : (
+              <span className="text-sm">{sensor.name}</span>
+            )}
           </Row>
 
           <Row label="Gateway">
-            <select
-              value={form.gatewayId}
-              onChange={e => setForm(f => ({ ...f, gatewayId: e.target.value }))}
-              className={inputCls}
-            >
-              {gateways.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+            {editing ? (
+              <select
+                value={form.gatewayId}
+                onChange={e => setForm(f => ({ ...f, gatewayId: e.target.value }))}
+                className={inputCls}
+              >
+                {gateways.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-sm">{gatewayName}</span>
+            )}
           </Row>
 
           <Row label="Temperature Threshold">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Min</span>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={form.minTemp}
-                  onChange={e => setForm(f => ({ ...f, minTemp: e.target.value }))}
-                  className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <span className="text-sm text-muted-foreground">°C</span>
+            {editing ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Min</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.minTemp}
+                    onChange={e => setForm(f => ({ ...f, minTemp: e.target.value }))}
+                    className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-sm text-muted-foreground">°C</span>
+                </div>
+                <span className="text-muted-foreground">—</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Max</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.maxTemp}
+                    onChange={e => setForm(f => ({ ...f, maxTemp: e.target.value }))}
+                    className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-sm text-muted-foreground">°C</span>
+                </div>
               </div>
-              <span className="text-muted-foreground">—</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Max</span>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={form.maxTemp}
-                  onChange={e => setForm(f => ({ ...f, maxTemp: e.target.value }))}
-                  className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <span className="text-sm text-muted-foreground">°C</span>
-              </div>
-            </div>
+            ) : (
+              <span className="text-sm">{sensor.minTemp}°C — {sensor.maxTemp}°C</span>
+            )}
           </Row>
 
           <Row label="Hardware ID">
@@ -161,17 +222,8 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
           </Row>
         </dl>
 
-        <div className="mt-6 flex items-center gap-3 border-t pt-4">
-          <button
-            onClick={save}
-            disabled={saving || !changed}
-            className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          {saved && <p className="text-xs text-green-700">✓ Saved</p>}
-        </div>
+        {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
+        {saved && !editing && <p className="mt-4 text-xs text-green-700">✓ Saved</p>}
       </Section>
     </div>
   );
