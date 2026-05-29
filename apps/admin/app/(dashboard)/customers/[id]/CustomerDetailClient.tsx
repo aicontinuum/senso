@@ -458,7 +458,10 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                           <button onClick={() => setConfirmUnlinkSensorId(null)} className="text-muted-foreground hover:text-foreground">Cancel</button>
                         </span>
                       ) : (
-                        <button onClick={() => setConfirmUnlinkSensorId(s.id)} className="text-xs text-muted-foreground hover:text-red-600">Remove</button>
+                        <span className="flex items-center justify-end gap-3">
+                          <Link href={`/customers/${customer.id}/sensors/${s.id}`} className="text-xs text-muted-foreground hover:text-foreground">Settings</Link>
+                          <button onClick={() => setConfirmUnlinkSensorId(s.id)} className="text-xs text-muted-foreground hover:text-red-600">Remove</button>
+                        </span>
                       )}
                     </td>
                   </tr>
