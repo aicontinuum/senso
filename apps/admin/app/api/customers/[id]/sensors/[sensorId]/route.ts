@@ -52,16 +52,17 @@ export async function PATCH(
 
   // Upsert below_min and above_max alert_configs
   const upserts = [
-    { sensor_id: sensorId, type: 'below_min', threshold: Number(minTemp) },
-    { sensor_id: sensorId, type: 'above_max', threshold: Number(maxTemp) },
+    { sensor_id: sensorId, type: 'below_min', threshold: Number(minTemp), email_recipients: [] },
+    { sensor_id: sensorId, type: 'above_max', threshold: Number(maxTemp), email_recipients: [] },
   ];
 
   for (const row of upserts) {
-    const { data: existing } = await admin.from('alert_configs').select('id').eq('sensor_id', sensorId).eq('type', row.type).single();
+    const { data: existing } = await admin.from('alert_configs').select('id, email_recipients').eq('sensor_id', sensorId).eq('type', row.type).single();
     if (existing) {
       await admin.from('alert_configs').update({ threshold: row.threshold }).eq('id', existing.id);
     } else {
-      await admin.from('alert_configs').insert(row);
+      const { error: insertError } = await admin.from('alert_configs').insert(row);
+      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 });
     }
   }
 
