@@ -257,6 +257,16 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   }
 
   async function unlinkGateway(gatewayId: string) {
+    const linkedSensors = sensors.filter(s => s.gateway_id === gatewayId);
+    if (linkedSensors.length > 0) {
+      const ok = window.confirm(
+        `This gateway has ${linkedSensors.length} sensor${linkedSensors.length > 1 ? 's' : ''} linked to it (${linkedSensors.map(s => s.name).join(', ')}).\n\nRemoving the gateway will also remove all linked sensors. Proceed?`
+      );
+      if (!ok) {
+        setConfirmUnlinkId(null);
+        return;
+      }
+    }
     setUnlinking(true);
     try {
       const res = await fetch(`/api/customers/${customer.id}/gateways/${gatewayId}`, {

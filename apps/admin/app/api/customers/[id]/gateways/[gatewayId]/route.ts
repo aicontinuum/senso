@@ -28,6 +28,13 @@ export async function DELETE(
     return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
   }
 
+  // Delete all sensors on this gateway first, then the gateway itself
+  const { error: sensorsError } = await admin.from('sensors').delete().eq('gateway_id', gatewayId);
+
+  if (sensorsError) {
+    return NextResponse.json({ error: sensorsError.message }, { status: 400 });
+  }
+
   const { error } = await admin.from('gateways').delete().eq('id', gatewayId);
 
   if (error) {
