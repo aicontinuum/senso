@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 
-export function ShellClient({ children }: { children: React.ReactNode }) {
+export function ShellClient({ children, customerName }: { children: React.ReactNode; customerName: string }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -25,7 +25,7 @@ export function ShellClient({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
-        <Header onMenuClick={() => setMobileOpen((v) => !v)} />
+        <Header onMenuClick={() => setMobileOpen((v) => !v)} customerName={customerName} />
         <main className="flex-1 overflow-auto p-4 sm:p-6 print:overflow-visible print:p-0">{children}</main>
       </div>
     </div>
