@@ -119,6 +119,10 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       setLinkError('Invalid MAC address — use format AA:BB:CC:DD:EE:FF');
       return;
     }
+    if (!gwName.trim()) {
+      setLinkError('Gateway name is required');
+      return;
+    }
 
     setLinking(true);
     try {
@@ -255,12 +259,12 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
               value={gwName}
               onChange={e => setGwName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="Name (optional)"
+              placeholder="Name"
               className="w-36 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <button
               onClick={linkGateway}
-              disabled={linking || !macInput.trim()}
+              disabled={linking || !macInput.trim() || !gwName.trim()}
               className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {linking ? 'Linking…' : 'Link Gateway'}
