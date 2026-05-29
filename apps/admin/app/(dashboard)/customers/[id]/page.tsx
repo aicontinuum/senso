@@ -27,8 +27,8 @@ export default async function CustomerDetailPage({
   const gatewayIds = (gateways ?? []).map(g => g.id);
 
   const { data: sensors } = gatewayIds.length > 0
-    ? await admin.from('sensors').select('id, name, status, battery_level').in('gateway_id', gatewayIds)
-    : { data: [] as { id: string; name: string; status: string; battery_level: number | null }[] };
+    ? await admin.from('sensors').select('id, name, status, battery_level, gateway_id').in('gateway_id', gatewayIds)
+    : { data: [] as { id: string; name: string; status: string; battery_level: number | null; gateway_id: string }[] };
 
   const sensorIds = (sensors ?? []).map(s => s.id);
 

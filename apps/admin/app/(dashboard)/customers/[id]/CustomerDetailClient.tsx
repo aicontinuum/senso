@@ -29,6 +29,7 @@ type SensorRow = {
   name: string;
   status: string;
   battery_level: number | null;
+  gateway_id: string;
 };
 
 type AlertConfigRow = {
@@ -400,6 +401,7 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 pr-8 font-medium">Name</th>
+                  <th className="pb-2 pr-8 font-medium">Gateway</th>
                   <th className="pb-2 pr-8 font-medium">Status</th>
                   <th className="pb-2 font-medium">Battery</th>
                 </tr>
@@ -408,6 +410,9 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                 {sensors.map(s => (
                   <tr key={s.id}>
                     <td className="py-2.5 pr-8 font-medium">{s.name}</td>
+                    <td className="py-2.5 pr-8 text-muted-foreground">
+                      {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
+                    </td>
                     <td className="py-2.5 pr-8">
                       <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-green-700' : 'text-muted-foreground'}`}>
                         <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
