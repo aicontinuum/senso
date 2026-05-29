@@ -37,6 +37,8 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
     } catch {}
   }, []);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const temp = sensor.lastReading?.temperature;
   const isOffline = sensor.status === "offline";
@@ -57,13 +59,34 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
     setEmails(config.emailRecipients);
     setNewEmail("");
     setEmailError("");
+    setSaveError("");
     setEditing(false);
   }
 
-  function handleSave() {
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  async function handleSave() {
+    setSaveError('');
+    const min = Number(minTemp);
+    const max = Number(maxTemp);
+    if (!name.trim()) { setSaveError('Sensor name is required'); return; }
+    if (isNaN(min) || isNaN(max)) { setSaveError('Thresholds must be numbers'); return; }
+    if (min >= max) { setSaveError('Min must be less than max'); return; }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/sensors/${sensor.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, minTemp: min, maxTemp: max, emailRecipients: emails }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setSaveError(data.error ?? 'Failed to save'); return; }
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
   }
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
@@ -323,12 +346,16 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
           </div>
 
           {editing && (
-            <button
-              onClick={handleSave}
-              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Save Changes
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+              {saveError && <p className="text-center text-xs text-red-600">{saveError}</p>}
+            </div>
           )}
 
           {saved && !editing && (
