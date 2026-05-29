@@ -57,8 +57,8 @@ export default async function AlertDetailPage({
     .select("type, threshold")
     .eq("sensor_id", alertConfig.sensor_id);
 
-  const belowMin = (allConfigs ?? []).find((c) => c.type === "below_min");
-  const aboveMax = (allConfigs ?? []).find((c) => c.type === "above_max");
+  const belowMin = (allConfigs ?? []).find((c) => c.type === "min");
+  const aboveMax = (allConfigs ?? []).find((c) => c.type === "max");
   const minTemp = belowMin?.threshold ?? 2;
   const maxTemp = aboveMax?.threshold ?? 8;
 
@@ -75,8 +75,8 @@ export default async function AlertDetailPage({
     .lte("recorded_at", windowEnd)
     .order("recorded_at", { ascending: true });
 
-  const alertType: "above_max" | "below_min" =
-    alertConfig.type === "above_max" ? "above_max" : "below_min";
+  const alertType: "max" | "min" =
+    alertConfig.type === "max" ? "max" : "min";
 
   const threshold = alertConfig.threshold;
 
@@ -109,7 +109,7 @@ export default async function AlertDetailPage({
       <div className="mb-6 mt-4">
         <h1 className="text-2xl font-bold">{sensor.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {alertType === "above_max" ? "Too high" : "Too low"}
+          {alertType === "max" ? "Too high" : "Too low"}
           {triggeringTemp !== undefined && <> · {triggeringTemp}°C</>}
           {" · "}{formatDateTime(alertLog.triggered_at)}
           {alertLog.is_resolved && <> · Resolved</>}

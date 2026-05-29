@@ -36,8 +36,8 @@ export async function PATCH(
 
   const recipients = Array.isArray(emailRecipients) ? emailRecipients : [];
   const upserts = [
-    { sensor_id: sensorId, type: 'below_min', threshold: Number(minTemp), email_recipients: recipients },
-    { sensor_id: sensorId, type: 'above_max', threshold: Number(maxTemp), email_recipients: recipients },
+    { sensor_id: sensorId, type: 'min', threshold: Number(minTemp), email_recipients: recipients },
+    { sensor_id: sensorId, type: 'max', threshold: Number(maxTemp), email_recipients: recipients },
   ];
 
   for (const row of upserts) {

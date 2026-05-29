@@ -28,8 +28,8 @@ export default async function ReportsPage() {
 
   const configs = sensorIds.map((sid) => {
     const rows = (alertConfigRows ?? []).filter((c) => c.sensor_id === sid);
-    const belowMin = rows.find((c) => c.type === "below_min");
-    const aboveMax = rows.find((c) => c.type === "above_max");
+    const belowMin = rows.find((c) => c.type === "min");
+    const aboveMax = rows.find((c) => c.type === "max");
     return {
       sensorId: sid,
       minTemp: belowMin?.threshold ?? 2,

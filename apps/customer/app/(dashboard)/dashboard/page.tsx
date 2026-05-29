@@ -62,12 +62,12 @@ export default async function DashboardPage() {
   const hasGateway = (gateways ?? []).length > 0;
   const gatewayOnline = (gateways ?? []).some((g) => g.is_online);
 
-  // Per-sensor: derive minTemp/maxTemp from separate below_min/above_max config rows
+  
   const configMap = new Map<string, AlertConfig>();
   for (const sid of sensorIds) {
     const cfgs = (allAlertConfigs ?? []).filter((c) => c.sensor_id === sid);
-    const belowMin = cfgs.find((c) => c.type === 'below_min');
-    const aboveMax = cfgs.find((c) => c.type === 'above_max');
+    const belowMin = cfgs.find((c) => c.type === 'min');
+    const aboveMax = cfgs.find((c) => c.type === 'max');
     if (cfgs.length > 0) {
       configMap.set(sid, {
         id: cfgs[0].id,

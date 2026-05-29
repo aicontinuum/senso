@@ -36,8 +36,8 @@ export default async function SensorDetailPage({
     supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
   ]);
 
-  const belowMin = (configRows ?? []).find((c) => c.type === "below_min");
-  const aboveMax = (configRows ?? []).find((c) => c.type === "above_max");
+  const belowMin = (configRows ?? []).find((c) => c.type === "min");
+  const aboveMax = (configRows ?? []).find((c) => c.type === "max");
 
   const sensor: Sensor = {
     id: sensorRow.id,

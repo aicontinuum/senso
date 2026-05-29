@@ -31,8 +31,8 @@ export default async function SensorSettingsPage({
     .select('type, threshold, email_recipients')
     .eq('sensor_id', sensorId);
 
-  const belowMin = alertConfigs?.find(c => c.type === 'below_min');
-  const aboveMax = alertConfigs?.find(c => c.type === 'above_max');
+  const belowMin = alertConfigs?.find(c => c.type === 'min');
+  const aboveMax = alertConfigs?.find(c => c.type === 'max');
   const emailRecipients = Array.isArray(belowMin?.email_recipients)
     ? (belowMin!.email_recipients as string[])
     : Array.isArray(aboveMax?.email_recipients)

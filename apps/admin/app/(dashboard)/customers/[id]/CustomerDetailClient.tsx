@@ -594,7 +594,7 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                   <tr key={ac.id}>
                     <td className="py-2.5 pr-8">{sensors.find(s => s.id === ac.sensor_id)?.name ?? ac.sensor_id}</td>
                     <td className="py-2.5 pr-8 text-muted-foreground">
-                      {ac.type === 'above_max' ? 'Above max' : ac.type === 'below_min' ? 'Below min' : ac.type}
+                      {ac.type === 'max' ? 'Above max' : ac.type === 'min' ? 'Below min' : ac.type}
                     </td>
                     <td className="py-2.5 font-mono">{ac.threshold}°C</td>
                   </tr>

@@ -50,7 +50,7 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="h-[300px]" />;
   const thresholdLabel =
-    alertType === "above_max" ? `Max: ${threshold}°C` : `Min: ${threshold}°C`;
+    alertType === "max" ? `Max: ${threshold}°C` : `Min: ${threshold}°C`;
 
   const temps = data.map((d) => d.temp);
   const allValues = [...temps, threshold];

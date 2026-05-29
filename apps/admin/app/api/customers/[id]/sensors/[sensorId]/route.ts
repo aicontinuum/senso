@@ -50,11 +50,11 @@ export async function PATCH(
 
   if (sensorError) return NextResponse.json({ error: sensorError.message }, { status: 400 });
 
-  // Upsert below_min and above_max alert_configs
+  // Upsert min and max alert_configs
   const recipients = Array.isArray(emailRecipients) ? emailRecipients : null;
   const thresholds = [
-    { type: 'below_min', threshold: Number(minTemp) },
-    { type: 'above_max', threshold: Number(maxTemp) },
+    { type: 'min', threshold: Number(minTemp) },
+    { type: 'max', threshold: Number(maxTemp) },
   ];
 
   for (const row of thresholds) {

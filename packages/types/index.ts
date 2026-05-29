@@ -2,7 +2,7 @@ export type BillingStatus = 'active' | 'overdue' | 'suspended';
 
 export type DeviceStatus = 'online' | 'offline';
 
-export type AlertType = 'below_min' | 'above_max';
+export type AlertType = 'min' | 'max';
 
 export interface Customer {
   id: string;
