@@ -60,7 +60,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients 
     setSaveError('');
     const min = Number(minTemp);
     const max = Number(maxTemp);
-    if (!name.trim()) { setSaveError('Sensor name is required'); return; }
     if (isNaN(min) || isNaN(max)) { setSaveError('Thresholds must be numbers'); return; }
     if (min >= max) { setSaveError('Min must be less than max'); return; }
 
@@ -69,7 +68,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients 
       const res = await fetch(`/api/sensors/${sensor.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, minTemp: min, maxTemp: max, emailRecipients: emails }),
+        body: JSON.stringify({ minTemp: min, maxTemp: max, emailRecipients: emails }),
       });
       let data: { error?: string } = {};
       try { data = await res.json(); } catch {}
@@ -202,20 +201,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients 
         </div>
 
         <div className="space-y-5">
-          {/* Name */}
+          {/* Name — read-only, set by admin */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">
               Sensor Name
             </p>
-            {editing ? (
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            ) : (
-              <p className="text-sm font-medium">{name}</p>
-            )}
+            <p className="text-sm font-medium">{name}</p>
           </div>
 
           {/* Thresholds */}

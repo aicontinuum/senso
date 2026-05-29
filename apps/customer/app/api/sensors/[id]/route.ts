@@ -30,18 +30,10 @@ export async function PATCH(
 
   if (!gateway) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });
 
-  const { name, minTemp, maxTemp, emailRecipients } = await request.json();
+  const { minTemp, maxTemp, emailRecipients } = await request.json();
 
-  if (!name?.trim()) return NextResponse.json({ error: 'Sensor name is required' }, { status: 400 });
   if (minTemp == null || maxTemp == null) return NextResponse.json({ error: 'Thresholds are required' }, { status: 400 });
   if (Number(minTemp) >= Number(maxTemp)) return NextResponse.json({ error: 'Min must be less than max' }, { status: 400 });
-
-  const { error: sensorError } = await supabase
-    .from('sensors')
-    .update({ name: name.trim() })
-    .eq('id', sensorId);
-
-  if (sensorError) return NextResponse.json({ error: sensorError.message }, { status: 400 });
 
   const recipients = Array.isArray(emailRecipients) ? emailRecipients : [];
   const thresholds = [
