@@ -97,6 +97,8 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState({
     name: customer.name,
     contactName: customer.contact_name ?? '',
@@ -104,6 +106,32 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
     phone: customer.phone ?? '',
   });
   const set = (key: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [key]: v }));
+
+  async function saveAccount() {
+    setSaveError('');
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          contactName: form.contactName,
+          email: form.email,
+          phone: form.phone,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveError(data.error ?? 'Failed to save changes');
+        return;
+      }
+      setEditing(false);
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const [macInput, setMacInput] = useState('');
   const [gwName, setGwName] = useState('');
@@ -199,11 +227,14 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       <div className="flex items-start justify-between">
         <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
         {!editing ? (
-          <button onClick={() => setEditing(true)} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Edit</button>
+          <button onClick={() => { setSaveError(''); setEditing(true); }} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Edit</button>
         ) : (
-          <div className="flex gap-2">
-            <button onClick={() => setEditing(false)} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Cancel</button>
-            <button onClick={() => setEditing(false)} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Save</button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex gap-2">
+              <button onClick={() => { setEditing(false); setSaveError(''); setForm({ name: customer.name, contactName: customer.contact_name ?? '', email: customer.email, phone: customer.phone ?? '' }); }} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Cancel</button>
+              <button onClick={saveAccount} disabled={saving} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">{saving ? 'Saving…' : 'Save'}</button>
+            </div>
+            {saveError && <p className="text-xs text-red-600">{saveError}</p>}
           </div>
         )}
       </div>
