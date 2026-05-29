@@ -29,7 +29,7 @@ export async function PATCH(
   const sensor = await verifyOwnership(customerId, sensorId);
   if (!sensor) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });
 
-  const { name, gatewayId, minTemp, maxTemp } = await request.json();
+  const { name, gatewayId, minTemp, maxTemp, emailRecipients } = await request.json();
 
   if (!name?.trim()) return NextResponse.json({ error: 'Sensor name is required' }, { status: 400 });
   if (minTemp == null || maxTemp == null) return NextResponse.json({ error: 'Thresholds are required' }, { status: 400 });
@@ -51,17 +51,25 @@ export async function PATCH(
   if (sensorError) return NextResponse.json({ error: sensorError.message }, { status: 400 });
 
   // Upsert below_min and above_max alert_configs
-  const upserts = [
-    { sensor_id: sensorId, type: 'below_min', threshold: Number(minTemp), email_recipients: [] },
-    { sensor_id: sensorId, type: 'above_max', threshold: Number(maxTemp), email_recipients: [] },
+  const recipients = Array.isArray(emailRecipients) ? emailRecipients : null;
+  const thresholds = [
+    { type: 'below_min', threshold: Number(minTemp) },
+    { type: 'above_max', threshold: Number(maxTemp) },
   ];
 
-  for (const row of upserts) {
+  for (const row of thresholds) {
     const { data: existing } = await admin.from('alert_configs').select('id, email_recipients').eq('sensor_id', sensorId).eq('type', row.type).single();
     if (existing) {
-      await admin.from('alert_configs').update({ threshold: row.threshold }).eq('id', existing.id);
+      const updateFields: Record<string, unknown> = { threshold: row.threshold };
+      if (recipients !== null) updateFields.email_recipients = recipients;
+      await admin.from('alert_configs').update(updateFields).eq('id', existing.id);
     } else {
-      const { error: insertError } = await admin.from('alert_configs').insert(row);
+      const { error: insertError } = await admin.from('alert_configs').insert({
+        sensor_id: sensorId,
+        type: row.type,
+        threshold: row.threshold,
+        email_recipients: recipients ?? [],
+      });
       if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 });
     }
   }

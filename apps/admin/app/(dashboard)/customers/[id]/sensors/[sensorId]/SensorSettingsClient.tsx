@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
 
 interface SensorData {
   id: string;
@@ -13,6 +14,7 @@ interface SensorData {
   hardwareId: string;
   minTemp: number;
   maxTemp: number;
+  emailRecipients: string[];
 }
 
 interface GatewayOption {
@@ -57,6 +59,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
     gatewayId: sensor.gatewayId,
     minTemp: String(sensor.minTemp),
     maxTemp: String(sensor.maxTemp),
+    emailRecipients: sensor.emailRecipients,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -68,7 +71,8 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
     form.name !== sensor.name ||
     form.gatewayId !== sensor.gatewayId ||
     Number(form.minTemp) !== sensor.minTemp ||
-    Number(form.maxTemp) !== sensor.maxTemp;
+    Number(form.maxTemp) !== sensor.maxTemp ||
+    JSON.stringify(form.emailRecipients) !== JSON.stringify(sensor.emailRecipients);
 
   function cancel() {
     setForm({
@@ -76,6 +80,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
       gatewayId: sensor.gatewayId,
       minTemp: String(sensor.minTemp),
       maxTemp: String(sensor.maxTemp),
+      emailRecipients: sensor.emailRecipients,
     });
     setError('');
     setSaved(false);
@@ -98,7 +103,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
       const res = await fetch(`/api/customers/${customerId}/sensors/${sensor.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, gatewayId: form.gatewayId, minTemp: min, maxTemp: max }),
+        body: JSON.stringify({ name: form.name, gatewayId: form.gatewayId, minTemp: min, maxTemp: max, emailRecipients: form.emailRecipients }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Failed to save'); return; }
@@ -131,26 +136,15 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
         action={
           editing ? (
             <div className="flex items-center gap-2">
-              <button
-                onClick={cancel}
-                disabled={saving}
-                className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-50"
-              >
+              <button onClick={cancel} disabled={saving} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-50">
                 Cancel
               </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
+              <button onClick={save} disabled={saving} className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => { setSaved(false); setEditing(true); }}
-              className="text-sm px-4 py-1.5 rounded-md border border-border hover:bg-muted"
-            >
+            <button onClick={() => { setSaved(false); setEditing(true); }} className="text-sm px-4 py-1.5 rounded-md border border-border hover:bg-muted">
               Edit
             </button>
           )
@@ -159,11 +153,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
         <dl className="space-y-4">
           <Row label="Sensor Name">
             {editing ? (
-              <input
-                value={form.name}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className={inputCls}
-              />
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
             ) : (
               <span className="text-sm">{sensor.name}</span>
             )}
@@ -171,14 +161,8 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
 
           <Row label="Gateway">
             {editing ? (
-              <select
-                value={form.gatewayId}
-                onChange={e => setForm(f => ({ ...f, gatewayId: e.target.value }))}
-                className={inputCls}
-              >
-                {gateways.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
+              <select value={form.gatewayId} onChange={e => setForm(f => ({ ...f, gatewayId: e.target.value }))} className={inputCls}>
+                {gateways.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             ) : (
               <span className="text-sm">{gatewayName}</span>
@@ -190,25 +174,13 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted-foreground">Min</span>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.minTemp}
-                    onChange={e => setForm(f => ({ ...f, minTemp: e.target.value }))}
-                    className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
+                  <input type="number" step="0.5" value={form.minTemp} onChange={e => setForm(f => ({ ...f, minTemp: e.target.value }))} className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
                   <span className="text-sm text-muted-foreground">°C</span>
                 </div>
                 <span className="text-muted-foreground">—</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted-foreground">Max</span>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.maxTemp}
-                    onChange={e => setForm(f => ({ ...f, maxTemp: e.target.value }))}
-                    className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
+                  <input type="number" step="0.5" value={form.maxTemp} onChange={e => setForm(f => ({ ...f, maxTemp: e.target.value }))} className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
                   <span className="text-sm text-muted-foreground">°C</span>
                 </div>
               </div>
@@ -219,6 +191,23 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
 
           <Row label="Hardware ID">
             <span className="font-mono text-sm text-muted-foreground">{sensor.hardwareId || '—'}</span>
+          </Row>
+
+          <Row label="Alert Recipients">
+            {editing ? (
+              <EmailRecipientsEditor
+                emails={form.emailRecipients}
+                onChange={emailRecipients => setForm(f => ({ ...f, emailRecipients }))}
+              />
+            ) : (
+              <div className="space-y-0.5">
+                {sensor.emailRecipients.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">None set.</span>
+                ) : (
+                  sensor.emailRecipients.map(e => <p key={e} className="text-sm">{e}</p>)
+                )}
+              </div>
+            )}
           </Row>
         </dl>
 

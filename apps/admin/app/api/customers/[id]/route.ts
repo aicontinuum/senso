@@ -15,7 +15,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { name, contactName, email, phone } = await request.json();
+  const { name, contactName, email, phone, alertRecipients } = await request.json();
 
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Business name is required' }, { status: 400 });
@@ -27,14 +27,19 @@ export async function PATCH(
   const { id: customerId } = await params;
   const admin = createAdminClient();
 
+  const updatePayload: Record<string, unknown> = {
+    name: name.trim(),
+    contact_name: contactName?.trim() || null,
+    email: email.trim(),
+    phone: phone?.trim() || null,
+  };
+  if (Array.isArray(alertRecipients)) {
+    updatePayload.alert_recipients = alertRecipients;
+  }
+
   const { error } = await admin
     .from('customers')
-    .update({
-      name: name.trim(),
-      contact_name: contactName?.trim() || null,
-      email: email.trim(),
-      phone: phone?.trim() || null,
-    })
+    .update(updatePayload)
     .eq('id', customerId);
 
   if (error) {

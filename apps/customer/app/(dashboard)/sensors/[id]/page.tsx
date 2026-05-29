@@ -30,9 +30,10 @@ export default async function SensorDetailPage({
 
   if (gw.customer_id !== customer.id) notFound();
 
-  const [{ data: configRows }, { data: lastReadingRow }] = await Promise.all([
+  const [{ data: configRows }, { data: lastReadingRow }, { data: customerData }] = await Promise.all([
     supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
     supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(1).single(),
+    supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
   ]);
 
   const belowMin = (configRows ?? []).find((c) => c.type === "below_min");
@@ -69,5 +70,7 @@ export default async function SensorDetailPage({
     firmwareVersion: gw.firmware_version ?? "—",
   };
 
-  return <SensorDetailClient sensor={sensor} config={config} gateway={gateway} />;
+  const accountRecipients = (customerData?.alert_recipients as string[]) ?? [];
+
+  return <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} />;
 }

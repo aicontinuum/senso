@@ -1,29 +1,36 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STORAGE_KEY = "senso_global_emails";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
-export function AlertRecipientsSection() {
-  const [emails, setEmails] = useState<string[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+interface Props {
+  initialEmails: string[];
+}
+
+export function AlertRecipientsSection({ initialEmails }: Props) {
+  const [emails, setEmails] = useState<string[]>(initialEmails);
   const [newEmail, setNewEmail] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
-  useEffect(() => {
+  async function persist(updated: string[]) {
+    setSaving(true);
+    setSaveError("");
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setEmails(JSON.parse(raw));
-    } catch {}
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
-  }, [emails, hydrated]);
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ alertRecipients: updated }),
+      });
+      const data = await res.json();
+      if (!res.ok) setSaveError(data.error ?? "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function addEmail() {
     const e = newEmail.trim().toLowerCase();
@@ -35,9 +42,17 @@ export function AlertRecipientsSection() {
       setEmailError("This email is already in the list");
       return;
     }
-    setEmails((prev) => [...prev, e]);
+    const updated = [...emails, e];
+    setEmails(updated);
     setNewEmail("");
     setEmailError("");
+    persist(updated);
+  }
+
+  function removeEmail(email: string) {
+    const updated = emails.filter((e) => e !== email);
+    setEmails(updated);
+    persist(updated);
   }
 
   return (
@@ -51,39 +66,33 @@ export function AlertRecipientsSection() {
       </p>
 
       <div className="space-y-1.5">
-        {hydrated && emails.length === 0 && (
+        {emails.length === 0 && (
           <p className="py-1 text-sm text-muted-foreground">
-            No global recipients set.
+            No account-wide recipients set.
           </p>
         )}
-        {hydrated &&
-          emails.map((email) => (
-            <div
-              key={email}
-              className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+        {emails.map((email) => (
+          <div
+            key={email}
+            className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          >
+            <span className="truncate">{email}</span>
+            <button
+              onClick={() => removeEmail(email)}
+              className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label={`Remove ${email}`}
             >
-              <span className="truncate">{email}</span>
-              <button
-                onClick={() =>
-                  setEmails((prev) => prev.filter((e) => e !== email))
-                }
-                className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label={`Remove ${email}`}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
 
         <div className="space-y-1 pt-1">
           <div className="flex gap-2">
             <input
               type="email"
               value={newEmail}
-              onChange={(e) => {
-                setNewEmail(e.target.value);
-                setEmailError("");
-              }}
+              onChange={(e) => { setNewEmail(e.target.value); setEmailError(""); }}
               onKeyDown={(e) => e.key === "Enter" && addEmail()}
               placeholder="name@example.com"
               className={cn(
@@ -100,6 +109,8 @@ export function AlertRecipientsSection() {
             </button>
           </div>
           {emailError && <p className="text-xs text-red-600">{emailError}</p>}
+          {saving && <p className="text-xs text-muted-foreground">Saving…</p>}
+          {saveError && <p className="text-xs text-red-600">{saveError}</p>}
         </div>
       </div>
     </section>

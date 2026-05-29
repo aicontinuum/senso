@@ -14,6 +14,13 @@ export default async function SettingsPage() {
 
   const supabase = await createClient();
 
+  const { data: customerData } = await supabase
+    .from("customers")
+    .select("alert_recipients")
+    .eq("id", customer.id)
+    .single();
+  const initialAlertEmails = (customerData?.alert_recipients as string[]) ?? [];
+
   const { data: gateways } = await supabase
     .from("gateways")
     .select("id, name, is_online, firmware_version, last_seen_at, sensors (id, name, status)")
@@ -59,7 +66,7 @@ export default async function SettingsPage() {
       <AccountInfoSection customer={customerShape} />
       <SensorsSection sensors={sensorShapes} />
       <GatewaysSection gateways={gatewayShapes} />
-      <AlertRecipientsSection />
+      <AlertRecipientsSection initialEmails={initialAlertEmails} />
       <ChangePasswordSection />
     </div>
   );

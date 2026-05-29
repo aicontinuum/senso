@@ -12,7 +12,7 @@ export default async function CustomerDetailPage({
 
   const { data: customer } = await admin
     .from('customers')
-    .select('id, name, email, contact_name, phone, status, created_at')
+    .select('id, name, email, contact_name, phone, status, created_at, alert_recipients')
     .eq('id', id)
     .single();
 

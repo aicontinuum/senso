@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
 
 type CustomerRow = {
   id: string;
@@ -13,6 +14,7 @@ type CustomerRow = {
   phone: string | null;
   status: string | null;
   created_at: string;
+  alert_recipients: string[] | null;
 };
 
 type GatewayRow = {
@@ -162,6 +164,33 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const setSensorField = (key: keyof typeof sensorForm) => (v: string) => setSensorForm(f => ({ ...f, [key]: v }));
   const [confirmUnlinkSensorId, setConfirmUnlinkSensorId] = useState<string | null>(null);
   const [unlinkingSensor, setUnlinkingSensor] = useState(false);
+
+  const [acctEmails, setAcctEmails] = useState<string[]>(customer.alert_recipients ?? []);
+  const [savingAcctEmails, setSavingAcctEmails] = useState(false);
+  const [acctEmailError, setAcctEmailError] = useState('');
+
+  async function saveAcctEmails(emails: string[]) {
+    setAcctEmails(emails);
+    setAcctEmailError('');
+    setSavingAcctEmails(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: customer.name,
+          contactName: customer.contact_name,
+          email: customer.email,
+          phone: customer.phone,
+          alertRecipients: emails,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) setAcctEmailError(data.error ?? 'Failed to save');
+    } finally {
+      setSavingAcctEmails(false);
+    }
+  }
 
   async function linkGateway() {
     setLinkError('');
@@ -536,6 +565,15 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
             </div>
           </div>
         )}
+      </Section>
+
+      <Section title="Alert Recipients">
+        <p className="mb-4 text-sm text-muted-foreground">
+          These emails receive alerts from every sensor on this account. Per-sensor recipients are additive — both lists are notified.
+        </p>
+        <EmailRecipientsEditor emails={acctEmails} onChange={saveAcctEmails} />
+        {savingAcctEmails && <p className="mt-2 text-xs text-muted-foreground">Saving…</p>}
+        {acctEmailError && <p className="mt-2 text-xs text-red-600">{acctEmailError}</p>}
       </Section>
 
       <Section title="Alert Thresholds">

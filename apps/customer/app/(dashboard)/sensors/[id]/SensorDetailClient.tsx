@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Plus, Pencil } from "lucide-react";
@@ -17,9 +17,10 @@ interface Props {
   sensor: Sensor;
   config: AlertConfig;
   gateway: Gateway;
+  accountRecipients: string[];
 }
 
-export function SensorDetailClient({ sensor, config, gateway }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, accountRecipients }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -28,14 +29,6 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
   const [emails, setEmails] = useState<string[]>(config.emailRecipients);
   const [newEmail, setNewEmail] = useState("");
   const [emailError, setEmailError] = useState("");
-  const [globalEmails, setGlobalEmails] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("senso_global_emails");
-      if (raw) setGlobalEmails(JSON.parse(raw));
-    } catch {}
-  }, []);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -101,7 +94,7 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
       setEmailError("This email is already in the list");
       return;
     }
-    if (globalEmails.includes(e)) {
+    if (accountRecipients.includes(e)) {
       setEmailError(
         "This email already receives alerts via account-wide settings",
       );
@@ -268,11 +261,11 @@ export function SensorDetailClient({ sensor, config, gateway }: Props) {
                 Manage in Settings →
               </Link>
             </div>
-            {globalEmails.length === 0 ? (
+            {accountRecipients.length === 0 ? (
               <p className="text-sm text-muted-foreground">None set</p>
             ) : (
               <div className="space-y-1">
-                {globalEmails.map((email) => (
+                {accountRecipients.map((email) => (
                   <p key={email} className="text-sm font-medium">
                     {email}
                   </p>
