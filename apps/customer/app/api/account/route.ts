@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET() {
   const customer = await getCustomer();
@@ -23,7 +22,7 @@ export async function PATCH(request: Request) {
 
   const { alertRecipients, contactName, phone } = await request.json();
 
-  const admin = createAdminClient();
+  const supabase = await createClient();
   const update: Record<string, unknown> = {};
 
   if (Array.isArray(alertRecipients)) update.alert_recipients = alertRecipients;
@@ -32,7 +31,7 @@ export async function PATCH(request: Request) {
 
   if (Object.keys(update).length === 0) return NextResponse.json({ success: true });
 
-  const { error } = await admin
+  const { error } = await supabase
     .from('customers')
     .update(update)
     .eq('id', customer.id);
