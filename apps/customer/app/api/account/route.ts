@@ -21,15 +21,20 @@ export async function PATCH(request: Request) {
   const customer = await getCustomer();
   if (!customer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { alertRecipients } = await request.json();
-  if (!Array.isArray(alertRecipients)) {
-    return NextResponse.json({ error: 'Invalid recipients' }, { status: 400 });
-  }
+  const { alertRecipients, contactName, phone } = await request.json();
 
   const admin = createAdminClient();
+  const update: Record<string, unknown> = {};
+
+  if (Array.isArray(alertRecipients)) update.alert_recipients = alertRecipients;
+  if (contactName !== undefined) update.contact_name = contactName?.trim() || null;
+  if (phone !== undefined) update.phone = phone?.trim() || null;
+
+  if (Object.keys(update).length === 0) return NextResponse.json({ success: true });
+
   const { error } = await admin
     .from('customers')
-    .update({ alert_recipients: alertRecipients })
+    .update(update)
     .eq('id', customer.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -6,24 +6,39 @@ import { cn } from "@/lib/utils";
 
 export function AccountInfoSection({ customer }: { customer: Customer }) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(customer.name);
   const [contactName, setContactName] = useState(customer.contactName);
-  const [email, setEmail] = useState(customer.contactEmail);
   const [phone, setPhone] = useState(customer.phone ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
   function cancel() {
-    setName(customer.name);
     setContactName(customer.contactName);
-    setEmail(customer.contactEmail);
     setPhone(customer.phone ?? "");
+    setError("");
     setEditing(false);
   }
 
-  function save() {
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  async function save() {
+    setError("");
+    const unchanged = contactName === customer.contactName && phone === (customer.phone ?? "");
+    if (unchanged) { setEditing(false); return; }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactName, phone }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Failed to save"); return; }
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -52,25 +67,17 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
 
       <div className="space-y-4">
         <Field label="Business Name">
-          {editing ? (
-            <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
-          ) : (
-            <p className="text-sm font-medium">{name}</p>
-          )}
+          <p className="text-sm font-medium">{customer.name}</p>
         </Field>
         <Field label="Contact Name">
           {editing ? (
             <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputCls} />
           ) : (
-            <p className="text-sm font-medium">{contactName}</p>
+            <p className="text-sm font-medium">{contactName || <span className="text-muted-foreground">Not set</span>}</p>
           )}
         </Field>
         <Field label="Contact Email">
-          {editing ? (
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
-          ) : (
-            <p className="text-sm font-medium">{email}</p>
-          )}
+          <p className="text-sm font-medium">{customer.contactEmail}</p>
         </Field>
         <Field label="Phone">
           {editing ? (
@@ -83,12 +90,16 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
         </Field>
 
         {editing && (
-          <button
-            onClick={save}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Save Changes
-          </button>
+          <div className="space-y-1.5">
+            <button
+              onClick={save}
+              disabled={saving}
+              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
+            {error && <p className="text-center text-xs text-red-600">{error}</p>}
+          </div>
         )}
         {saved && !editing && (
           <p className="text-center text-xs font-medium text-green-700">✓ Changes saved</p>
