@@ -34,18 +34,10 @@ type SensorRow = {
   gateway_id: string;
 };
 
-type AlertConfigRow = {
-  id: string;
-  sensor_id: string;
-  type: string;
-  threshold: number;
-};
-
 interface Props {
   customer: CustomerRow;
   gateways: GatewayRow[];
   sensors: SensorRow[];
-  alertConfigs: AlertConfigRow[];
 }
 
 const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;
@@ -96,7 +88,7 @@ function Field({ label, value, editing, onChange }: {
   );
 }
 
-export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs }: Props) {
+export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
@@ -574,35 +566,6 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
         <EmailRecipientsEditor emails={acctEmails} onChange={saveAcctEmails} />
         {savingAcctEmails && <p className="mt-2 text-xs text-muted-foreground">Saving…</p>}
         {acctEmailError && <p className="mt-2 text-xs text-red-600">{acctEmailError}</p>}
-      </Section>
-
-      <Section title="Alert Thresholds">
-        {alertConfigs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No thresholds configured.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-8 font-medium">Sensor</th>
-                  <th className="pb-2 pr-8 font-medium">Type</th>
-                  <th className="pb-2 font-medium">Threshold</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {alertConfigs.map(ac => (
-                  <tr key={ac.id}>
-                    <td className="py-2.5 pr-8">{sensors.find(s => s.id === ac.sensor_id)?.name ?? ac.sensor_id}</td>
-                    <td className="py-2.5 pr-8 text-muted-foreground">
-                      {ac.type === 'max' ? 'Above max' : ac.type === 'min' ? 'Below min' : ac.type}
-                    </td>
-                    <td className="py-2.5 font-mono">{ac.threshold}°C</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </Section>
     </div>
   );
