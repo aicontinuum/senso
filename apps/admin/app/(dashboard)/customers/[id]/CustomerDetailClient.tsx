@@ -160,6 +160,8 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const [sensorError, setSensorError] = useState('');
   const [savingSensor, setSavingSensor] = useState(false);
   const setSensorField = (key: keyof typeof sensorForm) => (v: string) => setSensorForm(f => ({ ...f, [key]: v }));
+  const [confirmUnlinkSensorId, setConfirmUnlinkSensorId] = useState<string | null>(null);
+  const [unlinkingSensor, setUnlinkingSensor] = useState(false);
 
   async function linkGateway() {
     setLinkError('');
@@ -238,6 +240,19 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       router.refresh();
     } finally {
       setSavingSensor(false);
+    }
+  }
+
+  async function unlinkSensor(sensorId: string) {
+    setUnlinkingSensor(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/sensors/${sensorId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setConfirmUnlinkSensorId(null);
+        router.refresh();
+      }
+    } finally {
+      setUnlinkingSensor(false);
     }
   }
 
@@ -403,7 +418,8 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                   <th className="pb-2 pr-8 font-medium">Name</th>
                   <th className="pb-2 pr-8 font-medium">Gateway</th>
                   <th className="pb-2 pr-8 font-medium">Status</th>
-                  <th className="pb-2 font-medium">Battery</th>
+                  <th className="pb-2 pr-8 font-medium">Battery</th>
+                  <th className="pb-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -421,6 +437,19 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                     </td>
                     <td className="py-2.5 text-muted-foreground">
                       {s.battery_level != null ? `${s.battery_level}%` : '—'}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      {confirmUnlinkSensorId === s.id ? (
+                        <span className="flex items-center justify-end gap-1.5 text-xs">
+                          <span className="text-muted-foreground">Remove?</span>
+                          <button onClick={() => unlinkSensor(s.id)} disabled={unlinkingSensor} className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50">
+                            {unlinkingSensor ? 'Removing…' : 'Yes'}
+                          </button>
+                          <button onClick={() => setConfirmUnlinkSensorId(null)} className="text-muted-foreground hover:text-foreground">Cancel</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmUnlinkSensorId(s.id)} className="text-xs text-muted-foreground hover:text-red-600">Remove</button>
+                      )}
                     </td>
                   </tr>
                 ))}
