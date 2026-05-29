@@ -154,6 +154,10 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
+  const [addingSensor, setAddingSensor] = useState(false);
+  const [sensorForm, setSensorForm] = useState({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' });
+  const setSensorField = (key: keyof typeof sensorForm) => (v: string) => setSensorForm(f => ({ ...f, [key]: v }));
+
   async function linkGateway() {
     setLinkError('');
     const normalised = normaliseMac(macInput);
@@ -395,7 +399,70 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
             </table>
           </div>
         )}
-        <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">+ Add Sensor</button>
+        {!addingSensor ? (
+          <button
+            onClick={() => { setSensorForm({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' }); setAddingSensor(true); }}
+            className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            + Add Sensor
+          </button>
+        ) : (
+          <div className="mt-2 space-y-3 rounded-md border border-border p-4">
+            <p className="text-sm font-medium">New Sensor</p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Gateway</label>
+              {gateways.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No gateways linked — add a gateway first.</p>
+              ) : (
+                <select
+                  value={sensorForm.gatewayId}
+                  onChange={e => setSensorField('gatewayId')(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {gateways.map(g => (
+                    <option key={g.id} value={g.id}>{g.name ?? g.id}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Sensor Name</label>
+              <input
+                value={sensorForm.name}
+                onChange={e => setSensorField('name')(e.target.value)}
+                placeholder="e.g. Cold Storage A"
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground">Hardware ID (1-Wire address)</label>
+              <input
+                value={sensorForm.hardwareId}
+                onChange={e => setSensorField('hardwareId')(e.target.value)}
+                placeholder="28-xxxxxxxxxxxx"
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                disabled={!sensorForm.gatewayId || !sensorForm.name.trim() || !sensorForm.hardwareId.trim()}
+                className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add Sensor
+              </button>
+              <button
+                onClick={() => setAddingSensor(false)}
+                className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="Alert Thresholds">
