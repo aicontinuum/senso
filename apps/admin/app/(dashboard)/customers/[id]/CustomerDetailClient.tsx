@@ -109,6 +109,15 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
 
   async function saveAccount() {
     setSaveError('');
+    const unchanged =
+      form.name === customer.name &&
+      form.contactName === (customer.contact_name ?? '') &&
+      form.email === customer.email &&
+      form.phone === (customer.phone ?? '');
+    if (unchanged) {
+      setEditing(false);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/customers/${customer.id}`, {
