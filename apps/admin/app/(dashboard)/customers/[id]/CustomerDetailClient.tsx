@@ -156,6 +156,8 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
 
   const [addingSensor, setAddingSensor] = useState(false);
   const [sensorForm, setSensorForm] = useState({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' });
+  const [sensorError, setSensorError] = useState('');
+  const [savingSensor, setSavingSensor] = useState(false);
   const setSensorField = (key: keyof typeof sensorForm) => (v: string) => setSensorForm(f => ({ ...f, [key]: v }));
 
   async function linkGateway() {
@@ -213,6 +215,28 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
       setPasswordSuccess(true);
     } finally {
       setPasswordSaving(false);
+    }
+  }
+
+  async function addSensor() {
+    setSensorError('');
+    setSavingSensor(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/sensors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sensorForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSensorError(data.error ?? 'Failed to add sensor');
+        return;
+      }
+      setAddingSensor(false);
+      setSensorForm({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' });
+      router.refresh();
+    } finally {
+      setSavingSensor(false);
     }
   }
 
@@ -447,15 +471,17 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
               />
             </div>
 
+            {sensorError && <p className="text-xs text-red-600">{sensorError}</p>}
             <div className="flex gap-2 pt-1">
               <button
-                disabled={!sensorForm.gatewayId || !sensorForm.name.trim() || !sensorForm.hardwareId.trim()}
+                onClick={addSensor}
+                disabled={savingSensor || !sensorForm.gatewayId || !sensorForm.name.trim() || !sensorForm.hardwareId.trim()}
                 className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Sensor
+                {savingSensor ? 'Adding…' : 'Add Sensor'}
               </button>
               <button
-                onClick={() => setAddingSensor(false)}
+                onClick={() => { setAddingSensor(false); setSensorError(''); }}
                 className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted"
               >
                 Cancel
