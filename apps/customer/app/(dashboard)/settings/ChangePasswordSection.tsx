@@ -1,14 +1,19 @@
 "use client";
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export function ChangePasswordSection() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    setError("");
+    setSaved(false);
+
     if (!current || !next || !confirm) {
       setError("All fields are required");
       return;
@@ -21,12 +26,41 @@ export function ChangePasswordSection() {
       setError("New passwords do not match");
       return;
     }
-    setError("");
-    setCurrent("");
-    setNext("");
-    setConfirm("");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+
+    setSaving(true);
+    try {
+      const supabase = createClient();
+
+      // Verify current password by re-authenticating
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) {
+        setError("Session error — please log in again");
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: current,
+      });
+      if (signInError) {
+        setError("Current password is incorrect");
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: next });
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -66,9 +100,10 @@ export function ChangePasswordSection() {
         {saved && <p className="text-xs font-medium text-green-700">✓ Password updated</p>}
         <button
           onClick={handleSubmit}
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          disabled={saving}
+          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Update Password
+          {saving ? "Updating…" : "Update Password"}
         </button>
       </div>
     </section>
