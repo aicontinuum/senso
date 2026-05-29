@@ -71,12 +71,15 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, minTemp: min, maxTemp: max, emailRecipients: emails }),
       });
-      const data = await res.json();
-      if (!res.ok) { setSaveError(data.error ?? 'Failed to save'); return; }
+      let data: { error?: string } = {};
+      try { data = await res.json(); } catch {}
+      if (!res.ok) { setSaveError(data.error ?? `Error ${res.status}`); return; }
       setEditing(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       router.refresh();
+    } catch {
+      setSaveError('Unexpected error — check console');
     } finally {
       setSaving(false);
     }
