@@ -20,7 +20,7 @@ export default async function CustomerDetailPage({
 
   const { data: gateways } = await admin
     .from('gateways')
-    .select('id, name, is_online, firmware_version, last_seen_at')
+    .select('id, name, is_online, firmware_version, last_seen_at, mac_address')
     .eq('customer_id', id)
     .order('created_at', { ascending: true });
 

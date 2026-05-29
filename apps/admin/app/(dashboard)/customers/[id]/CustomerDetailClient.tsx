@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 
@@ -20,6 +21,7 @@ type GatewayRow = {
   is_online: boolean;
   firmware_version: string | null;
   last_seen_at: string | null;
+  mac_address: string | null;
 };
 
 type SensorRow = {
@@ -41,6 +43,16 @@ interface Props {
   gateways: GatewayRow[];
   sensors: SensorRow[];
   alertConfigs: AlertConfigRow[];
+}
+
+const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;
+
+function normaliseMac(raw: string): string {
+  const stripped = raw.replace(/[\s\-:]/g, '').toLowerCase();
+  if (stripped.length === 12) {
+    return stripped.match(/.{2}/g)!.join(':');
+  }
+  return raw.trim().toLowerCase();
 }
 
 function formatDate(iso: string) {
@@ -82,6 +94,8 @@ function Field({ label, value, editing, onChange }: {
 }
 
 export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs }: Props) {
+  const router = useRouter();
+
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name: customer.name,
@@ -90,6 +104,39 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
     phone: customer.phone ?? '',
   });
   const set = (key: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [key]: v }));
+
+  const [macInput, setMacInput] = useState('');
+  const [gwName, setGwName] = useState('');
+  const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState('');
+
+  async function linkGateway() {
+    setLinkError('');
+    const normalised = normaliseMac(macInput);
+    if (!MAC_RE.test(normalised)) {
+      setLinkError('Invalid MAC address — use format AA:BB:CC:DD:EE:FF');
+      return;
+    }
+
+    setLinking(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/gateways`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ macAddress: normalised, name: gwName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLinkError(data.error ?? 'Failed to link gateway');
+        return;
+      }
+      setMacInput('');
+      setGwName('');
+      router.refresh();
+    } finally {
+      setLinking(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -137,6 +184,7 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
                   <p className="font-medium">{g.name ?? g.id}</p>
                   <p className="text-xs text-muted-foreground">
                     ID: {g.id}
+                    {g.mac_address && ` · MAC: ${g.mac_address}`}
                     {g.firmware_version && ` · Firmware ${g.firmware_version}`}
                     {g.last_seen_at && ` · Last seen ${formatDate(g.last_seen_at)}`}
                   </p>
@@ -149,9 +197,32 @@ export function CustomerDetailClient({ customer, gateways, sensors, alertConfigs
             ))}
           </div>
         )}
-        <div className="flex gap-2">
-          <input placeholder="Gateway ID or MAC address" className="flex-1 max-w-xs rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-          <button className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90">Link Gateway</button>
+
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              value={macInput}
+              onChange={e => { setMacInput(e.target.value); setLinkError(''); }}
+              onKeyDown={e => e.key === 'Enter' && linkGateway()}
+              placeholder="MAC address (AA:BB:CC:DD:EE:FF)"
+              className={`flex-1 max-w-xs rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${linkError ? 'border-red-400 focus:ring-red-400' : 'border-border'}`}
+            />
+            <input
+              value={gwName}
+              onChange={e => setGwName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && linkGateway()}
+              placeholder="Name (optional)"
+              className="w-36 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              onClick={linkGateway}
+              disabled={linking || !macInput.trim()}
+              className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {linking ? 'Linking…' : 'Link Gateway'}
+            </button>
+          </div>
+          {linkError && <p className="text-xs text-red-600">{linkError}</p>}
         </div>
       </Section>
 
