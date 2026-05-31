@@ -4,13 +4,12 @@
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const INGEST_URL = process.env.INGEST_URL ?? 'http://localhost:3001/api/ingest';
-const GATEWAY_MAC = process.env.GATEWAY_MAC ?? 'aa:bb:cc:dd:ee:ff';
+const GATEWAY_MAC = process.env.GATEWAY_MAC ?? 'b8:27:eb:4f:a2:11';
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? '10000');
 
 // hardware_id values must match sensors registered in the admin UI
 const SENSORS = [
-  { hardwareId: '28-aabbccdd0000', name: 'Cold Storage A', baseTemp: 4.0, variance: 0.8 },
-  { hardwareId: '28-aabbccdd0001', name: 'Medicine Fridge', baseTemp: 6.0, variance: 1.2 },
+  { hardwareId: '28-3c01d6075aff', name: 'Cold Storage B', baseTemp: 4.0, variance: 0.8 },
 ];
 // ─────────────────────────────────────────────────────────────────────────────
 
