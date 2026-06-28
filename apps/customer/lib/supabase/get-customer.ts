@@ -6,6 +6,7 @@ export type CustomerRecord = {
   email: string;
   contact_name: string | null;
   phone: string | null;
+  timezone: string;
   created_at: string;
 };
 
@@ -15,7 +16,7 @@ export async function getCustomer(): Promise<CustomerRecord | null> {
   if (!user) return null;
   const { data } = await supabase
     .from('customers')
-    .select('id, name, email, contact_name, phone, created_at')
+    .select('id, name, email, contact_name, phone, timezone, created_at')
     .eq('auth_user_id', user.id)
     .single();
   return data;

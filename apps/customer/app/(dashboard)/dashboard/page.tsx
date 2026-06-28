@@ -152,6 +152,7 @@ export default async function DashboardPage() {
               sensor={sensor}
               alertConfig={configMap.get(sensor.id)}
               hasActiveAlert={activeAlertSensorIds.has(sensor.id)}
+              timezone={customer.timezone}
             />
           ))}
         </div>

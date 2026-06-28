@@ -6,6 +6,7 @@ import { SensorsSection } from "./SensorsSection";
 import { GatewaysSection } from "./GatewaysSection";
 import { AlertRecipientsSection } from "./AlertRecipientsSection";
 import { ChangePasswordSection } from "./ChangePasswordSection";
+import { TimezoneSection } from "./TimezoneSection";
 import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {
@@ -64,8 +65,9 @@ export default async function SettingsPage() {
     <div className="max-w-lg space-y-5">
       <h1 className="text-2xl font-bold">Settings</h1>
       <AccountInfoSection customer={customerShape} />
+      <TimezoneSection initialTimezone={customer.timezone} />
       <SensorsSection sensors={sensorShapes} />
-      <GatewaysSection gateways={gatewayShapes} />
+      <GatewaysSection gateways={gatewayShapes} timezone={customer.timezone} />
       <AlertRecipientsSection initialEmails={initialAlertEmails} />
       <ChangePasswordSection />
     </div>

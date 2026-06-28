@@ -2,17 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomer } from "@/lib/supabase/get-customer";
+import { formatDateTimeLong } from "@/lib/temperature";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default async function AlertDetailPage({
   params,
@@ -88,14 +79,18 @@ export default async function AlertDetailPage({
   }, null);
   const triggeringTemp = closestReading?.temperature;
 
-  const chartData = (readings ?? []).map((r) => {
-    const d = new Date(r.recorded_at);
-    const day = String(d.getUTCDate()).padStart(2, "0");
-    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const hour = String(d.getUTCHours()).padStart(2, "0");
-    const minute = String(d.getUTCMinutes()).padStart(2, "0");
-    return { time: `${day}/${month}, ${hour}:${minute}`, temp: r.temperature };
+  // Short "DD/MM, HH:MM" chart labels rendered in the customer's timezone
+  const chartLabelFmt = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: customer.timezone,
   });
+  const chartData = (readings ?? []).map((r) => ({
+    time: chartLabelFmt.format(new Date(r.recorded_at)),
+    temp: r.temperature,
+  }));
 
   return (
     <div>
@@ -111,7 +106,7 @@ export default async function AlertDetailPage({
         <p className="mt-1 text-sm text-muted-foreground">
           {alertType === "max" ? "Too high" : "Too low"}
           {triggeringTemp !== undefined && <> · {triggeringTemp}°C</>}
-          {" · "}{formatDateTime(alertLog.triggered_at)}
+          {" · "}{formatDateTimeLong(alertLog.triggered_at, customer.timezone)}
           {alertLog.is_resolved && <> · Resolved</>}
         </p>
       </div>

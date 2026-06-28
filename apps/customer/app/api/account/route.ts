@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
+import { isValidTimezone } from '@/lib/timezones';
 
 export async function GET() {
   const customer = await getCustomer();
@@ -20,7 +21,7 @@ export async function PATCH(request: Request) {
   const customer = await getCustomer();
   if (!customer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { alertRecipients, contactName, phone } = await request.json();
+  const { alertRecipients, contactName, phone, timezone } = await request.json();
 
   const supabase = await createClient();
   const update: Record<string, unknown> = {};
@@ -28,6 +29,12 @@ export async function PATCH(request: Request) {
   if (Array.isArray(alertRecipients)) update.alert_recipients = alertRecipients;
   if (contactName !== undefined) update.contact_name = contactName?.trim() || null;
   if (phone !== undefined) update.phone = phone?.trim() || null;
+  if (timezone !== undefined) {
+    if (typeof timezone !== 'string' || !isValidTimezone(timezone)) {
+      return NextResponse.json({ error: 'Invalid timezone' }, { status: 400 });
+    }
+    update.timezone = timezone;
+  }
 
   if (Object.keys(update).length === 0) return NextResponse.json({ success: true });
 

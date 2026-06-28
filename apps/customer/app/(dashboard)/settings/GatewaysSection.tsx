@@ -2,7 +2,7 @@ import type { Gateway } from "@senso/types";
 import { cn } from "@/lib/utils";
 import { formatReadingTime } from "@/lib/temperature";
 
-export function GatewaysSection({ gateways }: { gateways: Gateway[] }) {
+export function GatewaysSection({ gateways, timezone }: { gateways: Gateway[]; timezone: string }) {
   return (
     <section className="rounded-lg border bg-card p-5">
       <p className="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -35,7 +35,7 @@ export function GatewaysSection({ gateways }: { gateways: Gateway[] }) {
                 {gw.status === "online" ? "Online" : "Offline"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Last seen {formatReadingTime(gw.lastSeen)}
+                Last seen {formatReadingTime(gw.lastSeen, timezone)}
               </p>
             </div>
           </div>

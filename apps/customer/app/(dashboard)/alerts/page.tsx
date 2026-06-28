@@ -2,16 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomer } from "@/lib/supabase/get-customer";
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatDateTimeLong } from "@/lib/temperature";
 
 export default async function AlertsPage() {
   const customer = await getCustomer();
@@ -71,7 +62,7 @@ export default async function AlertsPage() {
                     {sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : alert.alert_config_id}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {formatDateTime(alert.triggered_at)}
+                    {formatDateTimeLong(alert.triggered_at, customer.timezone)}
                   </td>
                   <td className="px-4 py-3">
                     {alert.is_resolved ? (

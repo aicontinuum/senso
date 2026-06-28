@@ -13,12 +13,14 @@ interface SensorCardProps {
   sensor: Sensor;
   alertConfig: AlertConfig | undefined;
   hasActiveAlert: boolean;
+  timezone: string;
 }
 
 export function SensorCard({
   sensor,
   alertConfig,
   hasActiveAlert,
+  timezone,
 }: SensorCardProps) {
   const isOffline = sensor.status === "offline";
   const temp = sensor.lastReading?.temperature;
@@ -90,7 +92,7 @@ export function SensorCard({
         {sensor.lastReading && (
           <div className="flex justify-between">
             <span>{isOffline ? "Last seen" : "Updated"}</span>
-            <span>{formatReadingTime(sensor.lastReading.recordedAt)}</span>
+            <span>{formatReadingTime(sensor.lastReading.recordedAt, timezone)}</span>
           </div>
         )}
       </div>

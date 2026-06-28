@@ -80,7 +80,7 @@ export default async function SensorDetailPage({
   return (
     <>
       <AutoRefresh />
-      <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} recentReadings={recentReadings} />
+      <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} recentReadings={recentReadings} timezone={customer.timezone} />
     </>
   );
 }

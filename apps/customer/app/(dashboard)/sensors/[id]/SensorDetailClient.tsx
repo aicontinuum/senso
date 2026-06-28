@@ -20,9 +20,10 @@ interface Props {
   gateway: Gateway;
   accountRecipients: string[];
   recentReadings: Reading[];
+  timezone: string;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -197,9 +198,9 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           <ResponsiveContainer width="100%" height={120}>
             <LineChart data={recentReadings} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="recordedAt" tickFormatter={(t: string) => formatReadingTime(t).split(",")[1]?.trim() ?? ""} tick={{ fontSize: 11 }} />
+              <XAxis dataKey="recordedAt" tickFormatter={(t: string) => formatReadingTime(t, timezone).split(",")[1]?.trim() ?? ""} tick={{ fontSize: 11 }} />
               <YAxis domain={chartDomain} tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v) => formatTemp(Number(v))} labelFormatter={(l) => formatReadingTime(String(l))} />
+              <Tooltip formatter={(v) => formatTemp(Number(v))} labelFormatter={(l) => formatReadingTime(String(l), timezone)} />
               <ReferenceLine y={config.minTemp} stroke="var(--primary)" strokeDasharray="4 2" />
               <ReferenceLine y={config.maxTemp} stroke="var(--primary)" strokeDasharray="4 2" />
               <Line
@@ -401,7 +402,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           <InfoRow label="Gateway">{gateway.name}</InfoRow>
           {sensor.lastReading && (
             <InfoRow label={isOffline ? "Last seen" : "Last reading"}>
-              {formatReadingTime(sensor.lastReading.recordedAt)}
+              {formatReadingTime(sensor.lastReading.recordedAt, timezone)}
             </InfoRow>
           )}
           {battery !== undefined && (

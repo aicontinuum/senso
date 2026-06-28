@@ -42,6 +42,7 @@ export default async function ReportsPage() {
       customerName={customer.name}
       sensors={sensors}
       configs={configs}
+      timezone={customer.timezone}
     />
   );
 }

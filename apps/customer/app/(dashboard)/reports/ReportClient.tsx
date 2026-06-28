@@ -6,7 +6,9 @@ import {
   formatTemp,
   formatThreshold,
   formatReadingTime,
+  formatDateTimeLong,
 } from "@/lib/temperature";
+import { timezoneLabel } from "@/lib/timezones";
 
 type SensorShape = { id: string; name: string };
 type ConfigShape = { sensorId: string; minTemp: number; maxTemp: number };
@@ -16,6 +18,7 @@ interface Props {
   customerName: string;
   sensors: SensorShape[];
   configs: ConfigShape[];
+  timezone: string;
 }
 
 type RangeValue = "12h" | "24h" | "3d" | "7d";
@@ -26,13 +29,6 @@ const RANGES: { label: string; value: RangeValue; ms: number }[] = [
   { label: "Last 3 days",   value: "3d",  ms: 3 * 24 * 3_600_000 },
   { label: "Last week",     value: "7d",  ms: 7 * 24 * 3_600_000 },
 ];
-
-function fmtDateTime(ms: number): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", timeZone: "UTC",
-  }).format(new Date(ms));
-}
 
 type ReportSensor = {
   sensor: SensorShape;
@@ -45,6 +41,7 @@ async function buildReportPDF(
   rangeMs: number,
   now: number,
   customerName: string,
+  timezone: string,
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -57,7 +54,7 @@ async function buildReportPDF(
   const col2 = margin + 65;
   const col3 = margin + 105;
 
-  const periodLabel = `${fmtDateTime(now - rangeMs)} – ${fmtDateTime(now)}`;
+  const periodLabel = `${formatDateTimeLong(now - rangeMs, timezone)} – ${formatDateTimeLong(now, timezone)}`;
 
   const drawTableHeader = (y: number): number => {
     doc.setFontSize(8);
@@ -93,7 +90,9 @@ async function buildReportPDF(
     y += 5;
     doc.text(`Period: ${periodLabel}`, margin, y);
     y += 5;
-    doc.text(`Generated: ${fmtDateTime(now)}`, margin, y);
+    doc.text(`Generated: ${formatDateTimeLong(now, timezone)}`, margin, y);
+    y += 5;
+    doc.text(`All times shown in ${timezoneLabel(timezone)}`, margin, y);
     y += 7;
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, margin + contentWidth, y);
@@ -126,7 +125,7 @@ async function buildReportPDF(
       }
       const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
       doc.setTextColor(80, 80, 80);
-      doc.text(formatReadingTime(r.recordedAt), col1, y);
+      doc.text(formatReadingTime(r.recordedAt, timezone), col1, y);
       doc.setTextColor(0, 0, 0);
       doc.text(formatTemp(r.temperature), col2, y);
       doc.setTextColor(out ? 220 : 22, out ? 38 : 163, out ? 38 : 74);
@@ -139,7 +138,7 @@ async function buildReportPDF(
   return doc;
 }
 
-export function ReportClient({ customerName, sensors, configs }: Props) {
+export function ReportClient({ customerName, sensors, configs, timezone }: Props) {
   const [range, setRange] = useState<RangeValue>("24h");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(sensors.map((s) => s.id)),
@@ -193,7 +192,8 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
   }
 
   const now = Date.now();
-  const periodLabel = `${fmtDateTime(now - rangeMs)} – ${fmtDateTime(now)}`;
+  const periodLabel = `${formatDateTimeLong(now - rangeMs, timezone)} – ${formatDateTimeLong(now, timezone)}`;
+  const tzNote = `All times shown in ${timezoneLabel(timezone)}`;
 
   const reportSensors: ReportSensor[] = sensors
     .filter((s) => selectedIds.has(s.id))
@@ -204,12 +204,12 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
     }));
 
   async function handlePrint() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
     doc.output("dataurlnewwindow");
   }
 
   async function handleShare() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
     const fileName = `monitoring-report-${new Date(now).toISOString().split("T")[0]}.pdf`;
     const blob = doc.output("blob");
     const file = new File([blob], fileName, { type: "application/pdf" });
@@ -217,7 +217,7 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
     if (navigator.canShare?.({ files: [file] })) {
       try { await navigator.share({ files: [file], title: `Monitoring Report — ${customerName}` }); } catch { /* cancelled */ }
     } else if (typeof navigator.share === "function") {
-      try { await navigator.share({ title: `Monitoring Report — ${customerName}`, text: `Temperature monitoring report for ${customerName}.\n\nPeriod: ${periodLabel}\nGenerated: ${fmtDateTime(now)}` }); } catch { /* cancelled */ }
+      try { await navigator.share({ title: `Monitoring Report — ${customerName}`, text: `Temperature monitoring report for ${customerName}.\n\nPeriod: ${periodLabel}\nGenerated: ${formatDateTimeLong(now, timezone)}\n${tzNote}` }); } catch { /* cancelled */ }
     } else {
       setShareOpen((v) => !v);
     }
@@ -228,7 +228,8 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
     const lines: string[] = [
       `"Monitoring Report - ${customerName}"`,
       `"Period: ${periodLabel}"`,
-      `"Generated: ${fmtDateTime(now)}"`,
+      `"Generated: ${formatDateTimeLong(now, timezone)}"`,
+      `"${tzNote}"`,
       "",
     ];
     for (const { sensor, config, readings } of reportSensors) {
@@ -237,7 +238,7 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
       lines.push('"Date / Time","Temperature","Status"');
       for (const r of readings) {
         const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
-        lines.push(`"${formatReadingTime(r.recordedAt)}","${formatTemp(r.temperature)}","${out ? "Out of range" : "OK"}"`);
+        lines.push(`"${formatReadingTime(r.recordedAt, timezone)}","${formatTemp(r.temperature)}","${out ? "Out of range" : "OK"}"`);
       }
       lines.push("");
     }
@@ -252,7 +253,7 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
 
   async function downloadPDF() {
     setDownloadOpen(false);
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
     doc.save(`monitoring-report-${new Date(now).toISOString().split("T")[0]}.pdf`);
   }
 
@@ -334,7 +335,7 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
                     <div className="absolute right-0 top-full mt-1 bg-background border border-border rounded-md shadow-md text-sm z-20 min-w-[160px]">
                       <button onClick={() => { window.print(); setShareOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-muted rounded-t-md">Save as PDF</button>
                       <a
-                        href={`mailto:?subject=${encodeURIComponent(`Monitoring Report — ${customerName}`)}&body=${encodeURIComponent(`Temperature monitoring report for ${customerName}.\n\nPeriod: ${periodLabel}\nGenerated: ${fmtDateTime(now)}`)}`}
+                        href={`mailto:?subject=${encodeURIComponent(`Monitoring Report — ${customerName}`)}&body=${encodeURIComponent(`Temperature monitoring report for ${customerName}.\n\nPeriod: ${periodLabel}\nGenerated: ${formatDateTimeLong(now, timezone)}\n${tzNote}`)}`}
                         onClick={() => setShareOpen(false)}
                         className="block px-4 py-2 hover:bg-muted rounded-b-md"
                       >
@@ -366,7 +367,8 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
                 <h3 className="text-base font-semibold mt-1">Monitoring Report</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">{customerName}</p>
                 <p className="text-sm text-muted-foreground">Period: {periodLabel}</p>
-                <p className="text-sm text-muted-foreground">Generated: {fmtDateTime(now)}</p>
+                <p className="text-sm text-muted-foreground">Generated: {formatDateTimeLong(now, timezone)}</p>
+                <p className="text-sm text-muted-foreground">{tzNote}</p>
               </div>
 
               <hr className="mb-4 border-border" />
@@ -394,7 +396,7 @@ export function ReportClient({ customerName, sensors, configs }: Props) {
                         const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
                         return (
                           <tr key={r.id} className="border-b border-border/50">
-                            <td className="py-1.5 pr-6 text-muted-foreground">{formatReadingTime(r.recordedAt)}</td>
+                            <td className="py-1.5 pr-6 text-muted-foreground">{formatReadingTime(r.recordedAt, timezone)}</td>
                             <td className="py-1.5 pr-6 font-mono">{formatTemp(r.temperature)}</td>
                             <td className={`py-1.5 font-medium ${out ? "text-red-600" : "text-green-600"}`}>
                               {out ? "✗ Out of range" : "✓ OK"}
