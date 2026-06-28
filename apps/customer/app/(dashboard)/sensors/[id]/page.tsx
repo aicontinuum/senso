@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomer } from "@/lib/supabase/get-customer";
 import { SensorDetailClient } from "./SensorDetailClient";
-import type { Sensor, AlertConfig, Gateway } from "@senso/types";
+import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 
 export default async function SensorDetailPage({
   params,
@@ -30,9 +30,9 @@ export default async function SensorDetailPage({
 
   if (gw.customer_id !== customer.id) notFound();
 
-  const [{ data: configRows }, { data: lastReadingRow }, { data: customerData }] = await Promise.all([
+  const [{ data: configRows }, { data: readingRows }, { data: customerData }] = await Promise.all([
     supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
-    supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(1).single(),
+    supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(5),
     supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
   ]);
 
@@ -46,8 +46,8 @@ export default async function SensorDetailPage({
     name: sensorRow.name,
     status: sensorRow.status as "online" | "offline",
     batteryLevel: sensorRow.battery_level ?? undefined,
-    lastReading: lastReadingRow
-      ? { id: lastReadingRow.id, sensorId: id, temperature: lastReadingRow.temperature, recordedAt: lastReadingRow.recorded_at }
+    lastReading: readingRows?.[0]
+      ? { id: readingRows[0].id, sensorId: id, temperature: readingRows[0].temperature, recordedAt: readingRows[0].recorded_at }
       : undefined,
   };
 
@@ -72,5 +72,9 @@ export default async function SensorDetailPage({
 
   const accountRecipients = (customerData?.alert_recipients as string[]) ?? [];
 
-  return <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} />;
+  const recentReadings: Reading[] = (readingRows ?? [])
+    .map((r) => ({ id: r.id, sensorId: id, temperature: r.temperature, recordedAt: r.recorded_at }))
+    .reverse();
+
+  return <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} recentReadings={recentReadings} />;
 }

@@ -3,7 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Plus, Pencil } from "lucide-react";
-import type { Sensor, AlertConfig, Gateway } from "@senso/types";
+import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -18,9 +19,10 @@ interface Props {
   config: AlertConfig;
   gateway: Gateway;
   accountRecipients: string[];
+  recentReadings: Reading[];
 }
 
-export function SensorDetailClient({ sensor, config, gateway, accountRecipients }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -175,6 +177,33 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients 
           </p>
         </div>
       </section>
+
+      {/* Recent readings chart */}
+      {recentReadings.length >= 2 && (
+        <section className="mb-4 rounded-lg border bg-card p-5">
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Recent Readings
+          </p>
+          <ResponsiveContainer width="100%" height={120}>
+            <LineChart data={recentReadings} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="recordedAt" tickFormatter={(t: string) => formatReadingTime(t).split(",")[1]?.trim() ?? ""} tick={{ fontSize: 11 }} />
+              <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v) => formatTemp(Number(v))} labelFormatter={(l) => formatReadingTime(String(l))} />
+              <ReferenceLine y={config.minTemp} stroke="hsl(var(--primary))" strokeDasharray="4 2" />
+              <ReferenceLine y={config.maxTemp} stroke="hsl(var(--primary))" strokeDasharray="4 2" />
+              <Line
+                type="monotone"
+                dataKey="temperature"
+                stroke={outOfRange ? "#dc2626" : "hsl(var(--primary))"}
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
+      )}
 
       {/* Settings */}
       <section className="mb-4 rounded-lg border bg-card p-5">
