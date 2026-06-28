@@ -11,3 +11,7 @@
 ## Database
 
 - [ ] **Readings data retention policy** — the `readings` table grows indefinitely (every simulator/device tick adds a row, nothing is ever deleted). Before go-live, define a retention window (e.g. keep 2 years, archive or delete older rows) and set up a scheduled job (Supabase cron or pg_cron) to enforce it.
+
+## Hardware / Ingest
+
+- [ ] **Duplicate readings from the gateway** *(pinned 2026-06-28, fix next session)* — every reading lands in the DB **twice**, ~3–5s apart with an identical value (e.g. `14.81 @ 17:14:48` and `17:14:45`; `11.68 @ 17:09:49` and `17:09:44`). Confirmed NOT the website (it stores/draws what it's given) and NOT the ESP32 (serial prints one `Transmitted OK` per 5-min cycle). Source is the **Raspberry Pi gateway** — most likely a slow POST to `/api/ingest` that times out and gets **retried, while the first POST also succeeded** (matches the earlier "it was slow"). Fix options: (a) fix the Pi forwarder's timeout/retry so it doesn't double-post — need to see the Pi code; and/or (b) add a server-side dedupe guard in `/api/ingest` (drop a reading for the same sensor if an identical one landed within the last few seconds — must be tuned so it doesn't drop legitimate readings when the test TX interval is short). Real readings are 5 min apart, so a short time-window dedupe is safe at the production cadence.
