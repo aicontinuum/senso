@@ -1,4 +1,5 @@
 import { createClient } from './server';
+import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 
 export type CustomerRecord = {
   id: string;
@@ -19,5 +20,6 @@ export async function getCustomer(): Promise<CustomerRecord | null> {
     .select('id, name, email, contact_name, phone, timezone, created_at')
     .eq('auth_user_id', user.id)
     .single();
-  return data;
+  if (!data) return null;
+  return { ...data, timezone: data.timezone ?? DEFAULT_TIMEZONE };
 }

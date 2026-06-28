@@ -17,13 +17,14 @@ export function formatReadingTime(
   isoString: string,
   timeZone: string = DEFAULT_TIMEZONE,
 ): string {
+  const zone = timeZone || DEFAULT_TIMEZONE;
   const date = new Date(isoString);
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     day: "numeric",
     month: "short",
-    timeZone,
+    timeZone: zone,
   }).format(date);
 }
 
@@ -32,6 +33,7 @@ export function formatDateTimeLong(
   input: string | number,
   timeZone: string = DEFAULT_TIMEZONE,
 ): string {
+  const zone = timeZone || DEFAULT_TIMEZONE;
   const date = new Date(input);
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
@@ -39,6 +41,6 @@ export function formatDateTimeLong(
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone,
+    timeZone: zone,
   }).format(date);
 }
