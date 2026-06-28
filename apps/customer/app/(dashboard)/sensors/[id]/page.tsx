@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomer } from "@/lib/supabase/get-customer";
 import { SensorDetailClient } from "./SensorDetailClient";
+import { AutoRefresh } from "@/components/auto-refresh";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 
 export default async function SensorDetailPage({
@@ -76,5 +77,10 @@ export default async function SensorDetailPage({
     .map((r) => ({ id: r.id, sensorId: id, temperature: r.temperature, recordedAt: r.recorded_at }))
     .reverse();
 
-  return <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} recentReadings={recentReadings} />;
+  return (
+    <>
+      <AutoRefresh />
+      <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} recentReadings={recentReadings} />
+    </>
+  );
 }

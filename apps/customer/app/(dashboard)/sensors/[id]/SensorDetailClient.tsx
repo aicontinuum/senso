@@ -42,6 +42,16 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
     temp !== undefined &&
     isOutOfRange(temp, Number(minTemp), Number(maxTemp));
 
+  // Y-axis domain that always includes both threshold lines, padded so they sit on-screen
+  const chartTemps = recentReadings.map((r) => r.temperature);
+  const chartLo = Math.min(config.minTemp, ...chartTemps);
+  const chartHi = Math.max(config.maxTemp, ...chartTemps);
+  const chartPad = Math.max(1, (chartHi - chartLo) * 0.1);
+  const chartDomain: [number, number] = [
+    Math.floor(chartLo - chartPad),
+    Math.ceil(chartHi + chartPad),
+  ];
+
   function startEditing() {
     setEditing(true);
     setSaved(false);
@@ -186,16 +196,16 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           </p>
           <ResponsiveContainer width="100%" height={120}>
             <LineChart data={recentReadings} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="recordedAt" tickFormatter={(t: string) => formatReadingTime(t).split(",")[1]?.trim() ?? ""} tick={{ fontSize: 11 }} />
-              <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11 }} />
+              <YAxis domain={chartDomain} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => formatTemp(Number(v))} labelFormatter={(l) => formatReadingTime(String(l))} />
-              <ReferenceLine y={config.minTemp} stroke="hsl(var(--primary))" strokeDasharray="4 2" />
-              <ReferenceLine y={config.maxTemp} stroke="hsl(var(--primary))" strokeDasharray="4 2" />
+              <ReferenceLine y={config.minTemp} stroke="var(--primary)" strokeDasharray="4 2" />
+              <ReferenceLine y={config.maxTemp} stroke="var(--primary)" strokeDasharray="4 2" />
               <Line
                 type="monotone"
                 dataKey="temperature"
-                stroke={outOfRange ? "#dc2626" : "hsl(var(--primary))"}
+                stroke={outOfRange ? "#dc2626" : "var(--primary)"}
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 isAnimationActive={false}

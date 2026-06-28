@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCustomer } from "@/lib/supabase/get-customer";
 import { SensorCard } from "@/components/dashboard/SensorCard";
+import { AutoRefresh } from "@/components/auto-refresh";
 import type { Sensor, AlertConfig } from "@senso/types";
 
 export default async function DashboardPage() {
@@ -94,6 +95,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      <AutoRefresh />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <Link
