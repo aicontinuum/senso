@@ -1,15 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomer } from "@/lib/supabase/get-customer";
+import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorCard } from "@/components/dashboard/SensorCard";
 import { AutoRefresh } from "@/components/auto-refresh";
 import type { Sensor, AlertConfig } from "@senso/types";
 
 export default async function DashboardPage() {
-  const customer = await getCustomer();
-  if (!customer) redirect("/login");
+  const customer = await requireCustomer();
 
   const supabase = await createClient();
 

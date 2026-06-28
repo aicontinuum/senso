@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomer } from "@/lib/supabase/get-customer";
+import { requireCustomer } from "@/lib/supabase/get-customer";
 import { formatDateTimeLong } from "@/lib/temperature";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 
@@ -11,8 +11,7 @@ export default async function AlertDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const customer = await getCustomer();
-  if (!customer) redirect("/login");
+  const customer = await requireCustomer();
 
   const supabase = await createClient();
 

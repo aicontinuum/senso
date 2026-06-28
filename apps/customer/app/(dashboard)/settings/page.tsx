@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomer } from "@/lib/supabase/get-customer";
+import { requireCustomer } from "@/lib/supabase/get-customer";
 import { AccountInfoSection } from "./AccountInfoSection";
 import { SensorsSection } from "./SensorsSection";
 import { GatewaysSection } from "./GatewaysSection";
@@ -10,8 +9,7 @@ import { TimezoneSection } from "./TimezoneSection";
 import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {
-  const customer = await getCustomer();
-  if (!customer) redirect("/login");
+  const customer = await requireCustomer();
 
   const supabase = await createClient();
 

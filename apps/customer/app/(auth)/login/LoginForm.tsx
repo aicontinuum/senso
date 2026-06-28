@@ -14,9 +14,14 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('error') === 'not_customer') {
+    const err = searchParams.get('error');
+    if (err === 'not_customer') {
       setLoading(false);
       setError('This account is not registered as a customer.');
+      createClient().auth.signOut();
+    } else if (err === 'session') {
+      setLoading(false);
+      setError('We couldn’t load your account. Please sign in again.');
       createClient().auth.signOut();
     } else {
       setError('');

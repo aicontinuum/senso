@@ -1,6 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomer } from "@/lib/supabase/get-customer";
+import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorDetailClient } from "./SensorDetailClient";
 import { AutoRefresh } from "@/components/auto-refresh";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
@@ -11,8 +11,7 @@ export default async function SensorDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const customer = await getCustomer();
-  if (!customer) redirect("/login");
+  const customer = await requireCustomer();
 
   const supabase = await createClient();
 

@@ -1,11 +1,9 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomer } from "@/lib/supabase/get-customer";
+import { requireCustomer } from "@/lib/supabase/get-customer";
 import { ReportClient } from "./ReportClient";
 
 export default async function ReportsPage() {
-  const customer = await getCustomer();
-  if (!customer) redirect("/login");
+  const customer = await requireCustomer();
 
   const supabase = await createClient();
 

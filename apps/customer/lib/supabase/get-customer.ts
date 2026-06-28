@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { createClient } from './server';
 import { DEFAULT_TIMEZONE } from '@/lib/timezones';
 
@@ -22,4 +23,12 @@ export async function getCustomer(): Promise<CustomerRecord | null> {
     .single();
   if (!data) return null;
   return { ...data, timezone: data.timezone ?? DEFAULT_TIMEZONE };
+}
+
+// Like getCustomer(), but redirects to login (with an error param so the
+// middleware won't bounce back into a loop) when no customer resolves.
+export async function requireCustomer(): Promise<CustomerRecord> {
+  const customer = await getCustomer();
+  if (!customer) redirect('/login?error=session');
+  return customer;
 }

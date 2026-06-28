@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCustomer } from "@/lib/supabase/get-customer";
+import { requireCustomer } from "@/lib/supabase/get-customer";
 import { formatDateTimeLong } from "@/lib/temperature";
 
 export default async function AlertsPage() {
-  const customer = await getCustomer();
-  if (!customer) redirect("/login");
+  const customer = await requireCustomer();
 
   const supabase = await createClient();
 
