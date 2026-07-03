@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorDetailClient } from "./SensorDetailClient";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { isGatewayOnline, isSensorOnline } from "@/lib/status";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 
 export default async function SensorDetailPage({
@@ -44,7 +45,7 @@ export default async function SensorDetailPage({
     gatewayId: sensorRow.gateway_id,
     customerId: customer.id,
     name: sensorRow.name,
-    status: sensorRow.status as "online" | "offline",
+    status: isSensorOnline(sensorRow.status, readingRows?.[0]?.recorded_at) ? "online" : "offline",
     batteryLevel: sensorRow.battery_level ?? undefined,
     lastReading: readingRows?.[0]
       ? { id: readingRows[0].id, sensorId: id, temperature: readingRows[0].temperature, recordedAt: readingRows[0].recorded_at }
@@ -65,7 +66,7 @@ export default async function SensorDetailPage({
     id: gw.id,
     customerId: customer.id,
     name: gw.name ?? "Gateway",
-    status: gw.is_online ? "online" : "offline",
+    status: isGatewayOnline(gw.is_online, gw.last_seen_at) ? "online" : "offline",
     lastSeen: gw.last_seen_at ?? new Date().toISOString(),
     firmwareVersion: gw.firmware_version ?? "—",
   };

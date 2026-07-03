@@ -6,6 +6,7 @@ import { GatewaysSection } from "./GatewaysSection";
 import { AlertRecipientsSection } from "./AlertRecipientsSection";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { TimezoneSection } from "./TimezoneSection";
+import { isGatewayOnline, isSensorOnline } from "@/lib/status";
 import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {
@@ -31,6 +32,16 @@ export default async function SettingsPage() {
       gatewayId: g.id,
     })),
   );
+  const sensorIds = allSensors.map((s) => s.id);
+
+  // Latest reading per sensor, for freshness-based online/offline
+  const { data: lastReadings } = sensorIds.length > 0
+    ? await supabase.from("readings").select("sensor_id, recorded_at").in("sensor_id", sensorIds).order("recorded_at", { ascending: false })
+    : { data: [] as { sensor_id: string; recorded_at: string }[] };
+  const lastReadingAtBySensor = new Map<string, string>();
+  for (const r of lastReadings ?? []) {
+    if (!lastReadingAtBySensor.has(r.sensor_id)) lastReadingAtBySensor.set(r.sensor_id, r.recorded_at);
+  }
 
   const customerShape: Customer = {
     id: customer.id,
@@ -47,14 +58,14 @@ export default async function SettingsPage() {
     gatewayId: s.gatewayId,
     customerId: customer.id,
     name: s.name,
-    status: s.status as "online" | "offline",
+    status: isSensorOnline(s.status, lastReadingAtBySensor.get(s.id)) ? "online" : "offline",
   }));
 
   const gatewayShapes: Gateway[] = (gateways ?? []).map((g) => ({
     id: g.id,
     customerId: customer.id,
     name: g.name ?? "Gateway",
-    status: g.is_online ? "online" : "offline",
+    status: isGatewayOnline(g.is_online, g.last_seen_at) ? "online" : "offline",
     lastSeen: g.last_seen_at ?? new Date().toISOString(),
     firmwareVersion: g.firmware_version ?? "—",
   }));

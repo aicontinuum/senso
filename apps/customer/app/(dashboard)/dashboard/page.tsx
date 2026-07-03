@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorCard } from "@/components/dashboard/SensorCard";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { isGatewayOnline, isSensorOnline } from "@/lib/status";
 import type { Sensor, AlertConfig } from "@senso/types";
 
 export default async function DashboardPage() {
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
 
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("id, name, is_online, sensors (id, name, status, battery_level)")
+    .select("id, name, is_online, last_seen_at, sensors (id, name, status, battery_level)")
     .eq("customer_id", customer.id);
 
   const allSensors = (gateways ?? []).flatMap(
@@ -56,10 +57,16 @@ export default async function DashboardPage() {
     (activeAlertLogs ?? []).map((a) => configToSensor.get(a.alert_config_id)).filter(Boolean) as string[],
   );
   const recentAlertCount = (recentAlertLogs ?? []).length;
-  const onlineCount = allSensors.filter((s) => s.status === 'online').length;
+
+  // Derive online/offline from data freshness — a silent gateway/sensor never
+  // sends an explicit offline signal, so stale data means offline.
+  const sensorOnlineById = new Map(
+    allSensors.map((s) => [s.id, isSensorOnline(s.status, lastReadingBySensor.get(s.id)?.recorded_at)]),
+  );
+  const onlineCount = allSensors.filter((s) => sensorOnlineById.get(s.id)).length;
   const offlineCount = allSensors.length - onlineCount;
   const hasGateway = (gateways ?? []).length > 0;
-  const gatewayOnline = (gateways ?? []).some((g) => g.is_online);
+  const gatewayOnline = (gateways ?? []).some((g) => isGatewayOnline(g.is_online, g.last_seen_at));
 
   
   const configMap = new Map<string, AlertConfig>();
@@ -85,7 +92,7 @@ export default async function DashboardPage() {
       gatewayId: s.gatewayId,
       customerId: customer.id,
       name: s.name,
-      status: s.status as 'online' | 'offline',
+      status: sensorOnlineById.get(s.id) ? 'online' : 'offline',
       batteryLevel: s.battery_level ?? undefined,
       lastReading: lr ? { id: lr.id, sensorId: s.id, temperature: lr.temperature, recordedAt: lr.recorded_at } : undefined,
     };
