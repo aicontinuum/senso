@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
 
-function normaliseIdentifier(raw: string): string {
-  const stripped = raw.replace(/[\s\-:]/g, '').toLowerCase();
-  if (stripped.length === 16) return stripped;                             // LoRa EUI
-  if (stripped.length === 12) return stripped.match(/.{2}/g)!.join(':'); // legacy MAC
-  return raw.trim().toLowerCase();
-}
-
-const EUI_RE = /^[0-9a-f]{16}$/;
-const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;
 const COOLDOWN_MS = 30 * 60 * 1000;
 
 type IngestReading = { hardware_id: string; temperature: number; recorded_at?: string };
@@ -26,7 +18,7 @@ export async function POST(request: Request) {
   if (!mac_address) return NextResponse.json({ error: 'mac_address is required' }, { status: 400 });
 
   const identifier = normaliseIdentifier(mac_address);
-  if (!EUI_RE.test(identifier) && !MAC_RE.test(identifier)) {
+  if (!isValidGatewayId(identifier)) {
     return NextResponse.json({ error: 'Invalid gateway identifier' }, { status: 400 });
   }
 

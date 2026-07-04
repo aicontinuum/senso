@@ -1,0 +1,8 @@
+[Unit]
+Description=Senso gateway heartbeat (liveness pulse)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/senso-heartbeat.sh

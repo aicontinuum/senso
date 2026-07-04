@@ -1,10 +1,11 @@
-# Senso Gateway — Wi-Fi Resilience Kit
+# Senso Gateway — Resilience Kit
 
 Keeps a Raspberry Pi gateway (running **NetworkManager**) online across Wi-Fi
-drops of any length, and recovers on its own instead of needing a manual
-power-cycle.
+drops of any length — recovering on its own instead of needing a manual
+power-cycle — and reports a liveness heartbeat so the platform knows fast when
+a gateway goes silent.
 
-## Three layers
+## What it installs
 
 1. **Stop the drop** — `wifi-powersave-off.conf` disables Wi-Fi power management.
    The Pi Zero 2W's radio can sleep after an AP drop and not wake cleanly; this
@@ -17,6 +18,12 @@ power-cycle.
    restart NetworkManager → reboot. This catches the case where the driver or
    NetworkManager itself gets wedged and won't reconnect even though the AP is
    back.
+4. **Heartbeat** — `heartbeat.sh` (run every 60s by `senso-heartbeat.timer`)
+   POSTs a liveness pulse to `POST /api/heartbeat`. This is separate from
+   temperature forwarding, so the platform can flag a gateway offline within a
+   few minutes of it going silent — independent of the (slower) reading cadence,
+   and even when no sensors are reporting. Reads its config from
+   `/etc/senso/gateway.env`.
 
 Pairs with the hardware watchdog (see the repo's `TODO.md`) for total hangs.
 
@@ -28,12 +35,24 @@ then on the Pi:
 ```bash
 cd gateway
 sudo ./setup.sh
+```
+
+On first run, `setup.sh` creates `/etc/senso/gateway.env` from the example and
+prints an ACTION NEEDED line. Fill in your gateway's EUI and API base URL:
+
+```bash
+sudo nano /etc/senso/gateway.env      # set GATEWAY_MAC and API_BASE
+sudo systemctl restart senso-heartbeat.timer
+```
+
+Then reboot to apply the Wi-Fi power-save setting:
+
+```bash
 sudo reboot
 ```
 
-The reboot applies the power-save setting cleanly. `setup.sh` deliberately does
-**not** restart NetworkManager, so running it over an SSH-over-Wi-Fi session
-won't drop your connection mid-setup.
+`setup.sh` deliberately does **not** restart NetworkManager, so running it over
+an SSH-over-Wi-Fi session won't drop your connection mid-setup.
 
 ## Verify
 
@@ -43,7 +62,12 @@ nmcli -f connection.autoconnect,connection.autoconnect-retries connection show <
                                             # expect: yes / 0
 systemctl status net-watchdog.timer         # expect: active (waiting)
 journalctl -t net-watchdog --since "10 min ago"   # watchdog activity
+systemctl status senso-heartbeat.timer      # expect: active (waiting)
+journalctl -t senso-heartbeat --since "5 min ago"  # heartbeat activity (quiet = success)
 ```
+
+To confirm the heartbeat is actually landing, watch the gateway's `last_seen_at`
+in the database — it should update every ~60s.
 
 Real-world test: switch the router/Wi-Fi off for ~10 minutes, then back on. The
 Pi should rejoin by itself, readings resume, and the gateway flips back to
