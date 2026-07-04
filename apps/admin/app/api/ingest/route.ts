@@ -54,11 +54,21 @@ export async function POST(request: Request) {
 
     if (!sensor) { skipped++; continue; }
 
-    await admin.from('readings').insert({
-      sensor_id: sensor.id,
-      temperature: r.temperature,
-      recorded_at: r.recorded_at ?? now,
-    });
+    // Idempotent insert: a re-send (store-and-forward retry, or a LoRa
+    // retransmit) carries the same (sensor_id, recorded_at) and is ignored by
+    // the unique index, so it can't create a duplicate row.
+    const { data: inserted } = await admin
+      .from('readings')
+      .upsert(
+        { sensor_id: sensor.id, temperature: r.temperature, recorded_at: r.recorded_at ?? now },
+        { onConflict: 'sensor_id,recorded_at', ignoreDuplicates: true },
+      )
+      .select('id');
+
+    accepted++;
+
+    // Nothing inserted → this reading was already stored; don't re-run alerts.
+    if (!inserted || inserted.length === 0) continue;
 
     await admin.from('sensors').update({ status: 'online' }).eq('id', sensor.id);
 

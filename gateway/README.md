@@ -24,8 +24,26 @@ a gateway goes silent.
    few minutes of it going silent — independent of the (slower) reading cadence,
    and even when no sensors are reporting. Reads its config from
    `/etc/senso/gateway.env`.
+5. **Forwarder (store-and-forward)** — `senso_forwarder.py`, run as the
+   `senso-forwarder.service` (`Restart=always`). Decodes LoRa uplinks and writes
+   each reading to a durable SQLite queue (`/var/lib/senso/queue.db`); a sender
+   thread flushes the queue to `POST /api/ingest` and only deletes rows the
+   server confirms. If the network is down, readings pile up on disk and are
+   backfilled with their original timestamps once it returns — **no gap in the
+   report**. Concentrator retransmits are de-duplicated by `tmst`, and the
+   backend's `UNIQUE(sensor_id, recorded_at)` index makes re-sends safe.
 
 Pairs with the hardware watchdog (see the repo's `TODO.md`) for total hangs.
+
+## One-time database migration (store-and-forward)
+
+Run once in Supabase so re-sends can't create duplicate rows:
+
+```sql
+DELETE FROM readings a USING readings b
+ WHERE a.sensor_id = b.sensor_id AND a.recorded_at = b.recorded_at AND a.id > b.id;
+CREATE UNIQUE INDEX IF NOT EXISTS readings_sensor_time_uniq ON readings(sensor_id, recorded_at);
+```
 
 ## Install
 
@@ -64,7 +82,14 @@ systemctl status net-watchdog.timer         # expect: active (waiting)
 journalctl -t net-watchdog --since "10 min ago"   # watchdog activity
 systemctl status senso-heartbeat.timer      # expect: active (waiting)
 journalctl -t senso-heartbeat --since "5 min ago"  # heartbeat activity (quiet = success)
+systemctl status senso-forwarder.service    # expect: active (running)
+journalctl -u senso-forwarder -f            # live "Queued:" / "Flushed:" lines
+sqlite3 /var/lib/senso/queue.db 'select count(*) from queue'   # unsent backlog (0 when caught up)
 ```
+
+**Outage test:** stop the network for ~15 min while the sensor keeps sending —
+`select count(*) from queue` climbs as readings buffer. Restore the network and
+the count drains to 0; the report for that window fills in instead of a gap.
 
 To confirm the heartbeat is actually landing, watch the gateway's `last_seen_at`
 in the database — it should update every ~60s.

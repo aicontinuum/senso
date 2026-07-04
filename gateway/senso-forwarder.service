@@ -1,0 +1,12 @@
+[Unit]
+Description=Senso LoRa forwarder (store-and-forward to the ingest API)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/senso_forwarder.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
