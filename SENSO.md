@@ -126,10 +126,12 @@ AlertConfig (per Sensor)
 
 ## Current State
 
-- Product architecture and page structures are finalized
-- Tech stack is locked in
-- No backend exists yet — all pages should use **hardcoded mock data** until the API is ready
-- Building UI first, wire up to real data later
+- Product architecture and page structures are finalized; tech stack is locked in.
+- **The platform is live on Supabase** — auth, customer scoping (RLS), and real data. The mock-data phase is over; new work wires to real APIs (still ask before inventing endpoints).
+- **Backend / ingest exists** (in `apps/admin`): `POST /api/ingest` (readings, per-gateway secret auth, idempotent upsert), `POST /api/heartbeat` (60s liveness pulse), gateway identified by its 16-hex LoRa concentrator EUI. Duplicate-safe via a `UNIQUE(sensor_id, recorded_at)` index.
+- **Hardware pipeline is real and running**: ESP32+DS18B20 → LoRa → Raspberry Pi gateway → HTTPS → ingest → dashboard. The gateway is provisioned from the version-controlled **`gateway/`** kit (`sudo ./setup.sh`): Wi-Fi resilience, network + hardware watchdogs, 60s heartbeat, and a store-and-forward LoRa forwarder (buffers to disk during outages, backfills with original timestamps — no gaps).
+- **Timestamps are timezone-aware** per customer (`customers.timezone`, default `Asia/Qatar`).
+- Pre-launch tasks (security hardening, retention, golden SD image, etc.) live in `TODO.md`; the running build log is `DEVLOG.md`.
 
 ---
 
