@@ -115,8 +115,6 @@ export async function POST(request: Request) {
           .eq('is_resolved', false);
       }
     }
-
-    accepted++;
   }
 
   return NextResponse.json({ accepted, skipped });
