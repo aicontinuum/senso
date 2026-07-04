@@ -31,7 +31,7 @@ DB_PATH = "/var/lib/senso/queue.db"
 DEFAULT_API_BASE = "https://senso-xsbp.vercel.app"
 SEND_INTERVAL = 15      # seconds between flush attempts
 BATCH_SIZE = 200        # readings per POST
-DEDUP_WINDOW = 60       # seconds to remember a tmst as "already seen"
+DEDUP_WINDOW = 60       # seconds to remember a payload as "already seen"
 HTTP_TIMEOUT = 10
 
 # Semtech UDP packet-forwarder protocol identifiers
@@ -93,7 +93,8 @@ def receive_loop():
     sock.bind((UDP_IP, UDP_PORT))
     log.info("Listening for LoRa packets on UDP %s:%d", UDP_IP, UDP_PORT)
 
-    seen = {}  # tmst -> monotonic time, for de-duplicating retransmits
+    seen = {}  # payload content -> monotonic time; dedups retransmits AND
+    # multi-channel double-reports of the same uplink (which carry different tmst)
 
     while True:
         try:
@@ -118,11 +119,11 @@ def receive_loop():
                 del seen[k]
 
             for pkt in json_data["rxpk"]:
-                tmst = pkt.get("tmst")
-                if tmst is not None:
-                    if tmst in seen:
-                        continue  # retransmit of a packet we already queued
-                    seen[tmst] = now_mono
+                key = pkt.get("data")
+                if key is not None:
+                    if key in seen:
+                        continue  # same payload seen recently — retransmit or multi-channel copy
+                    seen[key] = now_mono
 
                 payload = base64.b64decode(pkt["data"])
                 if len(payload) < 8:
