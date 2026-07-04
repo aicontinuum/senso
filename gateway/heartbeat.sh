@@ -8,6 +8,7 @@ CONF=/etc/senso/gateway.env
 [ -r "$CONF" ] && . "$CONF"
 : "${GATEWAY_MAC:=}"
 : "${API_BASE:=}"
+API_BASE="${API_BASE%/}"   # tolerate a trailing slash
 
 if [ -z "$GATEWAY_MAC" ] || [ -z "$API_BASE" ] || [ "$GATEWAY_MAC" = "REPLACE_WITH_GATEWAY_EUI" ]; then
   logger -t senso-heartbeat "Not configured — set GATEWAY_MAC and API_BASE in $CONF"

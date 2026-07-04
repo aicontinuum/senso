@@ -11,10 +11,10 @@ fi
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "1/4  Installing Wi-Fi power-save drop-in…"
+echo "1/5  Installing Wi-Fi power-save drop-in…"
 install -m 644 "$DIR/wifi-powersave-off.conf" /etc/NetworkManager/conf.d/wifi-powersave-off.conf
 
-echo "2/4  Enabling autoconnect with unlimited retries…"
+echo "2/5  Enabling autoconnect with unlimited retries…"
 con="$(nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2=="802-11-wireless"{print $1; exit}')"
 if [ -n "${con:-}" ]; then
   nmcli connection modify "$con" connection.autoconnect yes connection.autoconnect-retries 0
