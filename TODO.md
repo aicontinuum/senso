@@ -14,6 +14,14 @@
 
 ## Hardware / Ingest
 
-- [ ] **Pi gateway watchdog / auto-restart** — the gateway hung and went silent for ~3 days until it was manually unplugged and replugged. Add a watchdog so it self-recovers: run the forwarder as a systemd service with `Restart=always` (+ `WatchdogSec`), and/or enable the Pi's hardware watchdog (`/dev/watchdog`) so a fully-hung Pi reboots itself. No manual power-cycle should ever be needed.
+- [x] ~~**Pi gateway watchdog / auto-restart**~~ — DONE. Forwarder runs as `senso-forwarder.service` with `Restart=always`; net-watchdog handles network drops; hardware watchdog (`watchdog.conf` + `dtparam=watchdog=on`) reboots a fully-frozen Pi. All in `gateway/`.
 
-- [ ] **Duplicate readings from the gateway** *(pinned 2026-06-28, fix next session)* — every reading lands in the DB **twice**, ~3–5s apart with an identical value (e.g. `14.81 @ 17:14:48` and `17:14:45`; `11.68 @ 17:09:49` and `17:09:44`). Confirmed NOT the website (it stores/draws what it's given) and NOT the ESP32 (serial prints one `Transmitted OK` per 5-min cycle). Source is the **Raspberry Pi gateway** — most likely a slow POST to `/api/ingest` that times out and gets **retried, while the first POST also succeeded** (matches the earlier "it was slow"). Fix options: (a) fix the Pi forwarder's timeout/retry so it doesn't double-post — need to see the Pi code; and/or (b) add a server-side dedupe guard in `/api/ingest` (drop a reading for the same sensor if an identical one landed within the last few seconds — must be tuned so it doesn't drop legitimate readings when the test TX interval is short). Real readings are 5 min apart, so a short time-window dedupe is safe at the production cadence.
+- [x] ~~**Duplicate readings from the gateway**~~ — DONE. Root cause was the LoRa concentrator reporting each uplink on multiple channels. Fixed with content-window dedup in `senso_forwarder.py` + a `UNIQUE(sensor_id, recorded_at)` index and upsert-ignore in `/api/ingest`. (The `accepted: 2` scare was a separate double-count bug in the ingest response, also fixed.)
+
+- [ ] **Clean up pre-fix duplicate rows** — the `readings` table still holds the duplicate rows created before the dedup fixes. One-off `DELETE` keeping the earliest per (sensor_id, recorded_at)-ish group. Cosmetic; do before any historical reporting matters.
+
+- [ ] **DS3231 RTC for the gateway** — the Pi Zero has no real-time clock, so timestamps during a long outage that includes a reboot can drift until NTP resyncs. A ~$3 DS3231 module gives minute-perfect offline timestamps. Optional hardware add.
+
+## Gateway provisioning
+
+- [ ] **Golden SD-card image** — build a master image so a new gateway is "flash card → plug in → running" instead of provisioning from scratch. Must handle the **per-gateway identity**: the LoRa concentrator EUI differs per device, so it can't be baked into a shared image. Plan: have the heartbeat auto-derive the gateway EUI from the concentrator's `lora_pkt_fwd` config (the forwarder already reads it from each packet) so `/etc/senso/gateway.env` needs no per-device editing — then the image is truly generic. Capture the image after `gateway/setup.sh` is run and verified on a reference Pi.

@@ -30,10 +30,15 @@ a gateway goes silent.
    thread flushes the queue to `POST /api/ingest` and only deletes rows the
    server confirms. If the network is down, readings pile up on disk and are
    backfilled with their original timestamps once it returns — **no gap in the
-   report**. Concentrator retransmits are de-duplicated by `tmst`, and the
-   backend's `UNIQUE(sensor_id, recorded_at)` index makes re-sends safe.
-
-Pairs with the hardware watchdog (see the repo's `TODO.md`) for total hangs.
+   report**. Same-payload uplinks (retransmits / multi-channel reports) are
+   de-duplicated within a 60s window, and the backend's
+   `UNIQUE(sensor_id, recorded_at)` index makes re-sends safe.
+6. **Hardware watchdog** — `watchdog.conf` (a systemd drop-in) makes systemd pet
+   the Pi's `/dev/watchdog`, and `dtparam=watchdog=on` enables the device. If the
+   Pi ever freezes hard enough that systemd can't pet it (kernel hang, total
+   lock-up), the **hardware forcibly resets the Pi**. This is the only thing that
+   recovers a fully-frozen gateway — the software net-watchdog can't run if the
+   OS itself is wedged. Applied on reboot.
 
 ## One-time database migration (store-and-forward)
 
@@ -85,6 +90,12 @@ journalctl -t senso-heartbeat --since "5 min ago"  # heartbeat activity (quiet =
 systemctl status senso-forwarder.service    # expect: active (running)
 journalctl -u senso-forwarder -f            # live "Queued:" / "Flushed:" lines
 sqlite3 /var/lib/senso/queue.db 'select count(*) from queue'   # unsent backlog (0 when caught up)
+```
+
+Hardware watchdog (after the reboot):
+```bash
+cat /sys/class/watchdog/watchdog0/state    # expect: active
+systemctl show -p RuntimeWatchdogUSec       # expect: 15s (15000000)
 ```
 
 **Outage test:** stop the network for ~15 min while the sensor keeps sending —
