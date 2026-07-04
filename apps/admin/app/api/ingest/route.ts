@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import { gatewaySecretOk } from '@/lib/gateway-auth';
 
 const COOLDOWN_MS = 30 * 60 * 1000;
 
@@ -31,6 +32,13 @@ export async function POST(request: Request) {
     .single();
 
   if (!gateway) return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
+
+  // Authenticate against the gateway's secret (a separate query so a missing
+  // `secret` column degrades to "not enforced" instead of breaking the lookup).
+  const { data: sec } = await admin.from('gateways').select('secret').eq('id', gateway.id).single();
+  if (!gatewaySecretOk(request, (sec?.secret as string | null) ?? null)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   if (offline) {
     await admin.from('gateways').update({ is_online: false }).eq('id', gateway.id);

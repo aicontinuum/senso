@@ -8,6 +8,7 @@ CONF=/etc/senso/gateway.env
 [ -r "$CONF" ] && . "$CONF"
 : "${GATEWAY_MAC:=}"
 : "${API_BASE:=}"
+: "${GATEWAY_SECRET:=}"
 API_BASE="${API_BASE%/}"   # tolerate a trailing slash
 
 if [ -z "$GATEWAY_MAC" ] || [ -z "$API_BASE" ] || [ "$GATEWAY_MAC" = "REPLACE_WITH_GATEWAY_EUI" ]; then
@@ -17,6 +18,7 @@ fi
 
 if curl -fsS -m 10 -X POST "$API_BASE/api/heartbeat" \
      -H 'Content-Type: application/json' \
+     -H "Authorization: Bearer ${GATEWAY_SECRET}" \
      -d "{\"mac_address\":\"$GATEWAY_MAC\"}" >/dev/null 2>&1; then
   exit 0
 fi

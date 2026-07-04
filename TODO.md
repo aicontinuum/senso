@@ -4,7 +4,7 @@
 
 - [ ] **Tighten `customers_update_own_record` RLS policy** — current policy allows customers to UPDATE any column on their own row. The API only passes through `contact_name`, `phone`, and `alert_recipients`, but the DB policy is broader. Before go-live, restrict it to only those three columns using a Postgres function or column-level grants, so a direct API call can't touch `email`, `name`, or `billing_status`.
 
-- [ ] **Secure the ingest API (`POST /api/ingest`)** — currently authenticates gateways by MAC address alone. Any party who knows a registered MAC can post readings. Before go-live, replace with HMAC-signed payloads or a per-gateway shared secret header so only the physical device can ingest data.
+- [x] ~~**Secure the ingest API (`POST /api/ingest`)**~~ — DONE. `/api/ingest` and `/api/heartbeat` now require a per-gateway secret (`Authorization: Bearer`), verified constant-time against `gateways.secret`; the forwarder + heartbeat send it, `setup.sh` auto-generates it. **Go-live hardening still TODO:** enforcement is currently "only if a secret is set" (so an un-provisioned gateway is still open) — before launch, make it strict (reject when no secret) and ensure every gateway row has a secret. Consider upgrading to HMAC-signed payloads with a nonce/timestamp to prevent replay.
 
 - [ ] **Rate limit `/api/ingest`** — no rate limiting in place. A bad actor (or a misconfigured device) could flood the endpoint and bloat the readings table. Add rate limiting per MAC address before go-live.
 

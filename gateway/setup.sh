@@ -35,6 +35,18 @@ if [ ! -e /etc/senso/gateway.env ]; then
   install -m 644 "$DIR/gateway.env.example" /etc/senso/gateway.env
   NEEDS_CONFIG=1
 fi
+# Generate a per-gateway secret on first run (idempotent — never overwrites an
+# existing one, which would break the value registered in the database).
+if ! grep -qE '^GATEWAY_SECRET=.+' /etc/senso/gateway.env; then
+  GEN_SECRET="$(openssl rand -hex 32)"
+  if grep -q '^GATEWAY_SECRET=' /etc/senso/gateway.env; then
+    sed -i "s|^GATEWAY_SECRET=.*|GATEWAY_SECRET=$GEN_SECRET|" /etc/senso/gateway.env
+  else
+    echo "GATEWAY_SECRET=$GEN_SECRET" >> /etc/senso/gateway.env
+  fi
+  chmod 600 /etc/senso/gateway.env
+  SECRET_GENERATED="$GEN_SECRET"
+fi
 install -m 755 "$DIR/heartbeat.sh"           /usr/local/bin/senso-heartbeat.sh
 install -m 644 "$DIR/senso-heartbeat.service" /etc/systemd/system/senso-heartbeat.service
 install -m 644 "$DIR/senso-heartbeat.timer"   /etc/systemd/system/senso-heartbeat.timer
@@ -65,6 +77,13 @@ echo
 if [ "${NEEDS_CONFIG:-0}" = "1" ]; then
   echo ">>> ACTION NEEDED: edit /etc/senso/gateway.env with your GATEWAY_MAC (EUI),"
   echo "    then:  sudo systemctl restart senso-heartbeat.timer"
+  echo
+fi
+if [ -n "${SECRET_GENERATED:-}" ]; then
+  echo ">>> A per-gateway SECRET was generated. Register it on this gateway's row"
+  echo "    (keep it private), then the API will require it:"
+  echo "      UPDATE gateways SET secret='${SECRET_GENERATED}'"
+  echo "        WHERE mac_address='<this gateway's EUI>';"
   echo
 fi
 echo ">>> If you were running the OLD forwarder manually (python3 ~/senso_forwarder.py)"

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import { gatewaySecretOk } from '@/lib/gateway-auth';
 
 // Lightweight liveness pulse from a gateway — no readings, just "I'm alive and
 // connected." Stamps last_seen_at so the platform can detect a silent gateway
@@ -23,6 +24,11 @@ export async function POST(request: Request) {
     .single();
 
   if (!gateway) return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
+
+  const { data: sec } = await admin.from('gateways').select('secret').eq('id', gateway.id).single();
+  if (!gatewaySecretOk(request, (sec?.secret as string | null) ?? null)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   await admin
     .from('gateways')

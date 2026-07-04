@@ -42,22 +42,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger("senso-forwarder")
 
 
-def api_base():
-    """Read API_BASE from /etc/senso/gateway.env, falling back to production."""
+def read_env(key, default=""):
+    """Read a KEY=value from /etc/senso/gateway.env."""
     try:
         with open("/etc/senso/gateway.env") as f:
             for line in f:
                 line = line.strip()
-                if line.startswith("API_BASE="):
-                    val = line.split("=", 1)[1].strip().strip('"').strip("'")
-                    if val:
-                        return val.rstrip("/")
+                if line.startswith(key + "="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
     except OSError:
         pass
-    return DEFAULT_API_BASE
+    return default
 
 
-INGEST_URL = api_base() + "/api/ingest"
+INGEST_URL = (read_env("API_BASE", DEFAULT_API_BASE).rstrip("/") or DEFAULT_API_BASE) + "/api/ingest"
+GATEWAY_SECRET = read_env("GATEWAY_SECRET")
+POST_HEADERS = {"Content-Type": "application/json"}
+if GATEWAY_SECRET:
+    POST_HEADERS["Authorization"] = "Bearer " + GATEWAY_SECRET
 
 # requests is imported after config so a helpful error surfaces if it's missing
 import requests  # noqa: E402
@@ -181,7 +183,7 @@ def flush(conn):
                 ],
             }
             try:
-                resp = requests.post(INGEST_URL, json=body, timeout=HTTP_TIMEOUT)
+                resp = requests.post(INGEST_URL, json=body, headers=POST_HEADERS, timeout=HTTP_TIMEOUT)
             except requests.RequestException as e:
                 log.warning("Flush deferred (network): %s", e)
                 return  # keep rows, retry next cycle
@@ -193,9 +195,14 @@ def flush(conn):
                 )
                 conn.commit()
                 log.info("Flushed %d reading(s) → %s", len(ids), resp.json())
+            elif resp.status_code in (401, 403):
+                # Auth not configured correctly (yet) — a fixable setup error.
+                # Keep the readings and retry so nothing is lost while it's sorted.
+                log.warning("Flush deferred (HTTP %d — check GATEWAY_SECRET), will retry", resp.status_code)
+                return
             elif 400 <= resp.status_code < 500:
-                # Client error won't recover on retry — drop so the queue can't
-                # wedge forever, but log loudly.
+                # Other client errors won't recover on retry — drop so the queue
+                # can't wedge forever, but log loudly.
                 conn.execute(
                     f"DELETE FROM queue WHERE id IN ({','.join('?' * len(ids))})", ids
                 )

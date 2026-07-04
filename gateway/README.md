@@ -50,6 +50,23 @@ DELETE FROM readings a USING readings b
 CREATE UNIQUE INDEX IF NOT EXISTS readings_sensor_time_uniq ON readings(sensor_id, recorded_at);
 ```
 
+## Gateway authentication (secret)
+
+`/api/ingest` and `/api/heartbeat` require a **per-gateway secret** so a known EUI
+alone can't inject readings. Add the column once:
+
+```sql
+ALTER TABLE gateways ADD COLUMN IF NOT EXISTS secret text;
+```
+
+Then `setup.sh` auto-generates a secret into `/etc/senso/gateway.env` on first run
+and prints the `UPDATE gateways SET secret=…` to register it on the gateway's row.
+The forwarder and heartbeat send it as `Authorization: Bearer <secret>`.
+
+Rollout is safe in any order: until a row's `secret` is set, the API doesn't
+enforce it; and if the secret is ever mismatched, the forwarder **holds** readings
+(HTTP 401 → keep-and-retry) rather than dropping them.
+
 ## Install
 
 Copy this folder to the Pi (e.g. `scp -r gateway senso@senso-gateway-01:~/`),
