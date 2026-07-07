@@ -1,12 +1,46 @@
 # Pre-Launch TODO
 
-## Security
+## Security — audit 2026-07-04 (prioritized patch queue)
 
-- [ ] **Tighten `customers_update_own_record` RLS policy** — current policy allows customers to UPDATE any column on their own row. The API only passes through `contact_name`, `phone`, and `alert_recipients`, but the DB policy is broader. Before go-live, restrict it to only those three columns using a Postgres function or column-level grants, so a direct API call can't touch `email`, `name`, or `billing_status`.
+Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene. Ranked by severity. **Verify the RLS items against the live DB first — that is the single biggest risk.** (Shipped: per-gateway secret auth on `/api/ingest` + `/api/heartbeat` — but it's fail-open today; see Critical.)
 
-- [x] ~~**Secure the ingest API (`POST /api/ingest`)**~~ — DONE. `/api/ingest` and `/api/heartbeat` now require a per-gateway secret (`Authorization: Bearer`), verified constant-time against `gateways.secret`; the forwarder + heartbeat send it, `setup.sh` auto-generates it. **Go-live hardening still TODO:** enforcement is currently "only if a secret is set" (so an un-provisioned gateway is still open) — before launch, make it strict (reject when no secret) and ensure every gateway row has a secret. Consider upgrading to HMAC-signed payloads with a nonce/timestamp to prevent replay.
+### 🔴 Critical
 
-- [ ] **Rate limit `/api/ingest`** — no rate limiting in place. A bad actor (or a misconfigured device) could flood the endpoint and bloat the readings table. Add rate limiting per MAC address before go-live.
+- [ ] **Verify + fix RLS on every table (tenant isolation).** The customer app is a *thick client* — it runs authenticated Supabase queries **directly from the browser** with the anon key, so cross-customer isolation depends ENTIRELY on RLS being enabled with a correct policy on every table. The server-side `customer_id` filters in page code do NOT protect the direct `supabase.from(...)` path a malicious customer can call from devtools. Migration history shows gaps: `alert_logs` got a GRANT but no visible `CREATE POLICY`; `alert_configs` has SELECT/INSERT/UPDATE grants but no evidenced policy; `gateways`/`sensors`/`customers` have no documented policy. **Action — run in Supabase:** `select relname, relrowsecurity from pg_class where relname in ('customers','gateways','sensors','readings','alert_configs','alert_logs');` and `select tablename, policyname, cmd, qual, with_check from pg_policies;`. Every table needs RLS **enabled** + a policy scoping to the owning customer (reuse `customer_owns_sensor()`), with `WITH CHECK` on INSERT/UPDATE. Worst case today: any logged-in customer reads/edits every other tenant's alerts, thresholds, recipient emails, sensors, gateways, and customer records straight from the browser.
+
+- [ ] **Device auth is fail-open.** `apps/admin/lib/gateway-auth.ts` returns authorized whenever `gateways.secret` is null/absent, so any gateway without a provisioned secret accepts unauthenticated writes — inject fake readings, send `offline:true` to flip sensors offline and silence alarms, or forge/suppress `alert_logs` — knowing only the public EUI. Flip to **fail-closed** (reject when no secret) and confirm every gateway row has a secret before go-live.
+
+### 🟠 High
+
+- [ ] **No rate limiting anywhere** — login, `/api/ingest`, `/api/heartbeat`, and all admin/customer APIs. Enables gateway enumeration, ingest flooding, and credential brute-force. Add per-IP + per-gateway throttling.
+- [ ] **Unbounded `readings[]` in `/api/ingest`** — no length cap; each element runs several sequential service-role queries. One POST with 100k entries = DoS + unbounded inserts (no auth needed given fail-open). Cap array length and validate.
+- [ ] **LAN packet injection into the forwarder** — `senso_forwarder.py` binds `0.0.0.0:1700` with no source check and trusts the raw payload (no LoRaWAN MIC). Anyone on the customer LAN can spoof `PUSH_DATA` for any `hardware_id`/temperature; the Pi then forwards it *authenticated* (it holds the secret) into the compliance record. Bind `127.0.0.1` (lora_pkt_fwd is local).
+- [ ] **`/etc/senso/gateway.env` not `chmod 600` on all paths** — created `install -m 644` (world-readable); `chmod 600` only runs on the auto-generate branch, so a hand-set secret stays 644. Any local user reads the gateway secret. Always `chmod 600`.
+- [ ] **Forwarder runs as root with a network-facing parser + zero systemd hardening** — a parser bug on the unauthenticated UDP surface = root RCE on-premises. Run as an unprivileged `senso` user; add `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `RestrictAddressFamilies=AF_INET AF_INET6`.
+- [ ] **`customers` UPDATE policy too broad** — own-row only, but a customer can `update({billing_status, email, name})` directly from the browser (self-service billing/identity tampering). Restrict to `contact_name`/`phone`/`alert_recipients`/`timezone` via column grants or a SECURITY DEFINER function. (This is part of the RLS Critical item.)
+
+### 🟡 Medium
+
+- [ ] **Ingest input validation** — `temperature` (type/range) and `recorded_at` (bounded timestamp) unvalidated. Since `recorded_at` is the upsert conflict key, a future timestamp can silently drop a later real reading as a "duplicate." Reject non-numeric temps and out-of-window dates.
+- [ ] **Gateway enumeration** — ingest/heartbeat return `404` for unknown gateway vs `401` for bad secret; spraying EUIs reveals real gateways. Return a uniform response for both.
+- [ ] **Threshold validation on `/api/sensors/[id]`** — `NaN >= NaN` is false, so a non-numeric min/max passes and writes `null` thresholds (disables alerting); no bounds check. Validate numeric + sane range + min<max server-side.
+- [ ] **Server-side email-recipient validation** — `/api/account` (`alertRecipients`) and `/api/sensors/[id]` (`emailRecipients`) accept arbitrary arrays, no per-item email regex or length cap (client checks don't count). These become email send-targets. Validate + cap.
+- [ ] **Customer-create password/email not validated server-side** — `/api/customers` forwards `password` to `createUser` with no strength check (password-change enforces ≥8) and no server email regex. Add both.
+- [ ] **Unbounded `queue.db` growth on the Pi** — no cap/eviction; a LAN flood or multi-week outage fills the SD card and wedges the gateway. Add a max-rows cap / retention.
+- [ ] **Heartbeat secret on curl argv** — `heartbeat.sh` passes `-H "Authorization: Bearer $SECRET"`, visible in `ps`/`/proc` each minute. Use `-H @file` / `--config` / stdin. (Forwarder is fine — sends via `requests`.)
+- [ ] **`net-watchdog` reboot loop is LAN-triggerable** — reboots after 15 min of failed pings to a single fixed host; blocking those pings forces perpetual reboots (also a false-positive on networks that block 1.1.1.1). Use multiple/local targets and make reboot more conservative.
+- [ ] **CSV formula injection + broken quoting** — `reports/ReportClient.tsx` export doesn't double embedded `"` and has no neutralizing prefix for `= + - @`. Vector is admin-set names (lower likelihood), but escape quotes and prefix risky cells.
+- [ ] **Root `.gitignore` misses a stray `gateway.env`** — patterns are exact names, not a `.env*` glob; a copied real `gateway.env` (with a live secret) could be committed. Add `*.env` / `.env*` at root and `gateway/`.
+
+### 🟢 Low / hardening
+
+- [ ] **Raw Supabase `error.message` returned to clients** (admin + customer routes) — leaks schema/constraint details. Return generic messages; log details server-side.
+- [ ] **Unhandled `request.json()`** in `/api/ingest`, `/api/account`, `/api/sensors/[id]` → 500 on malformed body. Wrap → 400 (heartbeat already does).
+- [ ] **Secret printed to stdout during `setup.sh`** (and briefly in `sed` argv) — leaks into provisioning/CI logs. Have the user read it from the env file instead.
+- [ ] **No security headers** — add HSTS/CSP/X-Frame-Options via `next.config.ts` / `vercel.json`.
+- [ ] **Docs disclose the security model** (open ingest, no rate limiting, RLS gaps, prod host) — fine while private; scrub/relocate if the repo ever goes public.
+- [ ] **Delete dead `apps/customer/lib/supabase.ts`** — unused anon client not wired to SSR cookies; remove to prevent future misuse.
+- [ ] **`contactName`/`phone` unbounded** on `/api/account` — add length caps.
 
 ## Database
 
