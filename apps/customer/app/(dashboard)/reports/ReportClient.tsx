@@ -178,7 +178,7 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
       .select("id, sensor_id, temperature, recorded_at")
       .in("sensor_id", ids)
       .gte("recorded_at", since)
-      .order("recorded_at", { ascending: true });
+      .order("recorded_at", { ascending: false });
 
     const byId = new Map<string, ReadingShape[]>();
     for (const r of data ?? []) {
