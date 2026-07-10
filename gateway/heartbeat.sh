@@ -16,7 +16,10 @@ if [ -z "$GATEWAY_MAC" ] || [ -z "$API_BASE" ] || [ "$GATEWAY_MAC" = "REPLACE_WI
   exit 0
 fi
 
-if curl -fsS -m 10 -X POST "$API_BASE/api/heartbeat" \
+# Retry transient failures (DNS blips, cold starts) so a single hiccup doesn't
+# cost a whole beat; -m caps the total time across all attempts, safely under
+# the 60s pulse interval.
+if curl -fsS --retry 2 --retry-all-errors --retry-delay 3 --connect-timeout 5 -m 30 -X POST "$API_BASE/api/heartbeat" \
      -H 'Content-Type: application/json' \
      -H "Authorization: Bearer ${GATEWAY_SECRET}" \
      -d "{\"mac_address\":\"$GATEWAY_MAC\"}" >/dev/null 2>&1; then

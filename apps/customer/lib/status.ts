@@ -2,7 +2,9 @@
 // silent (loses power, hangs, drops network) never sends an explicit offline
 // signal, so we treat stale data as offline based on how long it's been quiet.
 
-export const GATEWAY_STALE_MS = 3 * 60 * 1000; // gateway offline after 3 min (heartbeat pulses every 60s)
+// Heartbeat pulses every 60s; 5 min of silence (~4 missed pulses) means the
+// gateway is genuinely unreachable rather than riding out a transient blip.
+export const GATEWAY_STALE_MS = 5 * 60 * 1000;
 export const SENSOR_STALE_MS = 20 * 60 * 1000; // sensor offline after 20 min of silence
 
 export function isGatewayOnline(
