@@ -33,7 +33,7 @@ export default async function SensorDetailPage({
 
   const [{ data: configRows }, { data: readingRows }, { data: customerData }] = await Promise.all([
     supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
-    supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(5),
+    supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(10),
     supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
   ]);
 
