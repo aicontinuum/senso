@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorCard } from "@/components/dashboard/SensorCard";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { isGatewayOnline, isSensorOnline } from "@/lib/status";
+import { isGatewayOnline, isSensorOnline } from "@senso/status";
 import type { Sensor, AlertConfig } from "@senso/types";
 
 export default async function DashboardPage() {

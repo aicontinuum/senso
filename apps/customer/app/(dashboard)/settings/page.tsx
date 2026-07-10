@@ -6,7 +6,7 @@ import { GatewaysSection } from "./GatewaysSection";
 import { AlertRecipientsSection } from "./AlertRecipientsSection";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { TimezoneSection } from "./TimezoneSection";
-import { isGatewayOnline, isSensorOnline } from "@/lib/status";
+import { isGatewayOnline, isSensorOnline } from "@senso/status";
 import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {

@@ -1,5 +1,13 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
+
+type GatewayWithSensors = {
+  id: string;
+  is_online: boolean;
+  last_seen_at: string | null;
+  sensors?: { id: string; status: string }[];
+};
 
 export default async function AdminDashboardPage() {
   const admin = createAdminClient();
@@ -7,14 +15,28 @@ export default async function AdminDashboardPage() {
 
   const { data: customers } = await admin
     .from('customers')
-    .select('id, name, email, gateways (id, is_online, sensors (id, status))')
+    .select('id, name, email, gateways (id, is_online, last_seen_at, sensors (id, status))')
     .order('name');
 
   // Collect all sensor IDs to look up alert configs
   const allSensorIds = (customers ?? []).flatMap(c =>
-    ((c.gateways ?? []) as { id: string; is_online: boolean; sensors?: { id: string; status: string }[] }[])
+    ((c.gateways ?? []) as GatewayWithSensors[])
       .flatMap(g => (g.sensors ?? []).map(s => s.id)),
   );
+
+  // Freshness-based status, same rules as the customer site: a sensor is
+  // online only if it has a reading newer than the staleness cutoff, so one
+  // bounded query for recent readings is all we need.
+  const freshReadingBySensor = new Map<string, string>();
+  if (allSensorIds.length > 0) {
+    const sinceStale = new Date(Date.now() - SENSOR_STALE_MS).toISOString();
+    const { data: freshReadings } = await admin
+      .from('readings')
+      .select('sensor_id, recorded_at')
+      .in('sensor_id', allSensorIds)
+      .gte('recorded_at', sinceStale);
+    for (const r of freshReadings ?? []) freshReadingBySensor.set(r.sensor_id, r.recorded_at);
+  }
 
   // alert_logs links to alert_configs, not sensors directly
   let totalAlerts = 0;
@@ -48,11 +70,11 @@ export default async function AdminDashboardPage() {
   let sensorsOffline = 0;
 
   const rows = (customers ?? []).map(customer => {
-    const gateways = (customer.gateways ?? []) as { id: string; is_online: boolean; sensors?: { id: string; status: string }[] }[];
+    const gateways = (customer.gateways ?? []) as GatewayWithSensors[];
     const sensors = gateways.flatMap(g => g.sensors ?? []);
 
     for (const s of sensors) {
-      if (s.status === 'online') sensorsOnline++; else sensorsOffline++;
+      if (isSensorOnline(s.status, freshReadingBySensor.get(s.id))) sensorsOnline++; else sensorsOffline++;
     }
 
     const alertCount = sensors.reduce((sum, s) => sum + (alertsBySensorId.get(s.id) ?? 0), 0);
@@ -106,12 +128,15 @@ export default async function AdminDashboardPage() {
                     <p className="text-xs text-muted-foreground">{customer.email}</p>
                   </td>
                   <td className="px-6 py-4">
-                    {gateways.length > 0 ? gateways.map(g => (
-                      <span key={g.id} className="flex items-center gap-1.5 text-sm">
-                        <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
-                        {g.is_online ? 'Online' : 'Offline'}
-                      </span>
-                    )) : <span className="text-muted-foreground">—</span>}
+                    {gateways.length > 0 ? gateways.map(g => {
+                      const online = isGatewayOnline(g.is_online, g.last_seen_at);
+                      return (
+                        <span key={g.id} className="flex items-center gap-1.5 text-sm">
+                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                          {online ? 'Online' : 'Offline'}
+                        </span>
+                      );
+                    }) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
                   <td className="px-6 py-4 tabular-nums">

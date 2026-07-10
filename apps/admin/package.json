@@ -16,6 +16,7 @@
     "clsx": "*",
     "tailwind-merge": "*",
     "@senso/mock-data": "*",
+    "@senso/status": "*",
     "@senso/types": "*",
     "@supabase/supabase-js": "*",
     "@supabase/ssr": "*"
