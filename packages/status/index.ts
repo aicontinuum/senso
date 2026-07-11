@@ -6,9 +6,10 @@
 // gateway is genuinely unreachable rather than riding out a transient blip.
 export const GATEWAY_STALE_MS = 5 * 60 * 1000;
 
-// Sensors read + transmit every 15 min (deep sleep in between); 50 min of
-// silence (~3 missed readings) means offline rather than a lost packet or two.
-export const SENSOR_STALE_MS = 50 * 60 * 1000;
+// Sensors read + transmit every 15 min (deep sleep in between), sending each
+// reading twice per wake so a single lost packet rarely loses the reading.
+// 35 min of silence (a whole missed reading + margin) therefore means offline.
+export const SENSOR_STALE_MS = 35 * 60 * 1000;
 
 export function isGatewayOnline(
   isOnline: boolean,
