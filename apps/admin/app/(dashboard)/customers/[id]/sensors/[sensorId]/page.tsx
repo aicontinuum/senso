@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isSensorOnline } from '@senso/status';
 import { SensorSettingsClient } from './SensorSettingsClient';
 
 export default async function SensorSettingsPage({
@@ -26,6 +27,16 @@ export default async function SensorSettingsPage({
     .eq('customer_id', customerId)
     .order('created_at', { ascending: true });
 
+  // Freshness-based status, same rules as everywhere else — the raw flag
+  // never flips for a sensor that dies silently.
+  const { data: latestReading } = await admin
+    .from('readings')
+    .select('recorded_at')
+    .eq('sensor_id', sensorId)
+    .order('recorded_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data: alertConfigs } = await admin
     .from('alert_configs')
     .select('type, threshold, email_recipients')
@@ -45,7 +56,7 @@ export default async function SensorSettingsPage({
       sensor={{
         id: sensor.id,
         name: sensor.name,
-        status: sensor.status,
+        status: isSensorOnline(sensor.status, latestReading?.recorded_at) ? 'online' : 'offline',
         gatewayId: sensor.gateway_id,
         hardwareId: sensor.hardware_id ?? '',
         minTemp: belowMin?.threshold ?? 2,
