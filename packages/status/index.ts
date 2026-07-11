@@ -5,7 +5,10 @@
 // Heartbeat pulses every 60s; 5 min of silence (~4 missed pulses) means the
 // gateway is genuinely unreachable rather than riding out a transient blip.
 export const GATEWAY_STALE_MS = 5 * 60 * 1000;
-export const SENSOR_STALE_MS = 20 * 60 * 1000; // sensor offline after 20 min of silence
+
+// Sensors read + transmit every 15 min (deep sleep in between); 50 min of
+// silence (~3 missed readings) means offline rather than a lost packet or two.
+export const SENSOR_STALE_MS = 50 * 60 * 1000;
 
 export function isGatewayOnline(
   isOnline: boolean,
