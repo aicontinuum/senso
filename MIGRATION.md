@@ -30,13 +30,20 @@ Hardware on hand: **1× SenseCAP M2 Multi-Platform Indoor Gateway (SX1302), EU86
 - [ ] **Frequency band** — sensor and gateway are **both EU868 → they match each other.** ✓
       **OPEN:** verify 868 MHz (863–870) is permitted in **Qatar** (CRA short-range-device
       rules) before commercial deployment. Fine for bench/testing regardless.
-- [ ] **Network Server** — recommended **The Things Stack** (confirmed compatible with the
-      M2 Multi-Platform; built-in Dragino codecs; webhook + MQTT). Pending final go-ahead.
+- [x] **Network Server decided — ChirpStack.** Self-host now (~$10–15/mo VPS) or managed
+      (chirphost ~€35/mo flat, no per-device fees). Both are the **same ChirpStack
+      software**, so self-host ↔ managed is a low-friction switch later (re-register
+      devices via API + re-point gateways; effort scales with deployed gateway count).
+      Ruled out: **free TTN** (no SLA/control, best-effort) and **The Things Stack Cloud**
+      (~$200/mo, too costly at this stage). ✓
 
 ### Phase 0 remaining
-- Confirm **The Things Stack** as the LNS (last decision blocking Phase 1).
+- Pick **self-host vs managed ChirpStack** to *start* on (flippable later; self-host =
+  cheapest + full control, managed = ops offloaded for ~$40/mo flat).
 - Regulatory homework: is **EU868 permitted in Qatar**? (Do before commercial deploy;
   not a blocker for bench testing.)
+- Tip carried into Phase 1: point gateways at a **hostname you control** (`lns.senso.com`)
+  not a raw IP, so a future server move is a DNS change rather than touching every gateway.
 
 _Note: each sensor label carries its **DevEUI** + a **QR (AppKey)** — the LoRaWAN join
 credentials used to onboard devices in Phase 1/3. Treat the AppKey/QR as secret._
