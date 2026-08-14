@@ -17,17 +17,27 @@ Work through this list roughly top-to-bottom — later phases depend on earlier 
 
 ## Phase 0 — Verify hardware & decisions (blockers — do first)
 
-- [ ] **Confirm exact SenseCAP gateway model** and that it can run as a standard
-      packet-forwarder to *our chosen* LNS (not locked to Helium / SenseCAP-only cloud).
-- [ ] **Confirm exact Dragino sensor model + probe.** Verify the temperature range covers
-      the coldest use case — **freezers need the external probe** (e.g. LHT65N-E5, rated
-      to ~-40 °C); the internal sensor alone won't survive a freezer.
-- [ ] **Confirm the LoRaWAN frequency band for Qatar** — gateway, sensor, and LNS
-      frequency plan must all match, or nothing joins. (The old raw-LoRa firmware used
-      ~903 MHz / US915; LoRaWAN in the region is likely a different plan.)
-- [ ] **Choose the Network Server.** Recommended start: **The Things Stack** (hosted;
-      Dragino + SenseCAP both first-class; built-in Dragino codecs; webhook + MQTT).
-      Consider self-hosted **ChirpStack** later if per-device economics demand it.
+Hardware on hand: **1× SenseCAP M2 Multi-Platform Indoor Gateway (SX1302), EU868**
+(SKU 114992981) · **3× Dragino LHT65N Temp & Humidity Sensor, 868 MHz** (SKU 113990756).
+
+- [x] **SenseCAP gateway model confirmed** — **SenseCAP M2 Multi-Platform (SX1302),
+      EU868.** "Multi-Platform" speaks standard LoRaWAN to The Things Stack / ChirpStack /
+      AWS — NOT the Helium-locked M1, so we're free to use our own LNS. ✓
+- [ ] **Dragino sensor model** — **LHT65N, EU868** confirmed. **OPEN:** confirm these are
+      the **external-probe** variant (LHT65N-E3, probe rated to −40 °C) vs internal-only.
+      Matters for freezers *and* for RF — the whole unit inside a metal freezer is a
+      Faraday cage; the external probe keeps electronics + antenna outside the cold space.
+- [ ] **Frequency band** — sensor and gateway are **both EU868 → they match each other.** ✓
+      **OPEN:** verify 868 MHz (863–870) is permitted in **Qatar** (CRA short-range-device
+      rules) before commercial deployment. Fine for bench/testing regardless.
+- [ ] **Network Server** — recommended **The Things Stack** (confirmed compatible with the
+      M2 Multi-Platform; built-in Dragino codecs; webhook + MQTT). Pending final go-ahead.
+
+### Phase 0 open questions
+- Fridges only, or **freezers** too? (Freezers make the external probe ~mandatory.)
+- Do the 3 LHT65N units include the **external probe** cable, or internal sensor only?
+- Confirm **The Things Stack** as the LNS.
+- Regulatory: is **EU868 permitted in Qatar**?
 
 ## Phase 1 — Stand up the LoRaWAN network
 
