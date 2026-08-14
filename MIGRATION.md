@@ -23,21 +23,23 @@ Hardware on hand: **1× SenseCAP M2 Multi-Platform Indoor Gateway (SX1302), EU86
 - [x] **SenseCAP gateway model confirmed** — **SenseCAP M2 Multi-Platform (SX1302),
       EU868.** "Multi-Platform" speaks standard LoRaWAN to The Things Stack / ChirpStack /
       AWS — NOT the Helium-locked M1, so we're free to use our own LNS. ✓
-- [ ] **Dragino sensor model** — **LHT65N, EU868** confirmed. **OPEN:** confirm these are
-      the **external-probe** variant (LHT65N-E3, probe rated to −40 °C) vs internal-only.
-      Matters for freezers *and* for RF — the whole unit inside a metal freezer is a
-      Faraday cage; the external probe keeps electronics + antenna outside the cold space.
+- [x] **Dragino sensor model confirmed** — **LHT65N-E3, EU868** (external-probe variant,
+      probe rated to −40 °C). Use case includes **freezers**, so the external probe is
+      required, not optional. Deployment: body + antenna stay outside; only the probe
+      runs in past the door gasket (clean RF, freezer-rated tip). ✓
 - [ ] **Frequency band** — sensor and gateway are **both EU868 → they match each other.** ✓
       **OPEN:** verify 868 MHz (863–870) is permitted in **Qatar** (CRA short-range-device
       rules) before commercial deployment. Fine for bench/testing regardless.
 - [ ] **Network Server** — recommended **The Things Stack** (confirmed compatible with the
       M2 Multi-Platform; built-in Dragino codecs; webhook + MQTT). Pending final go-ahead.
 
-### Phase 0 open questions
-- Fridges only, or **freezers** too? (Freezers make the external probe ~mandatory.)
-- Do the 3 LHT65N units include the **external probe** cable, or internal sensor only?
-- Confirm **The Things Stack** as the LNS.
-- Regulatory: is **EU868 permitted in Qatar**?
+### Phase 0 remaining
+- Confirm **The Things Stack** as the LNS (last decision blocking Phase 1).
+- Regulatory homework: is **EU868 permitted in Qatar**? (Do before commercial deploy;
+  not a blocker for bench testing.)
+
+_Note: each sensor label carries its **DevEUI** + a **QR (AppKey)** — the LoRaWAN join
+credentials used to onboard devices in Phase 1/3. Treat the AppKey/QR as secret._
 
 ## Phase 1 — Stand up the LoRaWAN network
 
