@@ -50,20 +50,16 @@ credentials used to onboard devices in Phase 1/3. Treat the AppKey/QR as secret.
 
 ## Phase 1 — Stand up the LoRaWAN network
 
-**Gateway bake-off (new — second gateway arrived).** Now have both a **SenseCAP M2
-Multi-Platform** and a **RAK7266 WisGate SOHO Lite (non-LTE, EU868)**. Neither has a clear
-technical edge on paper (both SX1302; the RAK's usual LTE-fallback advantage doesn't apply
-to this non-LTE unit) — decide by running both against the same ChirpStack instance:
+**Gateway decision — SenseCAP M2 chosen as the product standard.** The RAK7266 WisGate
+SOHO Lite (non-LTE, EU868) goes to the R&D/bench shelf for later play, not the standing
+setup. (Gateway choice is backend-invisible either way — ChirpStack normalizes every
+gateway's uplinks to the same DevEUI + decoded-payload shape before our backend ever sees
+them, so this was a hardware/ops call, not a technical constraint. Nothing stops offering
+the RAK — or another model — to specific customers later without any backend changes, if a
+use case calls for it, e.g. LTE-fallback variants for shaky-WiFi sites.)
 
-- [ ] Point **both gateways** at the same ChirpStack (Semtech UDP forwarder or Basics
-      Station) — RAK via WisGateOS 2 (set to forward to our LNS, not its own built-in
-      network server); confirm **both** show connected.
-- [ ] Compare: time-to-first-uplink, uplink reliability over a day (same sensor, same
-      room), reported RSSI/SNR, remote management (WisDM vs SenseCAP portal), docs/support
-      quality, physical footprint, price/reorder cost.
-- [ ] **Pick one as the product standard**; the other goes to the R&D/bench shelf.
-- [ ] Register/configure the **winning gateway** to the chosen LNS as the standing setup;
-      confirm it shows **connected** in the LNS console.
+- [ ] Register/configure the **SenseCAP M2** to the chosen LNS; confirm it shows
+      **connected** in the LNS console.
 - [ ] Onboard the **Dragino sensor** via OTAA (DevEUI / AppEUI / AppKey from the box);
       confirm it **joins** and uplinks appear in the LNS console.
 - [ ] Load/verify the **Dragino payload codec** in the LNS so uplinks decode to a
