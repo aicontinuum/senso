@@ -37,18 +37,23 @@ Hardware on hand: **1× SenseCAP M2 Multi-Platform Indoor Gateway (SX1302), EU86
       Ruled out: **free TTN** (no SLA/control, best-effort) and **The Things Stack Cloud**
       (~$200/mo, too costly at this stage). ✓
 
+- [x] **Self-host vs managed — decided: self-host.** Deployment runbook in
+      `network-server/README.md` (VPS sizing, DNS, firewall, security hardening,
+      resilience checklist). Can migrate to managed later with no rebuild if upkeep
+      gets old — see that doc's §7.
+
 ### Phase 0 remaining
-- Pick **self-host vs managed ChirpStack** to *start* on (flippable later; self-host =
-  cheapest + full control, managed = ops offloaded for ~$40/mo flat).
 - Regulatory homework: is **EU868 permitted in Qatar**? (Do before commercial deploy;
   not a blocker for bench testing.)
-- Tip carried into Phase 1: point gateways at a **hostname you control** (`lns.senso.com`)
-  not a raw IP, so a future server move is a DNS change rather than touching every gateway.
 
 _Note: each sensor label carries its **DevEUI** + a **QR (AppKey)** — the LoRaWAN join
 credentials used to onboard devices in Phase 1/3. Treat the AppKey/QR as secret._
 
 ## Phase 1 — Stand up the LoRaWAN network
+
+**Deploy ChirpStack first** — follow `network-server/README.md` (VPS → DNS → deploy →
+firewall → resilience checklist) before the steps below; the gateway needs a live LNS to
+register against.
 
 **Gateway decision — SenseCAP M2 chosen as the product standard.** The RAK7266 WisGate
 SOHO Lite (non-LTE, EU868) goes to the R&D/bench shelf for later play, not the standing
