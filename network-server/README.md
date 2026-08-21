@@ -4,14 +4,17 @@ Deployment runbook for the LoRaWAN Network Server that sits between customer-sit
 gateways (SenseCAP M2) and our backend. See `MIGRATION.md` at the repo root for the
 overall Pi → Dragino/LoRaWAN migration context.
 
-**We deploy from the official upstream repo, not a fork checked in here** —
-`chirpstack-docker` changes with each ChirpStack release, and a copy pasted into this
-repo would silently rot. This doc is the layer on top: server sizing, DNS, firewall,
-security hardening, and the resilience checklist, applied to that upstream project.
+**Native install (apt + systemd), not Docker.** ChirpStack v4 unifies what used to be a
+separate Network Server + Application Server into a **single binary**, configured
+through **one file**: `/etc/chirpstack/chirpstack.toml` — simpler than the old v3 split.
+Installing via ChirpStack's own apt repo + systemd matches the ops model already used on
+the Pi gateway kit (`systemctl`, `journalctl`, services) rather than introducing Docker as
+a second paradigm. This doc is the layer on top of the official install steps: server
+sizing, DNS, firewall, security hardening, and the resilience checklist.
 
-Verified 2026-07 against the official `chirpstack/chirpstack-docker` repo. Confirm
-current details against upstream before deploying, since ChirpStack ships new majors
-periodically.
+Confirm current package names / apt repo URL / config keys against ChirpStack's live docs
+when actually on the box — exact details shift between releases and shouldn't be trusted
+from a static copy pasted here.
 
 ---
 
@@ -21,7 +24,7 @@ periodically.
   a modest fleet for a while). Scale up later if needed — nothing here is hard to resize.
 - **Provider:** Hetzner or DigitalOcean are the usual picks for this — cheap, reliable,
   simple snapshots. ~$10–15/mo at this spec.
-- **OS:** Ubuntu LTS (or your preference) with Docker + Docker Compose installed.
+- **OS:** Ubuntu LTS.
 
 ## 2. DNS — point a hostname you control at it
 
@@ -30,32 +33,35 @@ to a raw IP. If the server ever moves (bigger box, different provider, switch to
 hosting), it's a DNS change instead of re-touching every deployed gateway. Do this now,
 before any gateway is provisioned against it.
 
-## 3. Deploy ChirpStack
+## 3. Deploy ChirpStack (native)
+
+Install order:
+
+1. **PostgreSQL** (apt) — create the `chirpstack` database + a dedicated user with a real
+   (not default/example) password.
+2. **Redis** (apt) — ChirpStack's cache layer.
+3. **Mosquitto** (apt) — the MQTT broker ChirpStack talks through internally, and what
+   our backend consumer subscribes to in Phase 2.
+4. **ChirpStack + `chirpstack-gateway-bridge`** — from ChirpStack's own apt repo. The
+   gateway-bridge is still a separate service even in v4 — it's what translates the
+   SenseCAP M2's Semtech UDP packets (port 1700) into what ChirpStack expects internally.
+   (We're using Packet Forwarder/UDP mode on the M2 to start — see §5 — so this is the
+   bridge we need; Basics Station is a later upgrade path, confirm at that point whether
+   v4 needs a separate bridge for it or handles it natively.)
+
+Configure `/etc/chirpstack/chirpstack.toml`:
+
+- Point it at the local Postgres / Redis / Mosquitto.
+- **Region: EU868 only** — matches both the SenseCAP M2 and the Dragino LHT65N-E3.
+- Set a strong ChirpStack admin password on first login.
+
+Start everything via systemd:
 
 ```bash
-git clone https://github.com/chirpstack/chirpstack-docker.git
-cd chirpstack-docker
+systemctl enable --now postgresql redis-server mosquitto chirpstack chirpstack-gateway-bridge
 ```
 
-Services this brings up (confirmed from the upstream compose file): `chirpstack` (web UI
-+ API, port 8080), `chirpstack-rest-api` (8090), `chirpstack-gateway-bridge` (Semtech UDP
-packet forwarder, port 1700), `chirpstack-gateway-bridge-basicstation` (port 3001),
-`mosquitto` (MQTT broker, 1883), `postgresql` (device/app data), `redis` (cache). All
-configured with automatic restart by default.
-
-Before `docker compose up`:
-
-- **Set the region to EU868** — matches both the SenseCAP M2 and the Dragino LHT65N-E3.
-  Region config lives under `configuration/chirpstack/region_*.toml` — enable EU868,
-  disable regions we don't use.
-- **Change every default credential.** The upstream compose ships with a placeholder
-  Postgres user/password (`chirpstack`/`chirpstack`) meant for local testing only — set
-  real secrets before this is reachable from the internet. Set a strong ChirpStack admin
-  password on first login too.
-
-```bash
-docker compose up -d
-```
+**End state:** the ChirpStack web UI (port 8080) loads and you can log in.
 
 ## 4. Firewall — expose only what gateways need
 
@@ -84,8 +90,9 @@ under a tenant, confirm it shows **connected** once the M2 is pointed at us.
 
 ## 6. Resilience checklist (do all of these before this carries real customer data)
 
-- [ ] **Auto-restart** — confirm the compose file's restart policy is active (should be
-      by default); a crashed container should recover in seconds, untouched.
+- [ ] **Auto-restart** — confirm each systemd unit restarts on failure (`Restart=always`
+      / `systemctl is-enabled`), same pattern as the Pi's `senso-forwarder.service`; a
+      crashed process should recover in seconds, untouched.
 - [ ] **Automated backups** — daily `pg_dump` of the Postgres volume (device configs,
       gateway registrations, join state), off the VPS.
 - [ ] **VPS snapshots** — provider-level snapshot on a schedule, so a dead server is a
