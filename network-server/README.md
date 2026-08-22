@@ -1,118 +1,152 @@
 # Senso Network Server — Self-Hosted ChirpStack
 
-Deployment runbook for the LoRaWAN Network Server that sits between customer-site
-gateways (SenseCAP M2) and our backend. See `MIGRATION.md` at the repo root for the
-overall Pi → Dragino/LoRaWAN migration context.
+The LoRaWAN Network Server sitting between customer-site gateways and our backend.
+**Live since 2026-08-22.** See `MIGRATION.md` at the repo root for the overall
+Pi → LoRaWAN migration context.
 
-**Native install (apt + systemd), not Docker.** ChirpStack v4 unifies what used to be a
-separate Network Server + Application Server into a **single binary**, configured
-through **one file**: `/etc/chirpstack/chirpstack.toml` — simpler than the old v3 split.
-Installing via ChirpStack's own apt repo + systemd matches the ops model already used on
-the Pi gateway kit (`systemctl`, `journalctl`, services) rather than introducing Docker as
-a second paradigm. This doc is the layer on top of the official install steps: server
-sizing, DNS, firewall, security hardening, and the resilience checklist.
+This is an **as-built** record of what is actually deployed — not a plan.
 
-Confirm current package names / apt repo URL / config keys against ChirpStack's live docs
-when actually on the box — exact details shift between releases and shouldn't be trusted
-from a static copy pasted here.
+> Repo is private. This file names hosts, paths, and ports (no credentials — those live in
+> the password manager). Scrub before the repo ever goes public; same caveat as the
+> corresponding item in `TODO.md`.
 
 ---
 
-## 1. Provision the VPS
+## 1. What's deployed
 
-- **Spec:** 2 vCPU / 4 GB RAM is comfortably enough for our scale (one gateway today,
-  a modest fleet for a while). Scale up later if needed — nothing here is hard to resize.
-- **Provider:** Hetzner or DigitalOcean are the usual picks for this — cheap, reliable,
-  simple snapshots. ~$10–15/mo at this spec.
-- **OS:** Ubuntu LTS.
+| | |
+|---|---|
+| Provider | Hostinger KVM, **Mumbai** |
+| OS | Ubuntu 24.04.4 LTS |
+| Hostname | `srv1922115` |
+| Public IP | `187.127.218.61` |
+| Access | `ssh root@187.127.218.61` — key-based (ed25519 `senso-vps`, passphrase). Root password in the password manager as a Hostinger-console fallback if SSH ever breaks. |
+| Stack dir | `/opt/senso/chirpstack-docker/` |
+| Dashboard | **https://lns.sensoqa.com** — user `admin`, password changed from the default ✓ |
 
-## 2. DNS — point a hostname you control at it
+Mumbai is ~2,000 km from Doha — closer than the European regions originally considered.
 
-Set an **A record**, e.g. `lns.senso.com` → the VPS's IP, rather than hardcoding gateways
-to a raw IP. If the server ever moves (bigger box, different provider, switch to managed
-hosting), it's a DNS change instead of re-touching every deployed gateway. Do this now,
-before any gateway is provisioned against it.
+## 2. Install method — Docker (not native apt/systemd)
 
-## 3. Deploy ChirpStack (native)
+Deployed from the official **`github.com/chirpstack/chirpstack-docker`** into
+`/opt/senso/chirpstack-docker/`. Docker 29.7.2 / Compose v5.5.0, pre-installed on the
+Hostinger image. Edited files have local backups alongside them
+(`docker-compose.yml.bak`, `chirpstack.toml.bak`).
 
-Install order:
+**8 containers:**
 
-1. **PostgreSQL** (apt) — create the `chirpstack` database + a dedicated user with a real
-   (not default/example) password.
-2. **Redis** (apt) — ChirpStack's cache layer.
-3. **Mosquitto** (apt) — the MQTT broker ChirpStack talks through internally, and what
-   our backend consumer subscribes to in Phase 2.
-4. **ChirpStack + `chirpstack-gateway-bridge`** — from ChirpStack's own apt repo. The
-   gateway-bridge is still a separate service even in v4 — it's what translates the
-   SenseCAP M2's Semtech UDP packets (port 1700) into what ChirpStack expects internally.
-   (We're using Packet Forwarder/UDP mode on the M2 to start — see §5 — so this is the
-   bridge we need; Basics Station is a later upgrade path, confirm at that point whether
-   v4 needs a separate bridge for it or handles it natively.)
+| Container | Role |
+|---|---|
+| `chirpstack` | Network + application server (v4 single binary); UI/API on :8080 |
+| `chirpstack-gateway-bridge` | Semtech UDP packet-forwarder listener (**UDP 1700**) — what the M2 talks to |
+| `chirpstack-gateway-bridge-basicstation` | Basics Station listener — unused today, future upgrade path |
+| `chirpstack-rest-api` | REST wrapper over the gRPC API |
+| `postgres` (14-alpine) | Device / gateway / join state — **not** sensor readings |
+| `redis` (7-alpine) | Cache |
+| `mosquitto` (eclipse-mosquitto:2) | Internal MQTT bus |
+| `caddy` (caddy:2) | Reverse proxy + automatic HTTPS (hand-added as the 8th service) |
 
-Configure `/etc/chirpstack/chirpstack.toml`:
+## 3. TLS + DNS
 
-- Point it at the local Postgres / Redis / Mosquitto.
-- **Region: EU868 only** — matches both the SenseCAP M2 and the Dragino LHT65N-E3.
-- Set a strong ChirpStack admin password on first login.
+Caddy fronts ChirpStack so port 8080 is never exposed directly.
+`/opt/senso/chirpstack-docker/Caddyfile`:
 
-Start everything via systemd:
-
-```bash
-systemctl enable --now postgresql redis-server mosquitto chirpstack chirpstack-gateway-bridge
+```
+lns.sensoqa.com {
+    reverse_proxy chirpstack:8080
+}
 ```
 
-**End state:** the ChirpStack web UI (port 8080) loads and you can log in.
+Let's Encrypt certificate issued and auto-renewing.
 
-## 4. Firewall — expose only what gateways need
+**DNS (Cloudflare):** `lns.sensoqa.com` → A → `187.127.218.61`, **grey cloud (DNS only)**.
 
-- **Open to the internet:** the port your gateways will actually use to reach it —
-  **UDP 1700** (Semtech packet forwarder) is the simpler mode to start with; **TCP 3001**
-  (Basics Station, TLS-based) is the more production-grade option to move to later.
-- **Keep closed / admin-only:** the ChirpStack **web UI (8080)** and **REST API (8090)** —
-  restrict to an SSH tunnel, VPN, or IP allowlist. Don't expose the admin console to the
-  open internet.
-- **Internal only:** **Mosquitto (1883)** — only our backend's MQTT consumer needs this,
-  not the public internet.
+> ⚠️ **Keep it grey.** Switching to orange (proxied) collides with Caddy's certificate
+> handling and breaks HTTPS unless Caddy is reconfigured for that first.
 
-## 5. Point the SenseCAP M2 at it
+Harmless log noise, safe to ignore: `Caddyfile is not formatted` (cosmetic) and
+`failed to increase receive buffer size` (UDP buffer note).
 
-The M2's local console (Wi-Fi AP or Ethernet setup page) has a **Packet Forwarder /
-Basics Station mode** for pointing at an external network server — confirmed as
-supported and documented by Seeed for pairing with ChirpStack specifically. Set it to:
+## 4. ⚠️ Region rule — register every Qatar device as `eu868`
 
-- **Mode:** Packet Forwarder (start here) — server address `lns.senso.com`, port `1700`.
-- Exact menu wording may vary by firmware version — Seeed publishes a
-  "Connect M2 Multi-Platform Gateway to ChirpStack" guide; confirm field names against
-  the actual device/current firmware rather than this doc if anything doesn't match.
+`configuration/chirpstack/chirpstack.toml` has **all regions enabled**, deliberately, to
+keep future expansion open. That removes the config-level guardrail, so the safeguard
+moves to registration time:
 
-On the ChirpStack side: register the gateway (its EUI, visible in the M2's console/label)
-under a tenant, confirm it shows **connected** once the M2 is pointed at us.
+**Every device and gateway registered for Qatar must have `eu868` selected explicitly.**
+Both the SenseCAP M2 and the Dragino LHT65N-E3 are EU868 hardware; anything registered
+under the wrong region will not work correctly.
 
-## 6. Resilience checklist (do all of these before this carries real customer data)
+## 5. Firewall (ufw)
 
-- [ ] **Auto-restart** — confirm each systemd unit restarts on failure (`Restart=always`
-      / `systemctl is-enabled`), same pattern as the Pi's `senso-forwarder.service`; a
-      crashed process should recover in seconds, untouched.
-- [ ] **Automated backups** — daily `pg_dump` of the Postgres volume (device configs,
-      gateway registrations, join state), off the VPS.
-- [ ] **VPS snapshots** — provider-level snapshot on a schedule, so a dead server is a
-      redeploy-from-snapshot, not a rebuild-from-scratch.
-- [ ] **External uptime monitor** — a free service (UptimeRobot, Healthchecks.io) pinging
-      the server every minute, alerting you (not silently) if it goes down. This is what
-      makes an outage *loud* instead of a silent gap in the compliance record.
-- [ ] **Backend consumer resilience** — Phase 2 work: make sure our MQTT/webhook consumer
-      itself doesn't silently drop messages during its own restarts.
+Active, enabled on boot. Default **deny incoming / allow outgoing**. Open: `22/tcp`,
+`80/tcp`, `443/tcp` (IPv4 + IPv6).
 
-Our 15-min reading cadence + 35-min sensor staleness threshold already tolerates a short
-NS blip without any customer-visible effect — the goal here is "recovers in well under
-that window and pages someone if it doesn't," not literal zero downtime (nobody has that).
+> ⚠️ **Known gap — deferred, not yet audited.** Docker writes its own iptables rules that
+> **bypass ufw**, so any port published in `docker-compose.yml` is reachable from the
+> internet regardless of what ufw says. That is how UDP 1700 reaches the gateway-bridge
+> despite not appearing in the ufw allow-list — and it means ufw is **not** a second layer
+> in front of Postgres/Redis. If those are published in the compose file, they are
+> internet-exposed on whatever credentials they carry.
+>
+> To audit, on the box:
+> ```bash
+> cd /opt/senso/chirpstack-docker
+> docker compose ps                      # look for 0.0.0.0: bindings in PORTS
+> ss -tulnp | grep -E '5432|6379'
+> ```
+> From another machine: `nc -zv 187.127.218.61 5432`. Fix if exposed: remove those
+> `ports:` entries — containers still reach each other over the internal Docker network
+> without them.
 
-## 7. Migration flexibility (for later)
+## 6. Common operations
 
-Self-host now, move to managed hosting (e.g. chirphost) later if upkeep gets old — same
-ChirpStack software either direction, no rebuild. Moving means: re-register devices/
+```bash
+cd /opt/senso/chirpstack-docker
+
+docker compose ps                              # what's running + published ports
+docker compose logs -f chirpstack              # follow one service's logs
+docker compose restart <service>
+docker compose pull && docker compose up -d    # update images
+```
+
+## 7. Resilience checklist
+
+- [x] **Auto-restart** — the upstream compose file sets restart policies on its services.
+      **Still verify the hand-added `caddy` service has one** — without it, a Caddy crash
+      takes the dashboard and HTTPS down and they stay down.
+- [ ] **Automated database backups** — scheduled `pg_dump` of the `postgres` container,
+      stored off the VPS. *(The `.bak` files in the stack dir are config backups only —
+      they are not database backups.)*
+- [ ] **VPS snapshots** — Hostinger-level scheduled snapshots, so a dead server is a
+      restore rather than a rebuild.
+- [ ] **External uptime monitor** — UptimeRobot / Healthchecks.io hitting
+      `https://lns.sensoqa.com` every minute and alerting on failure. This is what makes
+      an outage *loud* rather than a silent gap in the compliance record.
+- [ ] **Backend consumer resilience** — Phase 4 work: the ingest path must not silently
+      drop uplinks during its own restarts or deploys.
+
+Our 15-min reading cadence and 35-min sensor-staleness threshold already absorb a short
+NS blip with no customer-visible effect. The goal is "recovers well inside that window,
+and pages someone if it doesn't" — not literal zero downtime, which nobody has.
+
+## 8. Tenancy model
+
+**ChirpStack tenant = customer.** Each real customer gets their own tenant/application so
+devices stay cleanly separated. Customers never see ChirpStack — they only ever see
+senso.com.
+
+Testing currently runs in the default tenant `ChirpStack`
+(`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`).
+
+## 9. Migration flexibility (for later)
+
+Self-host now; move to managed hosting (e.g. chirphost) later if upkeep gets old — same
+ChirpStack software either direction, no rebuild. Moving means: re-register devices and
 gateways (scriptable via the ChirpStack API, or manual re-entry at small scale — we hold
 every DevEUI/AppKey ourselves as a fallback), re-point each physical gateway's server
-address, re-point our backend consumer. Effort scales with the number of gateways
-deployed at the time, so revisit this before the fleet gets large if hosting is likely to
-change.
+address, and re-point our backend integration. Effort scales with the number of gateways
+deployed at the time.
+
+Because gateways point at **`lns.sensoqa.com`** rather than a raw IP, moving the server
+itself is a DNS change rather than a visit to every gateway.

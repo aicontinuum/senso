@@ -1,4 +1,4 @@
-# Migration: Raspberry Pi → Dragino / SenseCAP (LoRaWAN)
+# Migration: Raspberry Pi → LoRaWAN (SenseCAP + Dragino)
 
 Moving the **end product** off the prototype stack (Raspberry Pi gateway + from-scratch
 ESP32 sensors) onto off-the-shelf **LoRaWAN** hardware: a **SenseCAP** gateway and
@@ -6,108 +6,177 @@ ESP32 sensors) onto off-the-shelf **LoRaWAN** hardware: a **SenseCAP** gateway a
 
 **The core shift:** raw LoRa → LoRaWAN. The gateway becomes a dumb radio bridge; a
 **LoRaWAN Network Server (LNS)** now sits between the gateway and our backend, and our
-integration point moves from "the Pi forwarder POSTs to `/api/ingest`" to "the LNS
-delivers decoded uplinks to us via webhook/MQTT." The web platform (dashboards, alerts,
-reports, thresholds, timezones, freshness-based status) is backend-agnostic and carries
-over almost entirely.
+integration point moves from "the Pi forwarder POSTs to `/api/ingest`" to "ChirpStack
+delivers decoded uplinks to us." The web platform (dashboards, alerts, reports,
+thresholds, timezones, freshness-based status) is backend-agnostic and carries over
+almost entirely.
 
-Work through this list roughly top-to-bottom — later phases depend on earlier ones.
+> **Phase numbering** follows the 2026-08-22 session summary: 1 = server, 2 = gateway,
+> 3 = sensor, 4 = ingest, 5 = schema. (An earlier draft of this file numbered things
+> differently — this is the current scheme.)
+
+## Status at a glance
+
+| Phase | | Status |
+|---|---|---|
+| 0 | Hardware & decisions | ✅ *(one regulatory item open)* |
+| 1 | ChirpStack server stood up | ✅ |
+| 2 | Gateway online | ✅ |
+| 3 | Register test sensor | ← **next** |
+| 4 | ChirpStack → backend ingest | |
+| 5 | Supabase schema updates | |
+
+Infrastructure details live in **`network-server/README.md`** (as-built).
+Domain: **sensoqa.com** (Cloudflare) · LNS: **lns.sensoqa.com**
 
 ---
 
-## Phase 0 — Verify hardware & decisions (blockers — do first)
+## Phase 0 — Hardware & decisions ✅
 
-Hardware on hand: **1× SenseCAP M2 Multi-Platform Indoor Gateway (SX1302), EU868**
-(SKU 114992981) · **3× Dragino LHT65N Temp & Humidity Sensor, 868 MHz** (SKU 113990756).
+Hardware: **1× SenseCAP M2 Multi-Platform Indoor Gateway (SX1302), EU868**
+(SKU 114992981) · **3× Dragino LHT65N-E3 Temp & Humidity Sensor, 868 MHz**
+(SKU 113990756) · **1× RAK7266 WisGate SOHO Lite (non-LTE, EU868)** — R&D shelf.
 
-- [x] **SenseCAP gateway model confirmed** — **SenseCAP M2 Multi-Platform (SX1302),
-      EU868.** "Multi-Platform" speaks standard LoRaWAN to The Things Stack / ChirpStack /
-      AWS — NOT the Helium-locked M1, so we're free to use our own LNS. ✓
-- [x] **Dragino sensor model confirmed** — **LHT65N-E3, EU868** (external-probe variant,
-      probe rated to −40 °C). Use case includes **freezers**, so the external probe is
-      required, not optional. Deployment: body + antenna stay outside; only the probe
-      runs in past the door gasket (clean RF, freezer-rated tip). ✓
-- [ ] **Frequency band** — sensor and gateway are **both EU868 → they match each other.** ✓
-      **OPEN:** verify 868 MHz (863–870) is permitted in **Qatar** (CRA short-range-device
-      rules) before commercial deployment. Fine for bench/testing regardless.
-- [x] **Network Server decided — ChirpStack.** Self-host now (~$10–15/mo VPS) or managed
-      (chirphost ~€35/mo flat, no per-device fees). Both are the **same ChirpStack
-      software**, so self-host ↔ managed is a low-friction switch later (re-register
-      devices via API + re-point gateways; effort scales with deployed gateway count).
-      Ruled out: **free TTN** (no SLA/control, best-effort) and **The Things Stack Cloud**
-      (~$200/mo, too costly at this stage). ✓
+- [x] **Gateway model** — SenseCAP M2 Multi-Platform (SX1302), EU868. "Multi-Platform"
+      speaks standard LoRaWAN to any LNS — not the Helium-locked M1. **Chosen as the
+      product standard**; the RAK7266 stays on the bench. Gateway choice is
+      backend-invisible (ChirpStack normalizes every gateway's uplinks before our backend
+      sees them), so a different model can be offered to specific customers later with no
+      backend changes.
+- [x] **Sensor model** — Dragino LHT65N-E3, EU868: the **external-probe** variant, probe
+      rated to −40 °C. Required (not optional) because freezers are in scope. Deployment:
+      body + antenna stay outside, only the probe runs in past the door gasket — clean RF
+      and a freezer-rated tip.
+- [x] **Band** — sensor and gateway are both EU868 and match. Validated in practice by the
+      gateway registering and running on EU868.
+- [x] **Network Server** — **ChirpStack, self-hosted.** Ruled out: free TTN (no
+      SLA/control) and The Things Stack Cloud (~$200/mo). Managed ChirpStack (chirphost,
+      ~€35/mo flat) remains an easy fallback — same software, no rebuild.
+- [ ] **OPEN — regulatory:** confirm **CRA type approval / EU868 permitted in Qatar** for
+      the Dragino + SenseCAP hardware. Not a blocker for bench testing; **is** a blocker
+      before commercial deployment.
 
-- [x] **Self-host vs managed — decided: self-host.** Deployment runbook in
-      `network-server/README.md` (VPS sizing, DNS, firewall, security hardening,
-      resilience checklist). Can migrate to managed later with no rebuild if upkeep
-      gets old — see that doc's §7.
+_Each sensor's label carries its **DevEUI** plus a **QR** encoding the join keys
+(AppEUI/JoinEUI + AppKey) — the device's "passport." Treat the QR/AppKey as secret._
 
-### Phase 0 remaining
-- Regulatory homework: is **EU868 permitted in Qatar**? (Do before commercial deploy;
-  not a blocker for bench testing.)
+## Phase 1 — ChirpStack server ✅
 
-_Note: each sensor label carries its **DevEUI** + a **QR (AppKey)** — the LoRaWAN join
-credentials used to onboard devices in Phase 1/3. Treat the AppKey/QR as secret._
+Stood up on a Hostinger KVM VPS (Mumbai, Ubuntu 24.04), deployed via Docker from the
+official `chirpstack-docker` repo, fronted by Caddy with Let's Encrypt HTTPS at
+**https://lns.sensoqa.com**. Admin password changed from the default. ufw active.
 
-## Phase 1 — Stand up the LoRaWAN network
+Full detail — containers, DNS, TLS, region rule, ops commands, resilience checklist,
+and the deferred Docker/ufw audit — is in **`network-server/README.md`**.
 
-**Deploy ChirpStack first** — follow `network-server/README.md` (VPS → DNS → deploy →
-firewall → resilience checklist) before the steps below; the gateway needs a live LNS to
-register against.
+## Phase 2 — Gateway online ✅
 
-**Gateway decision — SenseCAP M2 chosen as the product standard.** The RAK7266 WisGate
-SOHO Lite (non-LTE, EU868) goes to the R&D/bench shelf for later play, not the standing
-setup. (Gateway choice is backend-invisible either way — ChirpStack normalizes every
-gateway's uplinks to the same DevEUI + decoded-payload shape before our backend ever sees
-them, so this was a hardware/ops call, not a technical constraint. Nothing stops offering
-the RAK — or another model — to specific customers later without any backend changes, if a
-use case calls for it, e.g. LTE-fallback variants for shaky-WiFi sites.)
+| | |
+|---|---|
+| Hardware | SenseCAP M2 (console is OpenWrt 21.02 / LuCI-based) |
+| **Gateway EUI** | **`2CF7F11081400088`** |
+| ChirpStack name | `gateway1` — region **eu868**, stats interval 30, downlink priority 10 |
+| Packet forwarder | Mode **Packet Forwarder** → `lns.sensoqa.com`, port **1700** up / **1700** down (server address entered via the `-- custom --` dropdown) |
+| Link | Proven on Ethernet **and** WiFi; currently WiFi-only (dev SSID `HOME`) |
+| Status | **Online** — live "last seen" heartbeat |
 
-- [ ] Register/configure the **SenseCAP M2** to the chosen LNS; confirm it shows
-      **connected** in the LNS console.
-- [ ] Onboard the **Dragino sensor** via OTAA (DevEUI / AppEUI / AppKey from the box);
-      confirm it **joins** and uplinks appear in the LNS console.
-- [ ] Load/verify the **Dragino payload codec** in the LNS so uplinks decode to a
-      temperature JSON (not raw bytes).
-- [ ] Set the Dragino **uplink interval (TDC)** to 15 min; re-confirm the **35-min sensor
+"Online" means the gateway is talking to ChirpStack and ready to relay — it has heard
+from no sensor yet. That's Phase 3.
+
+**Field learning — WiFi provisioning:** configuring WiFi *over the gateway's own hotspot
+fails* (you're reconfiguring the link you're using, so it can't confirm and rolls back:
+"Failed to confirm apply within 90s"). Working method: connect on **Ethernet** first →
+**Reset** any stuck pending changes → set WiFi → Save & Apply → WiFi sticks, then
+Ethernet can be unplugged. **Technicians should carry a short Ethernet cable even for
+WiFi-only sites.** Prefer Ethernet for 24/7 runtime where available.
+
+## Phase 3 — Register test sensor ← next
+
+Needs a physical Dragino LHT65N-E3 on hand. Doing this **manually via the ChirpStack
+dashboard** first, deliberately, to learn the flow before automating it via API.
+
+- [ ] Create/confirm a device profile with the **official Dragino LHT65N decoder**.
+- [ ] Register the sensor (DevEUI + join keys from its QR/box) under the test tenant,
+      **region `eu868`**.
+- [ ] Power the sensor; confirm **OTAA join** and a **decoded uplink** showing
+      `TempC_DS`, `TempC_SHT`, `Hum_SHT`, `BatV`.
+- [ ] **Accuracy checkpoint:** ice-water test — the probe should read ~0 °C.
+- [ ] Set the uplink interval (**TDC**) to 15 min; re-confirm the **35-min sensor
       staleness** threshold still fits.
 
-## Phase 2 — Backend ingest path
+## Phase 4 — ChirpStack → backend ingest
 
-- [ ] Decide the integration transport: **LNS webhook** vs **MQTT** consumer.
-- [ ] Build the new ingest endpoint/consumer for the **LNS payload shape** (DevEUI,
-      `decoded_payload`, `rx_metadata` incl. RSSI/SNR, `received_at`).
-- [ ] Reuse the existing **alert / threshold / upsert** logic behind the new front door.
-- [ ] Replace the per-gateway **Bearer-secret auth** with **LNS webhook auth**
-      (signature / API key) or MQTT credentials.
-- [ ] **Identity mapping:** store the **DevEUI** as the sensor `hardware_id`; the gateway
-      **EUI** as the gateway id.
-- [ ] **Delivery reliability:** run a persistent MQTT consumer, or confirm/handle the
-      LNS webhook retry behavior, so a backend blip doesn't silently drop uplinks
-      (this replaces the Pi's store-and-forward guarantee).
+Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with a
+**shared-secret header** (rather than an MQTT consumer).
 
-## Phase 3 — Provisioning workflow (order → set up → deploy)
+- [ ] Wire the HTTP integration with the shared-secret header.
+- [ ] Reshape the ingest parser to the decoded LoRaWAN JSON (DevEUI, `decoded_payload`,
+      `rx_metadata` incl. RSSI/SNR, `received_at`).
+- [ ] **Reject readings from any DevEUI not already registered** — an unknown device means
+      a mis-scan or a stray, and must not be written into a compliance record. (This also
+      closes the old fail-open device-auth item in `TODO.md`.)
+- [ ] Reuse the existing alert / threshold / upsert logic behind the new front door.
+- [ ] **Delivery reliability** — confirm/handle the integration's retry behavior so a
+      backend blip doesn't silently drop uplinks (this replaces the Pi's store-and-forward
+      guarantee).
+- [ ] Derive **gateway liveness** from ChirpStack's gateway status (replaces
+      `heartbeat.sh`).
 
-- [ ] Admin flow to **register a new sensor**: enter DevEUI/AppKey → create the LNS end
-      device → bind DevEUI → sensor → customer.
-- [ ] Admin flow to **onboard a gateway**: register the gateway EUI, bind to customer/site.
-- [ ] Derive **gateway liveness** from LNS gateway status (replaces `heartbeat.sh`).
-- [ ] Write the **per-customer kit runbook**: order → provision → bench-test → ship →
-      deploy on site.
+## Phase 5 — Supabase schema updates
 
-## Phase 4 — Cut over & retire the Pi from the product path
+- [ ] `sensors.hardware_id` → **DevEUI** format.
+- [ ] `gateways.mac_address` → **Gateway EUI** format.
+- [ ] Add a nullable **`humidity`** column to `readings` (the LHT65N reports it).
 
-- [ ] Run the Dragino + SenseCAP path **end-to-end into the dashboard in parallel** with
-      the Pi for validation.
-- [ ] Verify **readings, alerts, online/offline, and reports** all work off the LoRaWAN
-      path.
-- [ ] **Demote the Pi `gateway/` kit to test-only** — keep for the bench, mark it clearly.
+---
+
+## Onboarding model (confirmed)
+
+Split into **office prep** and **site install**.
+
+**Office prep (before driving out):**
+- ChirpStack: create the customer's tenant/application; scan each Dragino QR to register
+  sensors; attach the Dragino device profile (official decoder); register the gateway by
+  its Gateway EUI. **Region `eu868` every time.**
+- senso.com: create the customer account and pre-create sensor/gateway records using the
+  same DevEUIs.
+
+**Site install:**
+- Mount + power the gateway, get it online, confirm "online" in ChirpStack.
+- Mount sensors, power on — **OTAA auto-joins**, no manual pairing. Watch the first
+  decoded reading arrive.
+- Name each sensor in the app (friendly label mapped onto its DevEUI).
+- **Verify one reading is correct** before trusting it (ice-water, or compare against an
+  existing thermometer) — a per-install verification checkpoint.
+- Set alert thresholds + recipients; send a test alert.
+- Hand over credentials; mark active + invoice on the admin side.
+
+**Screens:** ChirpStack (device registration, internal only) · senso.com (naming, alerts)
+· senso.admin (customer/billing). **The customer only ever sees senso.com.**
+
+## After the five phases
+
+- [ ] **API-based onboarding** — senso.admin calls the ChirpStack API to register devices
+      behind the scenes (needs a ChirpStack API key). Build after doing the manual flow
+      once.
+- [ ] **Email alerts system** (plan already complete): inline threshold eval at ingest,
+      `pg_cron` absence-of-data sweep, confirmation-delay state machine (two consecutive
+      breaches), gateway rollup, backfill suppression, idempotency keys, and an
+      `alert_notifications` audit table.
+- [ ] **Upgrade Resend to Pro** before the first paying customer.
+- [ ] **Cut over and retire the Pi from the product path** — run both in parallel for
+      validation, verify readings/alerts/status/reports all work off LoRaWAN, then demote
+      the Pi `gateway/` kit to test-only and mark it clearly.
 - [ ] Update **DEVLOG / SENSO** docs to reflect the LoRaWAN architecture.
+- [ ] Use **downlinks** to remotely reconfigure deployed sensors (interval, thresholds).
+- [ ] Capture **RSSI / SNR** per uplink for signal-quality visibility.
 
-## Phase 5 — Loose ends & nice-to-haves
+## Open items carried forward
 
-- [ ] Use **downlinks** to remotely reconfigure deployed sensors (interval / thresholds).
-- [ ] Capture **RSSI / SNR** per uplink for signal-quality visibility (new data LoRaWAN
-      gives you).
-- [ ] Decide long-term **LNS economics** (TTN community vs The Things Industries paid vs
-      ChirpStack self-host).
+1. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
+2. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
+   (deferred; details and commands in `network-server/README.md` §5).
+3. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
+   the domain does not clear the name for use.
+4. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
+   monitor are all still unconfigured (`network-server/README.md` §7).
+5. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
