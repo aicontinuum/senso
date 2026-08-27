@@ -5,6 +5,7 @@ The LoRaWAN Network Server sitting between customer-site gateways and our backen
 Pi → LoRaWAN migration context.
 
 This is an **as-built** record of what is actually deployed — not a plan.
+For the uplink JSON this server emits to our backend, see **`UPLINK-FORMAT.md`**.
 
 > Repo is private. This file names hosts, paths, and ports (no credentials — those live in
 > the password manager). Scrub before the repo ever goes public; same caveat as the
@@ -132,14 +133,44 @@ and pages someone if it doesn't" — not literal zero downtime, which nobody has
 
 ## 8. Tenancy model
 
-**ChirpStack tenant = customer.** Each real customer gets their own tenant/application so
-devices stay cleanly separated. Customers never see ChirpStack — they only ever see
-senso.com.
+ChirpStack has two grouping levels:
 
-Testing currently runs in the default tenant `ChirpStack`
-(`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`).
+- **Tenant = customer.** Gateways live at tenant level, shared across that customer's
+  applications.
+- **Application = branch/site** (a device group inside a tenant).
 
-## 9. Migration flexibility (for later)
+Customers never see ChirpStack — they only ever see senso.com. The customer-facing
+grouping must therefore exist in **our** schema too: `customers → sites → gateways/sensors`
+(a `sites`/`branches` table is a Phase 5 consideration).
+
+## 9. Registered objects (test)
+
+All under the default tenant `ChirpStack` (`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`) —
+real customers get their own tenants.
+
+| Object | Name | ID |
+|---|---|---|
+| Application | `senso-test` | `635fda7b-0428-495e-812f-027490bcaf9d` |
+| Device profile | `Dargino LHT65N` *(typo, to fix)* | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
+| Device | `sensor0` | DevEUI `a840419edb62011c` · DevAddr `01087309` · Class A |
+| Gateway | `gateway1` | EUI `2cf7f11081400088` |
+
+**Device profile:** EU868 · LoRaWAN 1.0.3 · regional params A (RP001 1.0.3) · OTAA ·
+expected uplink interval 1200 s *(→ 900 s once the 15-min downlink applies)* · payload
+codec = official Dragino **ChirpStack 4.0** decoder
+(`github.com/dragino/dragino-end-node-decoder`).
+
+> ⚠️ Use the **v4** decoder. v3-era decoders throw `UPLINK_CODEC` errors on ChirpStack v4.
+
+**Changing a device's reporting interval:** downlink command `0x01` + 3 bytes of seconds,
+on **fPort 1**. 15 min = 900 s = HEX `01000384`. Enqueue under Device → Queue (HEX).
+Class A devices only listen right after an uplink, so a queued downlink stays pending
+until the next one — that's normal, not a failure.
+
+Device AppKeys are **not** stored in this repo — they live in the founder's password
+manager.
+
+## 10. Migration flexibility (for later)
 
 Self-host now; move to managed hosting (e.g. chirphost) later if upkeep gets old — same
 ChirpStack software either direction, no rebuild. Moving means: re-register devices and

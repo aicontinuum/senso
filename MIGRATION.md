@@ -22,11 +22,13 @@ almost entirely.
 | 0 | Hardware & decisions | ✅ *(one regulatory item open)* |
 | 1 | ChirpStack server stood up | ✅ |
 | 2 | Gateway online | ✅ |
-| 3 | Register test sensor | ← **next** |
-| 4 | ChirpStack → backend ingest | |
+| 3 | First sensor registered + decoded uplink | ✅ |
+| 4 | ChirpStack → backend ingest | ← **next** |
 | 5 | Supabase schema updates | |
 
 Infrastructure details live in **`network-server/README.md`** (as-built).
+The exact uplink JSON and field mapping Phase 4 must consume is in
+**`network-server/UPLINK-FORMAT.md`**.
 Domain: **sensoqa.com** (Cloudflare) · LNS: **lns.sensoqa.com**
 
 ---
@@ -89,31 +91,62 @@ fails* (you're reconfiguring the link you're using, so it can't confirm and roll
 Ethernet can be unplugged. **Technicians should carry a short Ethernet cable even for
 WiFi-only sites.** Prefer Ethernet for 24/7 runtime where available.
 
-## Phase 3 — Register test sensor ← next
+## Phase 3 — First sensor registered ✅ *(2026-08-27)*
 
-Needs a physical Dragino LHT65N-E3 on hand. Doing this **manually via the ChirpStack
-dashboard** first, deliberately, to learn the flow before automating it via API.
+Registered manually via the ChirpStack dashboard (deliberately, to learn the flow before
+automating it via API). Full chain proven:
+**sensor → LoRaWAN EU868 → SenseCAP M2 → ChirpStack → correct decoded JSON.**
 
-- [ ] Create/confirm a device profile with the **official Dragino LHT65N decoder**.
-- [ ] Register the sensor (DevEUI + join keys from its QR/box) under the test tenant,
-      **region `eu868`**.
-- [ ] Power the sensor; confirm **OTAA join** and a **decoded uplink** showing
-      `TempC_DS`, `TempC_SHT`, `Hum_SHT`, `BatV`.
-- [ ] **Accuracy checkpoint:** ice-water test — the probe should read ~0 °C.
-- [ ] Set the uplink interval (**TDC**) to 15 min; re-confirm the **35-min sensor
-      staleness** threshold still fits.
+| Object | Name | ID |
+|---|---|---|
+| Application | `senso-test` | `635fda7b-0428-495e-812f-027490bcaf9d` |
+| Device profile | `Dargino LHT65N` *(typo — see open items)* | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
+| Device | `sensor0` | DevEUI `a840419edb62011c`, DevAddr `01087309`, Class A |
 
-## Phase 4 — ChirpStack → backend ingest
+**Device profile:** EU868 · LoRaWAN **1.0.3** · regional params **A (RP001 1.0.3)** ·
+**OTAA** · expected uplink interval **1200 s** *(→ should become 900 s)* · payload codec
+= the official Dragino **ChirpStack 4.0** decoder from
+`github.com/dragino/dragino-end-node-decoder`.
+
+> ⚠️ **Must be the v4 decoder.** v3-era decoders throw `UPLINK_CODEC` errors on
+> ChirpStack v4 — different function signature (`decodeUplink(input)`).
+
+**Key findings:**
+- **ADR works and matters a lot.** First uplinks were DR0/SF12 (weak, −102 RSSI); by the
+  third, ADR had moved the device to DR5/SF7. SF7 uses dramatically less battery per
+  transmit than SF12 — so **gateway placement affects battery life more than the reporting
+  interval does.** Add "check spreading factor after mounting" to the technician checklist.
+- **Class A downlink timing.** The device only listens briefly *after* it uplinks. Queued
+  downlinks stay pending until the next uplink — a pending downlink is not a failure.
+- Signal at the bench location is marginal (−102 RSSI); real installs need better placement.
+
+**Reporting interval:** changed by downlink — command `0x01` + 3 bytes of seconds, sent on
+**fPort 1**. 15 min = 900 s = HEX **`01000384`** (enqueue under Device → Queue, HEX).
+
+## Phase 4 — ChirpStack → backend ingest ← next
 
 Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with a
 **shared-secret header** (rather than an MQTT consumer).
 
-- [ ] Wire the HTTP integration with the shared-secret header.
-- [ ] Reshape the ingest parser to the decoded LoRaWAN JSON (DevEUI, `decoded_payload`,
-      `rx_metadata` incl. RSSI/SNR, `received_at`).
+> 📄 **The exact payload, field mapping, and parsing rules are in
+> `network-server/UPLINK-FORMAT.md`.** The current `/api/ingest` expects the old
+> Pi-forwarder shape and must be **replaced**, not extended.
+
+- [ ] Configure the HTTP integration on the `senso-test` application (Application →
+      Integrations → HTTP) pointing at `/api/ingest`.
+- [ ] **Rewrite the ingest parser** to the ChirpStack v4 JSON; implement the field mapping.
+      Primary temperature is **`object.TempC_DS`** (external probe) — *not* `TempC_SHT`
+      (internal ambient).
+- [ ] **Shared-secret header** — set on the integration, validated server-side; reject
+      requests without it.
 - [ ] **Reject readings from any DevEUI not already registered** — an unknown device means
-      a mis-scan or a stray, and must not be written into a compliance record. (This also
-      closes the old fail-open device-auth item in `TODO.md`.)
+      a mis-scan or a stray, and must not enter a compliance record. (Also closes the old
+      fail-open device-auth item in `TODO.md`.)
+- [ ] **Idempotency** — dedupe on `deduplicationId` and/or the unique
+      `(sensor_id, recorded_at)` index.
+- [ ] **Branch by `fPort`** — only fPort 2 is a reading (5 = device status, 3 = datalog
+      backfill, 1 = config). Suppress alerts on backfill, and **don't stamp fPort 3
+      readings with the top-level `time`** (see UPLINK-FORMAT.md §4).
 - [ ] Reuse the existing alert / threshold / upsert logic behind the new front door.
 - [ ] **Delivery reliability** — confirm/handle the integration's retry behavior so a
       backend blip doesn't silently drop uplinks (this replaces the Pi's store-and-forward
@@ -123,11 +156,53 @@ Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with
 
 ## Phase 5 — Supabase schema updates
 
-- [ ] `sensors.hardware_id` → **DevEUI** format.
-- [ ] `gateways.mac_address` → **Gateway EUI** format.
+- [ ] `sensors.hardware_id` → **DevEUI** format (e.g. `a840419edb62011c`).
+- [ ] `gateways.mac_address` → **Gateway EUI** format (e.g. `2cf7f11081400088`).
 - [ ] Add a nullable **`humidity`** column to `readings` (the LHT65N reports it).
+- [ ] Unique constraint on **`(sensor_id, recorded_at)`** — *verify first: DEVLOG records
+      `readings_sensor_time_uniq` as already created.*
+- [ ] Consider a **`sites`/`branches`** table — `customers → sites → gateways/sensors`
+      (see the tenancy decision below).
 
 ---
+
+## Product decisions from Phase 3
+
+**Tenancy: one tenant per customer, one application per branch.** ChirpStack has two
+grouping levels — **Tenant** (= customer) and **Application** (a device group inside a
+tenant); gateways live at tenant level, shared across a customer's applications.
+**Implication:** multi-branch customers need a **`sites`/`branches`** layer in our own
+schema (`customers → sites → gateways/sensors`) — the customer-facing grouping must exist
+in our layer regardless of how ChirpStack organizes things.
+
+**Reporting interval is per-customer, not global.** Product tiers:
+
+| Tier | Interval | For |
+|---|---|---|
+| Standard | 20 min *(device default)* | Restaurants, general cold storage — longest battery |
+| Test/current | 15 min | What `sensor0` is set to |
+| Critical | 10 min | Pharmacy, vaccine, labs — faster detection, shorter battery, accepted cost |
+
+> ⚠️ The interval and the **35-min sensor-staleness threshold** in `@senso/status` are
+> coupled. At 20-min uplinks, 35 min tolerates barely one missed uplink — revisit the
+> threshold per tier, or a Standard-tier customer will flap Offline.
+
+**Alert confirmation (designed, not built).** Don't alert on a single bad reading (a
+door-open blip). Two models were defined; **Option B recommended** — a sustained-breach
+rolling window: alert if ≥2 bad readings occur within a window and the breach isn't
+clearly resolved by a run of good readings. (Option A — any single good reading resets
+the pending state — misses a fridge flickering in and out of range.) The confirming
+reading should come from a **shorter base interval**, *not* an on-demand "report now"
+downlink: Class A downlinks aren't guaranteed and cost battery. This is **our** alert
+engine (Supabase/Vercel state machine + `alert_notifications` audit table) — ChirpStack
+just delivers every reading.
+
+**Battery: measure, don't trust the spec.** Replaceable **CR17450 Li-MnO₂** cell (2 screws
+on the back). Dragino claims 8–10 years, but that's best-case and real life depends
+heavily on interval *and* signal (SF12 burns far more per transmit than SF7). Plan: track
+**`BatV` from every uplink** and derive real fleet battery life over the first months.
+Low-battery threshold ≈ **2.6 V** (Dragino's replace point), which should leave 1–2 weeks
+of runway to dispatch a swap.
 
 ## Onboarding model (confirmed)
 
@@ -172,11 +247,26 @@ Split into **office prep** and **site install**.
 
 ## Open items carried forward
 
-1. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
-2. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
+**From Phase 3:**
+1. **Ice-water accuracy check not yet recorded as done.** The sensor decodes plausible
+   values (`TempC_DS` 22.93 on a desk), but that isn't a calibration check. Do the
+   ice-water test (~0 °C) before trusting the probe — it's also the per-install checkpoint
+   in the onboarding runbook.
+2. **Interval downlink `01000384` queued but delivery unconfirmed.** Verify uplink spacing
+   drops to ~15 min and the Queue item cleared. (Class A: it applies on the next uplink.)
+3. **Device profile "expected uplink interval" still 1200 s.** Set to **900 s** once the
+   15-min change lands, or absence-of-data detection won't match the real cadence.
+4. **Device profile name typo** — `Dargino LHT65N` → `Dragino LHT65N` (cosmetic).
+
+**Standing:**
+5. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
+6. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
    (deferred; details and commands in `network-server/README.md` §5).
-3. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
+7. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
    the domain does not clear the name for use.
-4. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
+8. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
    monitor are all still unconfigured (`network-server/README.md` §7).
-5. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
+9. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
+
+_Credentials note: the `sensor0` AppKey and the ChirpStack admin password live in the
+founder's password manager, deliberately not in this repo._
