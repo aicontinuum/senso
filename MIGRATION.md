@@ -23,8 +23,8 @@ almost entirely.
 | 1 | ChirpStack server stood up | ✅ |
 | 2 | Gateway online | ✅ |
 | 3 | First sensor registered + decoded uplink | ✅ |
-| 4 | ChirpStack → backend ingest | ← **next** |
-| 5 | Supabase schema updates | |
+| 4 | ChirpStack → backend ingest | ← **next, and the last one** |
+| 5 | Supabase schema updates | ✅ *(done ahead of 4 — the parser needs the columns)* |
 
 Infrastructure details live in **`network-server/README.md`** (as-built).
 The exact uplink JSON and field mapping Phase 4 must consume is in
@@ -162,10 +162,12 @@ Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with
 - [ ] Derive **gateway liveness** from ChirpStack's gateway status (replaces
       `heartbeat.sh`).
 
-## Phase 5 — Supabase schema updates
+## Phase 5 — Supabase schema updates ✅ *(2026-08-27)*
 
-**Do this before Phase 4's parser** — it writes columns that don't exist yet.
-Migration ready to run: **`supabase/migrations/20260827_lorawan_readings.sql`**
+Run ahead of Phase 4, since the parser writes columns that didn't exist yet.
+Migration: **`supabase/migrations/20260827_lorawan_readings.sql`** — applied and verified
+(`information_schema` confirms all five columns; `humidity`/`battery_v`/`snr` are
+`numeric`, matching `temperature`).
 
 Two checklist items turned out to need **no DDL**:
 
@@ -179,19 +181,18 @@ Two checklist items turned out to need **no DDL**:
 
 Actual DDL, all nullable so nothing breaks mid-migration:
 
-- [ ] **`readings.humidity`** ← `object.Hum_SHT`.
-- [ ] **`readings.battery_v`** ← `object.BatV`. **Not** `sensors.battery_level`: that's a
+- [x] **`readings.humidity`** ← `object.Hum_SHT`.
+- [x] **`readings.battery_v`** ← `object.BatV`. **Not** `sensors.battery_level`: that's a
       single snapshot in 0–100 *percent* while BatV is *volts* (3.297) — storing volts
       there is a silent unit mismatch, and a snapshot can't give history. Per-reading
       values are what make the "measure real battery life, alert at ~2.6 V" decision
       possible at all.
-- [ ] **`readings.rssi` / `snr` / `spreading_factor`** ← `rxInfo`/`txInfo`. SF is the
+- [x] **`readings.rssi` / `snr` / `spreading_factor`** ← `rxInfo`/`txInfo`. SF is the
       strongest predictor of battery drain; RSSI/SNR catch bad gateway placement before it
       becomes packet loss. Added now because backfilling a forever-growing table is worse
       later.
-- [ ] **Verify** the unique `(sensor_id, recorded_at)` index rather than re-creating it —
-      DEVLOG records `readings_sensor_time_uniq` as already present. The migration file
-      includes the check query.
+- [x] **Verified** the unique `(sensor_id, recorded_at)` index — `readings_sensor_time_uniq`
+      confirmed present, so nothing was re-created.
 
 *Considered and declined for now:* `ambient_temperature` (`TempC_SHT`, the unit's internal
 sensor). Would have doubled as a probe-fell-out check — if probe and ambient read
