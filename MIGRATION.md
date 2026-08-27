@@ -123,10 +123,13 @@ automating it via API). Full chain proven:
 **Accuracy verified ✓** — ice-water test passed, so the external probe reads true. This is
 the same checkpoint the onboarding runbook asks technicians to repeat per install.
 
-**Reporting interval: 15 min, standard on every sensor.** Downlink-based interval
-management is **scrapped** (see decisions below). The downlink command is retained here as
-reference only, not standard practice: `0x01` + 3 bytes of seconds on **fPort 1**;
-15 min = 900 s = HEX `01000384`.
+**Reporting interval: 15 min, set by downlink — verified working ✓**
+Command `0x01` + 3 bytes of seconds on **fPort 1**; 15 min = 900 s = HEX **`01000384`**
+(enqueue under Device → Queue, HEX).
+
+Proven on `sensor0` 2026-08-27: uplinks ran at a clean 20:00 spacing (FCnt 0–3) until the
+`txack` at 18:39:42 delivered the downlink in that uplink's RX window; the next uplink
+(FCnt 4) arrived **18:54:44 — 15 min 2 s later**. No AT commands or USB access needed.
 
 ## Phase 4 — ChirpStack → backend ingest ← next
 
@@ -181,18 +184,16 @@ schema (`customers → sites → gateways/sensors`) — the customer-facing grou
 in our layer regardless of how ChirpStack organizes things.
 
 **Reporting interval: 15 minutes, standard for every sensor.** *(Supersedes the earlier
-per-customer tier idea — 20/15/10 min tiers are scrapped, as is downlink-based interval
-management.)* One interval everywhere keeps provisioning, battery expectations, and
-absence-of-data detection uniform.
+per-customer tier idea — the 20/15/10 min tiers are scrapped.)* One interval everywhere
+keeps provisioning, battery expectations, and absence-of-data detection uniform.
+
+**How it's set:** the LHT65N ships at a 20-min default, so each new sensor gets the
+`01000384` downlink (fPort 1) once during office prep — a queued command that applies on
+the device's next uplink. Verified working; no physical access or AT commands needed.
 
 This also **resolves the staleness collision**: at a 15-min cadence the existing **35-min**
 `SENSOR_STALE_MS` in `@senso/status` tolerates one fully missed uplink plus margin — no
 per-tier threshold logic needed, and the constant stays a single global value.
-
-> **Open:** the LHT65N ships at a **20-min** default, so something must still set each new
-> sensor to 15 min during office prep. With the downlink route dropped, confirm the
-> mechanism (e.g. AT commands over USB before shipping) and write it into the onboarding
-> runbook.
 
 **Alert confirmation (designed, not built).** Don't alert on a single bad reading (a
 door-open blip). Two models were defined; **Option B recommended** — a sustained-breach
@@ -219,6 +220,8 @@ Split into **office prep** and **site install**.
 - ChirpStack: create the customer's tenant/application; scan each Dragino QR to register
   sensors; attach the Dragino device profile (official decoder); register the gateway by
   its Gateway EUI. **Region `eu868` every time.**
+- **Queue the `01000384` interval downlink (fPort 1) for each sensor** — moves it from the
+  20-min factory default to our 15-min standard; applies on the device's next uplink.
 - senso.com: create the customer account and pre-create sensor/gateway records using the
   same DevEUIs.
 
@@ -255,12 +258,10 @@ Split into **office prep** and **site install**.
 ## Open items carried forward
 
 **From Phase 3:**
-1. **How does a new sensor get set to 15 min?** The LHT65N ships at 20 min and the
-   downlink route is scrapped — confirm the provisioning mechanism (likely AT commands
-   over USB during office prep) and add it to the onboarding runbook.
-2. **Device profile "expected uplink interval" still 1200 s.** Set to **900 s** to match
-   the 15-min standard, or absence-of-data detection won't match the real cadence.
-3. **Device profile name typo** — `Dargino LHT65N` → `Dragino LHT65N` (cosmetic).
+1. **Device profile "expected uplink interval" still 1200 s.** Set to **900 s** to match
+   the now-confirmed 15-min cadence, or ChirpStack will flag the device late every cycle
+   and absence-of-data detection won't match reality.
+2. **Device profile name typo** — `Dargino LHT65N` → `Dragino LHT65N` (cosmetic).
 
 **Standing:**
 4. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.

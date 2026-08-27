@@ -162,13 +162,16 @@ codec = official Dragino **ChirpStack 4.0** decoder
 
 > ⚠️ Use the **v4** decoder. v3-era decoders throw `UPLINK_CODEC` errors on ChirpStack v4.
 
-**Reporting interval: 15 min, standard on every sensor.** Downlink-based interval
-management is **scrapped** — kept below as reference only, not standard practice.
+**Reporting interval: 15 min, standard on every sensor — set by downlink at provisioning.**
 
-> Reference: the interval downlink is command `0x01` + 3 bytes of seconds on **fPort 1**
-> (15 min = 900 s = HEX `01000384`), enqueued under Device → Queue in HEX. Class A devices
-> only listen right after an uplink, so a queued downlink stays pending until the next
-> one — normal, not a failure.
+Devices ship at a 20-min default. Enqueue command `0x01` + 3 bytes of seconds on
+**fPort 1** — 15 min = 900 s = HEX **`01000384`** — under Device → Queue (HEX). Class A
+devices only listen right after an uplink, so the command sits pending until the next
+one; that's normal, not a failure.
+
+Verified on `sensor0` (2026-08-27): 20:00 uplink spacing until the `txack`, then 15:02 to
+the following uplink. Do this once per sensor during office prep — no physical access or
+AT commands required.
 
 Device AppKeys are **not** stored in this repo — they live in the founder's password
 manager.
