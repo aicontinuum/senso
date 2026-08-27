@@ -120,8 +120,13 @@ automating it via API). Full chain proven:
   downlinks stay pending until the next uplink — a pending downlink is not a failure.
 - Signal at the bench location is marginal (−102 RSSI); real installs need better placement.
 
-**Reporting interval:** changed by downlink — command `0x01` + 3 bytes of seconds, sent on
-**fPort 1**. 15 min = 900 s = HEX **`01000384`** (enqueue under Device → Queue, HEX).
+**Accuracy verified ✓** — ice-water test passed, so the external probe reads true. This is
+the same checkpoint the onboarding runbook asks technicians to repeat per install.
+
+**Reporting interval: 15 min, standard on every sensor.** Downlink-based interval
+management is **scrapped** (see decisions below). The downlink command is retained here as
+reference only, not standard practice: `0x01` + 3 bytes of seconds on **fPort 1**;
+15 min = 900 s = HEX `01000384`.
 
 ## Phase 4 — ChirpStack → backend ingest ← next
 
@@ -175,17 +180,19 @@ tenant); gateways live at tenant level, shared across a customer's applications.
 schema (`customers → sites → gateways/sensors`) — the customer-facing grouping must exist
 in our layer regardless of how ChirpStack organizes things.
 
-**Reporting interval is per-customer, not global.** Product tiers:
+**Reporting interval: 15 minutes, standard for every sensor.** *(Supersedes the earlier
+per-customer tier idea — 20/15/10 min tiers are scrapped, as is downlink-based interval
+management.)* One interval everywhere keeps provisioning, battery expectations, and
+absence-of-data detection uniform.
 
-| Tier | Interval | For |
-|---|---|---|
-| Standard | 20 min *(device default)* | Restaurants, general cold storage — longest battery |
-| Test/current | 15 min | What `sensor0` is set to |
-| Critical | 10 min | Pharmacy, vaccine, labs — faster detection, shorter battery, accepted cost |
+This also **resolves the staleness collision**: at a 15-min cadence the existing **35-min**
+`SENSOR_STALE_MS` in `@senso/status` tolerates one fully missed uplink plus margin — no
+per-tier threshold logic needed, and the constant stays a single global value.
 
-> ⚠️ The interval and the **35-min sensor-staleness threshold** in `@senso/status` are
-> coupled. At 20-min uplinks, 35 min tolerates barely one missed uplink — revisit the
-> threshold per tier, or a Standard-tier customer will flap Offline.
+> **Open:** the LHT65N ships at a **20-min** default, so something must still set each new
+> sensor to 15 min during office prep. With the downlink route dropped, confirm the
+> mechanism (e.g. AT commands over USB before shipping) and write it into the onboarding
+> runbook.
 
 **Alert confirmation (designed, not built).** Don't alert on a single bad reading (a
 door-open blip). Two models were defined; **Option B recommended** — a sustained-breach
@@ -248,25 +255,22 @@ Split into **office prep** and **site install**.
 ## Open items carried forward
 
 **From Phase 3:**
-1. **Ice-water accuracy check not yet recorded as done.** The sensor decodes plausible
-   values (`TempC_DS` 22.93 on a desk), but that isn't a calibration check. Do the
-   ice-water test (~0 °C) before trusting the probe — it's also the per-install checkpoint
-   in the onboarding runbook.
-2. **Interval downlink `01000384` queued but delivery unconfirmed.** Verify uplink spacing
-   drops to ~15 min and the Queue item cleared. (Class A: it applies on the next uplink.)
-3. **Device profile "expected uplink interval" still 1200 s.** Set to **900 s** once the
-   15-min change lands, or absence-of-data detection won't match the real cadence.
-4. **Device profile name typo** — `Dargino LHT65N` → `Dragino LHT65N` (cosmetic).
+1. **How does a new sensor get set to 15 min?** The LHT65N ships at 20 min and the
+   downlink route is scrapped — confirm the provisioning mechanism (likely AT commands
+   over USB during office prep) and add it to the onboarding runbook.
+2. **Device profile "expected uplink interval" still 1200 s.** Set to **900 s** to match
+   the 15-min standard, or absence-of-data detection won't match the real cadence.
+3. **Device profile name typo** — `Dargino LHT65N` → `Dragino LHT65N` (cosmetic).
 
 **Standing:**
-5. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
-6. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
+4. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
+5. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
    (deferred; details and commands in `network-server/README.md` §5).
-7. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
+6. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
    the domain does not clear the name for use.
-8. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
+7. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
    monitor are all still unconfigured (`network-server/README.md` §7).
-9. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
+8. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
 
 _Credentials note: the `sensor0` AppKey and the ChirpStack admin password live in the
 founder's password manager, deliberately not in this repo._
