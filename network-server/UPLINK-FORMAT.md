@@ -63,6 +63,10 @@ Captured 2026-08-27 from the first real decoded reading of `sensor0`
 }
 ```
 
+*Verbatim capture — `deviceProfileName` shows `Dargino LHT65N` because the profile was
+still misspelled at capture time; it has since been renamed `Dragino LHT65N`. Nothing in
+the ingest path reads that field.*
+
 ## 2. Field mapping
 
 | Source field | Meaning | Maps to |

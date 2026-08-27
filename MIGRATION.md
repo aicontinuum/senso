@@ -100,11 +100,11 @@ automating it via API). Full chain proven:
 | Object | Name | ID |
 |---|---|---|
 | Application | `senso-test` | `635fda7b-0428-495e-812f-027490bcaf9d` |
-| Device profile | `Dargino LHT65N` *(typo — see open items)* | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
+| Device profile | `Dragino LHT65N` | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
 | Device | `sensor0` | DevEUI `a840419edb62011c`, DevAddr `01087309`, Class A |
 
 **Device profile:** EU868 · LoRaWAN **1.0.3** · regional params **A (RP001 1.0.3)** ·
-**OTAA** · expected uplink interval **1200 s** *(→ should become 900 s)* · payload codec
+**OTAA** · expected uplink interval **900 s** (matches the 15-min cadence) · payload codec
 = the official Dragino **ChirpStack 4.0** decoder from
 `github.com/dragino/dragino-end-node-decoder`.
 
@@ -257,21 +257,17 @@ Split into **office prep** and **site install**.
 
 ## Open items carried forward
 
-**From Phase 3:**
-1. **Device profile "expected uplink interval" still 1200 s.** Set to **900 s** to match
-   the now-confirmed 15-min cadence, or ChirpStack will flag the device late every cycle
-   and absence-of-data detection won't match reality.
-2. **Device profile name typo** — `Dargino LHT65N` → `Dragino LHT65N` (cosmetic).
+Phase 3 is fully closed — no outstanding items from it.
 
 **Standing:**
-4. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
-5. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
+1. **CRA type approval / EU868 legality in Qatar** — before commercial deployment.
+2. **Docker bypasses ufw** — audit whether Postgres/Redis are internet-exposed
    (deferred; details and commands in `network-server/README.md` §5).
-6. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
+3. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
    the domain does not clear the name for use.
-7. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
+4. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
    monitor are all still unconfigured (`network-server/README.md` §7).
-8. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
+5. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
 
 _Credentials note: the `sensor0` AppKey and the ChirpStack admin password live in the
 founder's password manager, deliberately not in this repo._

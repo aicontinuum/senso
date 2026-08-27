@@ -151,12 +151,12 @@ real customers get their own tenants.
 | Object | Name | ID |
 |---|---|---|
 | Application | `senso-test` | `635fda7b-0428-495e-812f-027490bcaf9d` |
-| Device profile | `Dargino LHT65N` *(typo, to fix)* | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
+| Device profile | `Dragino LHT65N` | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
 | Device | `sensor0` | DevEUI `a840419edb62011c` · DevAddr `01087309` · Class A |
 | Gateway | `gateway1` | EUI `2cf7f11081400088` |
 
 **Device profile:** EU868 · LoRaWAN 1.0.3 · regional params A (RP001 1.0.3) · OTAA ·
-expected uplink interval 1200 s *(→ 900 s once the 15-min downlink applies)* · payload
+expected uplink interval 900 s (matches the 15-min cadence) · payload
 codec = official Dragino **ChirpStack 4.0** decoder
 (`github.com/dragino/dragino-end-node-decoder`).
 
