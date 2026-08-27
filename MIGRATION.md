@@ -164,13 +164,41 @@ Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with
 
 ## Phase 5 — Supabase schema updates
 
-- [ ] `sensors.hardware_id` → **DevEUI** format (e.g. `a840419edb62011c`).
-- [ ] `gateways.mac_address` → **Gateway EUI** format (e.g. `2cf7f11081400088`).
-- [ ] Add a nullable **`humidity`** column to `readings` (the LHT65N reports it).
-- [ ] Unique constraint on **`(sensor_id, recorded_at)`** — *verify first: DEVLOG records
-      `readings_sensor_time_uniq` as already created.*
+**Do this before Phase 4's parser** — it writes columns that don't exist yet.
+Migration ready to run: **`supabase/migrations/20260827_lorawan_readings.sql`**
+
+Two checklist items turned out to need **no DDL**:
+
+- [x] **`gateways.mac_address` → Gateway EUI** — already handled.
+      `apps/admin/lib/gateway-id.ts` treats the 16-hex EUI as the *primary* format
+      (legacy colon-MAC is the fallback), and `gateway1` is registered as
+      `2cf7f11081400088`. Nothing to migrate.
+- [x] **`sensors.hardware_id` → DevEUI** — it's a text column, so `a840419edb62011c` is
+      just different text in the same column. A data/validation convention, not a schema
+      change. (Phase 4 enforces it via reject-unknown-DevEUI.)
+
+Actual DDL, all nullable so nothing breaks mid-migration:
+
+- [ ] **`readings.humidity`** ← `object.Hum_SHT`.
+- [ ] **`readings.battery_v`** ← `object.BatV`. **Not** `sensors.battery_level`: that's a
+      single snapshot in 0–100 *percent* while BatV is *volts* (3.297) — storing volts
+      there is a silent unit mismatch, and a snapshot can't give history. Per-reading
+      values are what make the "measure real battery life, alert at ~2.6 V" decision
+      possible at all.
+- [ ] **`readings.rssi` / `snr` / `spreading_factor`** ← `rxInfo`/`txInfo`. SF is the
+      strongest predictor of battery drain; RSSI/SNR catch bad gateway placement before it
+      becomes packet loss. Added now because backfilling a forever-growing table is worse
+      later.
+- [ ] **Verify** the unique `(sensor_id, recorded_at)` index rather than re-creating it —
+      DEVLOG records `readings_sensor_time_uniq` as already present. The migration file
+      includes the check query.
+
+*Considered and declined for now:* `ambient_temperature` (`TempC_SHT`, the unit's internal
+sensor). Would have doubled as a probe-fell-out check — if probe and ambient read
+identical, the probe likely isn't in the fridge.
+
 - [ ] Consider a **`sites`/`branches`** table — `customers → sites → gateways/sensors`
-      (see the tenancy decision below).
+      (see the tenancy decision below). Not needed until a multi-branch customer exists.
 
 ---
 
