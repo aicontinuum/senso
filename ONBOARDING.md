@@ -10,6 +10,59 @@ verifying, not debugging.
 
 ---
 
+## 0. How ChirpStack is organised (read once)
+
+Three levels, top to bottom:
+
+```
+Tenant          →  the CUSTOMER            e.g. "Kamachi Restaurant"
+  Application   →  a BRANCH / SITE         e.g. "Main Branch"
+    Device      →  one sensor              e.g. "Walk-in Freezer"
+
+Gateways live at TENANT level — shared across all that customer's applications.
+```
+
+Easy to get backwards: the customer is the **outer** container. A tenant *contains*
+applications; an application is not a folder that contains customers.
+
+Why applications map to branches: when a customer opens a second location, it
+becomes a second application under the same tenant — same customer, cleanly
+separated devices. A single-site customer just has one application.
+
+**Naming.** Name applications after the site (`Main Branch`, `Al Sadd`), not after
+what you were doing when you made them. An application called `senso-test` sitting
+under a real customer is a leftover from setup and should be renamed —
+Application → Settings → change the name. Renaming keeps devices and integrations
+attached; creating a replacement application means re-registering everything.
+
+> ### ⚠️ The integration is per-APPLICATION
+>
+> The HTTP integration that forwards uplinks to our backend is configured on an
+> **application**, not on the tenant and not globally. Every new application needs
+> its own.
+>
+> This is the most likely reason a correctly-registered device produces nothing:
+> the device joined, ChirpStack has its uplinks, but that application has no
+> integration so they are never forwarded anywhere. Nothing errors — the data just
+> stops at ChirpStack.
+>
+> **Check:** Application → **Integrations** tab → an **HTTP** entry exists with our
+> endpoint and the `Authorization: Bearer …` header.
+
+## 0b. New customer? Create the tenant first
+
+Only for a customer who has never been set up. For an existing customer, skip to §1.
+
+1. **Tenants → Add tenant** — name it exactly as the customer appears on the admin
+   site, so the two systems are easy to reconcile.
+2. Inside that tenant, **Applications → Add application** — named for the site.
+3. On that application, **Integrations → HTTP** — endpoint
+   `https://senso-xsbp.vercel.app/api/ingest`, header `Authorization` =
+   `Bearer <CHIRPSTACK_INGEST_SECRET>`. Payload encoding **JSON**.
+   *(Same shared secret every time — it identifies our platform, not the customer.)*
+4. Register the customer's **gateway** under the tenant (region `eu868`).
+5. Then add devices as in §1 onward.
+
 ## 1. Unbox and record
 
 Check the box has: sensor body, **external probe** (white cable, metal tip), and the
@@ -32,9 +85,10 @@ isn't fully in produces uplinks with **no `TempC_DS` value**, which ingest rejec
 
 ## 2. Register in ChirpStack
 
-At `https://lns.sensoqa.com`:
+At `https://lns.sensoqa.com` — **Tenants → the customer → Applications → their site**
+(see §0 if that path doesn't look familiar):
 
-1. **Applications** → the customer's application → **Devices** → **Add device**
+1. **Devices** tab → **Add device**
 2. Name it something recognisable (`kamachi-walkin-1`, not `sensor4`)
 3. **DevEUI** — from the label
 4. **Device profile** — `Dragino LHT65N` (EU868, LoRaWAN 1.0.3, OTAA, v4 decoder)
@@ -43,9 +97,6 @@ At `https://lns.sensoqa.com`:
 > **Region must be `eu868`.** The ChirpStack config has all regions enabled, so
 > nothing stops you picking the wrong one — the check happens at registration, not
 > in config. Getting it wrong means the device never joins.
-
-**Tenancy model:** one **tenant per customer**, one **application per branch**.
-Gateways live at tenant level and are shared across that customer's applications.
 
 ## 3. Set the reporting interval
 
@@ -141,6 +192,7 @@ Longer job; the parts that catch people out:
 | Symptom | Likely cause |
 |---|---|
 | Never joins | Wrong AppKey, or registered under the wrong region |
+| Joins fine, uplinks visible in ChirpStack, nothing reaches the site | **The application has no HTTP integration** (§0) — the most common cause, and it fails silently |
 | Joins, no readings on site | Check ingest logs — `unknown_device` means the DevEUI in Supabase doesn't match ChirpStack |
 | Uplinks arrive, no `TempC_DS` | External probe not fully seated in its jack |
 | Readings look like room temperature | Reading `TempC_SHT` (internal) instead of `TempC_DS` — or the probe isn't actually inside the fridge |
