@@ -189,7 +189,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
             )}
           </Row>
 
-          <Row label="Hardware ID">
+          <Row label="DevEUI">
             <span className="font-mono text-sm text-muted-foreground">{sensor.hardwareId || '—'}</span>
           </Row>
 

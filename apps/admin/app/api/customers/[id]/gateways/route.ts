@@ -61,7 +61,7 @@ export async function POST(
   if (insertError) {
     if (insertError.code === '23505') {
       return NextResponse.json(
-        { error: 'This MAC address is already registered to another gateway' },
+        { error: 'This Gateway EUI is already registered to another gateway' },
         { status: 409 },
       );
     }

@@ -60,7 +60,7 @@ export async function POST(
   if (insertError) {
     if (insertError.code === '23505') {
       return NextResponse.json(
-        { error: 'This hardware ID is already registered to another sensor' },
+        { error: 'This DevEUI is already registered to another sensor' },
         { status: 409 },
       );
     }

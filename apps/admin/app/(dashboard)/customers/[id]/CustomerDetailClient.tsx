@@ -130,7 +130,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
     }
   }
 
-  const [macInput, setMacInput] = useState('');
+  const [euiInput, setEuiInput] = useState('');
   const [gwName, setGwName] = useState('');
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState('');
@@ -179,7 +179,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
 
   async function linkGateway() {
     setLinkError('');
-    const normalised = normaliseIdentifier(macInput);
+    const normalised = normaliseIdentifier(euiInput);
     if (!isValidGatewayId(normalised)) {
       setLinkError('Invalid Gateway EUI — expected 16 hex characters, e.g. 2cf7f11081400088');
       return;
@@ -201,7 +201,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
         setLinkError(data.error ?? 'Failed to link gateway');
         return;
       }
-      setMacInput('');
+      setEuiInput('');
       setGwName('');
       router.refresh();
     } finally {
@@ -368,7 +368,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                   <p className="font-medium">{g.name ?? g.id}</p>
                   <p className="text-xs text-muted-foreground">
                     ID: {g.id}
-                    {g.mac_address && ` · MAC: ${g.mac_address}`}
+                    {g.mac_address && ` · EUI: ${g.mac_address}`}
                     {g.firmware_version && ` · Firmware ${g.firmware_version}`}
                     {g.last_seen_at && ` · Last seen ${formatDate(g.last_seen_at)}`}
                   </p>
@@ -412,8 +412,8 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
         <div className="space-y-2">
           <div className="flex gap-2">
             <input
-              value={macInput}
-              onChange={e => { setMacInput(e.target.value); setLinkError(''); }}
+              value={euiInput}
+              onChange={e => { setEuiInput(e.target.value); setLinkError(''); }}
               onKeyDown={e => e.key === 'Enter' && linkGateway()}
               placeholder="Gateway EUI (e.g. 2cf7f11081400088)"
               className={`flex-1 max-w-xs rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${linkError ? 'border-red-400 focus:ring-red-400' : 'border-border'}`}
@@ -427,7 +427,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
             />
             <button
               onClick={linkGateway}
-              disabled={linking || !macInput.trim() || !gwName.trim()}
+              disabled={linking || !euiInput.trim() || !gwName.trim()}
               className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {linking ? 'Linking…' : 'Link Gateway'}
