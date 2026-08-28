@@ -140,22 +140,56 @@ Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with
 > `network-server/UPLINK-FORMAT.md`.** The current `/api/ingest` expects the old
 > Pi-forwarder shape and must be **replaced**, not extended.
 
-- [ ] Configure the HTTP integration on the `senso-test` application (Application →
-      Integrations → HTTP) pointing at `/api/ingest`.
-- [ ] **Rewrite the ingest parser** to the ChirpStack v4 JSON; implement the field mapping.
-      Primary temperature is **`object.TempC_DS`** (external probe) — *not* `TempC_SHT`
-      (internal ambient).
-- [ ] **Shared-secret header** — set on the integration, validated server-side; reject
-      requests without it.
-- [ ] **Reject readings from any DevEUI not already registered** — an unknown device means
-      a mis-scan or a stray, and must not enter a compliance record. (Also closes the old
-      fail-open device-auth item in `TODO.md`.)
-- [ ] **Idempotency** — dedupe on `deduplicationId` and/or the unique
-      `(sensor_id, recorded_at)` index.
-- [ ] **Branch by `fPort`** — only fPort 2 is a reading (5 = device status, 3 = datalog
-      backfill, 1 = config). Suppress alerts on backfill, and **don't stamp fPort 3
-      readings with the top-level `time`** (see UPLINK-FORMAT.md §4).
-- [ ] Reuse the existing alert / threshold / upsert logic behind the new front door.
+### Code — done ✅
+
+`apps/admin/app/api/ingest/route.ts` rewritten; `apps/admin/lib/ingest-auth.ts` added.
+
+- [x] **Parser rewritten** for the ChirpStack v4 JSON with the full field mapping —
+      `TempC_DS` → `temperature` (external probe, *not* `TempC_SHT`), plus `Hum_SHT`,
+      `BatV`, and `rssi`/`snr`/`spreading_factor`.
+- [x] **Shared-secret header**, validated **fail-closed** — an unset
+      `CHIRPSTACK_INGEST_SECRET` rejects everything rather than waving it through. This
+      is the opposite of the old per-gateway `gatewaySecretOk`, and closes the
+      "device auth is fail-open" 🔴 item in `TODO.md` for this path.
+- [x] **Unknown/retired DevEUIs rejected** — returns 200 (permanent condition; a 4xx would
+      make ChirpStack retry forever) and logs a warning.
+- [x] **`fPort` branching** — only fPort 2 stored. **fPort 3 (datalog backfill) is dropped,
+      not stored**: its payload carries its own historical timestamps, so parsing it like a
+      normal uplink would stamp old readings with "now" and corrupt the history. Handling
+      it properly is deferred rather than half-implemented — noted below.
+- [x] **`?event=` branching** — ChirpStack posts join/status/ack to the same URL; only
+      `up` is processed.
+- [x] **Input validation** — temperature coerced (decoders sometimes emit strings),
+      bounds-checked, and a future `recorded_at` is clamped to now. That last one matters
+      because `recorded_at` is the upsert conflict key: a bad device clock writing a future
+      row would silently swallow the real reading for that slot. Closes two Medium
+      `TODO.md` items.
+- [x] **Idempotency** via the existing unique `(sensor_id, recorded_at)` index — an HTTP
+      retry carries the same `time`, so it collapses.
+- [x] **Gateway liveness now comes from relayed uplinks**, replacing `heartbeat.sh`.
+      Consequence: `GATEWAY_STALE_MS` moved from 5 min to 35 min to match the 15-min uplink
+      cadence — at 5 min every gateway would have flagged offline between uplinks. A dead
+      gateway now takes ~35 min to show rather than ~5; the better fix is reading gateway
+      state from ChirpStack's own gateway API instead of inferring it.
+- [x] **Alert logic reused**, now also stamping `alert_logs.reading_id` so an alert links
+      to the measurement that caused it — the link the new `RESTRICT` protects.
+
+Verified locally against the captured payload: auth (401 no/wrong secret), malformed JSON
+(400), `event=join`, fPort 3/5, wrong region, missing DevEUI, missing/null/string/
+out-of-bounds `TempC_DS`. Paths past the device lookup need a live database.
+
+### Remaining — needs you
+
+- [ ] **Set `CHIRPSTACK_INGEST_SECRET`** in Vercel (admin project, Production) to a long
+      random string. **Until this is set, ingest rejects everything** — fail-closed by design.
+- [ ] **Configure the HTTP integration** in ChirpStack: `senso-test` application →
+      Integrations → HTTP → endpoint `https://<admin-domain>/api/ingest`, with header
+      `Authorization: Bearer <same secret>`.
+- [ ] **Disable the Pi** — `sudo systemctl disable --now senso-forwarder.service
+      senso-heartbeat.timer`. This is now urgent rather than tidy: the old forwarder's
+      per-gateway secret no longer matches, so it will get 401s, and its store-and-forward
+      treats 401 as retry-forever — growing `queue.db` on the SD card indefinitely.
+- [ ] **Verify end to end** — a decoded uplink appearing as a reading on the dashboard.
 - [ ] **Delivery reliability** — confirm/handle the integration's retry behavior so a
       backend blip doesn't silently drop uplinks (this replaces the Pi's store-and-forward
       guarantee).
