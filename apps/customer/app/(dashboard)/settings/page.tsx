@@ -23,14 +23,17 @@ export default async function SettingsPage() {
 
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("id, name, is_online, firmware_version, last_seen_at, sensors (id, name, status)")
-    .eq("customer_id", customer.id);
+    .select("id, name, is_online, firmware_version, last_seen_at, sensors (id, name, status, decommissioned_at)")
+    .eq("customer_id", customer.id)
+    .is("decommissioned_at", null);
 
   const allSensors = (gateways ?? []).flatMap(
-    (g) => (g.sensors ?? []).map((s: { id: string; name: string; status: string }) => ({
-      ...s,
-      gatewayId: g.id,
-    })),
+    (g) => (g.sensors ?? [])
+      .filter((s: { decommissioned_at: string | null }) => s.decommissioned_at === null)
+      .map((s: { id: string; name: string; status: string }) => ({
+        ...s,
+        gatewayId: g.id,
+      })),
   );
   const sensorIds = allSensors.map((s) => s.id);
 

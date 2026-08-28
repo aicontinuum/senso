@@ -23,15 +23,22 @@ export default async function CustomersPage() {
       gateways (
         id,
         is_online,
-        sensors (id)
+        decommissioned_at,
+        sensors (id, decommissioned_at)
       )
     `)
     .order('created_at', { ascending: false });
 
+  type GatewayRow = { id: string; is_online: boolean; decommissioned_at: string | null; sensors?: { id: string; decommissioned_at: string | null }[] };
+
   const rows = (customers ?? []).map(customer => {
-    const gateways = customer.gateways ?? [];
-    const sensorCount = gateways.reduce((sum: number, gw: { sensors?: { id: string }[] }) => sum + (gw.sensors?.length ?? 0), 0);
-    const anyOnline = gateways.some((gw: { is_online: boolean }) => gw.is_online);
+    // Retired devices keep their readings but are not counted as live.
+    const gateways = ((customer.gateways ?? []) as GatewayRow[]).filter(gw => gw.decommissioned_at === null);
+    const sensorCount = gateways.reduce(
+      (sum: number, gw) => sum + (gw.sensors ?? []).filter(s => s.decommissioned_at === null).length,
+      0,
+    );
+    const anyOnline = gateways.some(gw => gw.is_online);
     const gwStatus = gateways.length === 0 ? 'none' : anyOnline ? 'online' : 'offline';
     return { customer, sensorCount, gwStatus };
   });

@@ -14,14 +14,19 @@ export default async function DashboardPage() {
 
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("id, name, is_online, last_seen_at, sensors (id, name, status, battery_level)")
-    .eq("customer_id", customer.id);
+    .select("id, name, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at)")
+    .eq("customer_id", customer.id)
+    .is("decommissioned_at", null);
 
+  // Retired sensors keep their readings for the compliance record but must not
+  // appear as live devices.
   const allSensors = (gateways ?? []).flatMap(
-    (g) => (g.sensors ?? []).map((s: { id: string; name: string; status: string; battery_level: number | null }) => ({
-      ...s,
-      gatewayId: g.id,
-    })),
+    (g) => (g.sensors ?? [])
+      .filter((s: { decommissioned_at: string | null }) => s.decommissioned_at === null)
+      .map((s: { id: string; name: string; status: string; battery_level: number | null }) => ({
+        ...s,
+        gatewayId: g.id,
+      })),
   );
   const sensorIds = allSensors.map((s) => s.id);
 

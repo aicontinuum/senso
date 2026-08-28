@@ -37,6 +37,7 @@ export default async function AlertDetailPage({
     .from("sensors")
     .select("id, name, gateway_id, gateways!inner (customer_id)")
     .eq("id", alertConfig.sensor_id)
+    .is("decommissioned_at", null)
     .single();
 
   if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customer.id) notFound();

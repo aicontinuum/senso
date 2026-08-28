@@ -20,6 +20,7 @@ export default async function SensorDetailPage({
     .from("sensors")
     .select("id, name, status, battery_level, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id)")
     .eq("id", id)
+    .is("decommissioned_at", null)
     .single();
 
   if (!sensorRow) notFound();

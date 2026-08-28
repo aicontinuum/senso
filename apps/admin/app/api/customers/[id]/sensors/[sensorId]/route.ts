@@ -8,6 +8,8 @@ async function verifyOwnership(customerId: string, sensorId: string) {
     .from('sensors')
     .select('id, gateway_id, gateways!inner (customer_id)')
     .eq('id', sensorId)
+    // Retired sensors are not editable or re-retirable — they resolve as not found.
+    .is('decommissioned_at', null)
     .single();
   if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customerId) {
     return null;
@@ -91,8 +93,15 @@ export async function DELETE(
   const sensor = await verifyOwnership(customerId, sensorId);
   if (!sensor) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });
 
+  // Soft delete. A hard delete would take the sensor's entire reading history with
+  // it, which is the compliance record we exist to keep — stamping
+  // decommissioned_at retires the sensor from every dashboard while leaving its
+  // readings attributable.
   const admin = createAdminClient();
-  const { error } = await admin.from('sensors').delete().eq('id', sensorId);
+  const { error } = await admin
+    .from('sensors')
+    .update({ decommissioned_at: new Date().toISOString() })
+    .eq('id', sensorId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   return NextResponse.json({ success: true });

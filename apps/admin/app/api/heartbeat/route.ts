@@ -21,6 +21,8 @@ export async function POST(request: Request) {
     .from('gateways')
     .select('id')
     .eq('mac_address', identifier)
+    // A retired gateway must not keep reporting itself as alive.
+    .is('decommissioned_at', null)
     .single();
 
   if (!gateway) return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });

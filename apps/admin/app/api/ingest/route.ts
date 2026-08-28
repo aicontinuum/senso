@@ -29,6 +29,8 @@ export async function POST(request: Request) {
     .from('gateways')
     .select('id')
     .eq('mac_address', identifier)
+    // A retired gateway must not be able to write into the compliance record.
+    .is('decommissioned_at', null)
     .single();
 
   if (!gateway) return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
@@ -58,6 +60,9 @@ export async function POST(request: Request) {
       .select('id')
       .eq('hardware_id', r.hardware_id)
       .eq('gateway_id', gateway.id)
+      // A retired sensor must not accept new readings — if one still transmits
+      // after being decommissioned, that reading is counted as skipped, not stored.
+      .is('decommissioned_at', null)
       .single();
 
     if (!sensor) { skipped++; continue; }

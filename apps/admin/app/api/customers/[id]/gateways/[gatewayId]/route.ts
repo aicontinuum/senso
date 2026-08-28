@@ -28,14 +28,27 @@ export async function DELETE(
     return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
   }
 
-  // Delete all sensors on this gateway first, then the gateway itself
-  const { error: sensorsError } = await admin.from('sensors').delete().eq('gateway_id', gatewayId);
+  // Retire the gateway's sensors, then the gateway itself.
+  //
+  // These are soft deletes: hard-deleting sensors would cascade away every reading
+  // they ever recorded — for a whole gateway at once — destroying the compliance
+  // history. Stamping decommissioned_at removes them from every dashboard while
+  // keeping the readings attributable to a named sensor.
+  const now = new Date().toISOString();
+
+  const { error: sensorsError } = await admin
+    .from('sensors')
+    .update({ decommissioned_at: now })
+    .eq('gateway_id', gatewayId);
 
   if (sensorsError) {
     return NextResponse.json({ error: sensorsError.message }, { status: 400 });
   }
 
-  const { error } = await admin.from('gateways').delete().eq('id', gatewayId);
+  const { error } = await admin
+    .from('gateways')
+    .update({ decommissioned_at: now })
+    .eq('id', gatewayId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

@@ -39,6 +39,7 @@ export async function POST(
     .select('id')
     .eq('id', gatewayId)
     .eq('customer_id', customerId)
+    .is('decommissioned_at', null)
     .single();
 
   if (!gateway) {

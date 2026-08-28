@@ -17,6 +17,7 @@ export async function PATCH(
     .from('sensors')
     .select('id, gateway_id')
     .eq('id', sensorId)
+    .is('decommissioned_at', null)
     .single();
 
   if (!sensorRow) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });

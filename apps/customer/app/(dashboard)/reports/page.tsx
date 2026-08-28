@@ -9,11 +9,13 @@ export default async function ReportsPage() {
 
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("sensors (id, name)")
-    .eq("customer_id", customer.id);
+    .select("sensors (id, name, decommissioned_at)")
+    .eq("customer_id", customer.id)
+    .is("decommissioned_at", null);
 
   const sensors = (gateways ?? []).flatMap(
-    (g) => (g.sensors ?? []) as { id: string; name: string }[],
+    (g) => ((g.sensors ?? []) as { id: string; name: string; decommissioned_at: string | null }[])
+      .filter((s) => s.decommissioned_at === null) as { id: string; name: string }[],
   );
   const sensorIds = sensors.map((s) => s.id);
 

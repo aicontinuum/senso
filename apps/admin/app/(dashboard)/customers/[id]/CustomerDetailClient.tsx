@@ -281,7 +281,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
     const linkedSensors = sensors.filter(s => s.gateway_id === gatewayId);
     if (linkedSensors.length > 0) {
       const ok = window.confirm(
-        `This gateway has ${linkedSensors.length} sensor${linkedSensors.length > 1 ? 's' : ''} linked to it (${linkedSensors.map(s => s.name).join(', ')}).\n\nRemoving the gateway will also remove all linked sensors. Proceed?`
+        `This gateway has ${linkedSensors.length} sensor${linkedSensors.length > 1 ? 's' : ''} linked to it (${linkedSensors.map(s => s.name).join(', ')}).\n\nRemoving the gateway will also retire all linked sensors. Their recorded readings are kept for the compliance history. Proceed?`
       );
       if (!ok) {
         setConfirmUnlinkId(null);

@@ -6,8 +6,20 @@ type GatewayWithSensors = {
   id: string;
   is_online: boolean;
   last_seen_at: string | null;
-  sensors?: { id: string; status: string }[];
+  decommissioned_at: string | null;
+  sensors?: { id: string; status: string; decommissioned_at: string | null }[];
 };
+
+// Retired devices keep their readings for the compliance record, but must not be
+// listed or counted as live. Nested selects can't be filtered server-side here, so
+// both levels are filtered on the way out.
+function activeGateways(raw: unknown): GatewayWithSensors[] {
+  return ((raw ?? []) as GatewayWithSensors[]).filter(g => g.decommissioned_at === null);
+}
+
+function activeSensors(g: GatewayWithSensors) {
+  return (g.sensors ?? []).filter(s => s.decommissioned_at === null);
+}
 
 export default async function AdminDashboardPage() {
   const admin = createAdminClient();
@@ -15,13 +27,12 @@ export default async function AdminDashboardPage() {
 
   const { data: customers } = await admin
     .from('customers')
-    .select('id, name, email, gateways (id, is_online, last_seen_at, sensors (id, status))')
+    .select('id, name, email, gateways (id, is_online, last_seen_at, decommissioned_at, sensors (id, status, decommissioned_at))')
     .order('name');
 
   // Collect all sensor IDs to look up alert configs
   const allSensorIds = (customers ?? []).flatMap(c =>
-    ((c.gateways ?? []) as GatewayWithSensors[])
-      .flatMap(g => (g.sensors ?? []).map(s => s.id)),
+    activeGateways(c.gateways).flatMap(g => activeSensors(g).map(s => s.id)),
   );
 
   // Freshness-based status, same rules as the customer site: a sensor is
@@ -70,8 +81,8 @@ export default async function AdminDashboardPage() {
   let sensorsOffline = 0;
 
   const rows = (customers ?? []).map(customer => {
-    const gateways = (customer.gateways ?? []) as GatewayWithSensors[];
-    const sensors = gateways.flatMap(g => g.sensors ?? []);
+    const gateways = activeGateways(customer.gateways);
+    const sensors = gateways.flatMap(activeSensors);
 
     for (const s of sensors) {
       if (isSensorOnline(s.status, freshReadingBySensor.get(s.id))) sensorsOnline++; else sensorsOffline++;

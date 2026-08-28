@@ -15,6 +15,7 @@ export default async function SensorSettingsPage({
     .from('sensors')
     .select('id, name, status, battery_level, hardware_id, gateway_id, gateways!inner (customer_id)')
     .eq('id', sensorId)
+    .is('decommissioned_at', null)
     .single();
 
   if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customerId) {
