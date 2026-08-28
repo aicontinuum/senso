@@ -23,7 +23,7 @@ almost entirely.
 | 1 | ChirpStack server stood up | ✅ |
 | 2 | Gateway online | ✅ |
 | 3 | First sensor registered + decoded uplink | ✅ |
-| 4 | ChirpStack → backend ingest | ← **next, and the last one** |
+| 4 | ChirpStack → backend ingest | ✅ **verified end to end 2026-08-28** |
 | 5 | Supabase schema updates | ✅ *(done ahead of 4 — the parser needs the columns)* |
 
 Infrastructure details live in **`network-server/README.md`** (as-built).
@@ -81,8 +81,8 @@ and the deferred Docker/ufw audit — is in **`network-server/README.md`**.
 | Link | Proven on Ethernet **and** WiFi; currently WiFi-only (dev SSID `HOME`) |
 | Status | **Online** — live "last seen" heartbeat |
 
-"Online" means the gateway is talking to ChirpStack and ready to relay — it has heard
-from no sensor yet. That's Phase 3.
+"Online" here meant the gateway was talking to ChirpStack and ready to relay, before any
+sensor existed. It now relays real uplinks.
 
 **Field learning — WiFi provisioning:** configuring WiFi *over the gateway's own hotspot
 fails* (you're reconfiguring the link you're using, so it can't confirm and rolls back:
@@ -131,14 +131,13 @@ Proven on `sensor0` 2026-08-27: uplinks ran at a clean 20:00 spacing (FCnt 0–3
 `txack` at 18:39:42 delivered the downlink in that uplink's RX window; the next uplink
 (FCnt 4) arrived **18:54:44 — 15 min 2 s later**. No AT commands or USB access needed.
 
-## Phase 4 — ChirpStack → backend ingest ← next
+## Phase 4 — ChirpStack → backend ingest ✅ *(2026-08-28)*
 
 Transport decided: **ChirpStack HTTP integration → Vercel `/api/ingest`** with a
 **shared-secret header** (rather than an MQTT consumer).
 
 > 📄 **The exact payload, field mapping, and parsing rules are in
-> `network-server/UPLINK-FORMAT.md`.** The current `/api/ingest` expects the old
-> Pi-forwarder shape and must be **replaced**, not extended.
+> `network-server/UPLINK-FORMAT.md`.**
 
 ### Code — done ✅
 
@@ -178,18 +177,37 @@ Verified locally against the captured payload: auth (401 no/wrong secret), malfo
 (400), `event=join`, fPort 3/5, wrong region, missing DevEUI, missing/null/string/
 out-of-bounds `TempC_DS`. Paths past the device lookup need a live database.
 
-### Remaining — needs you
+### Live ✅
 
-- [ ] **Set `CHIRPSTACK_INGEST_SECRET`** in Vercel (admin project, Production) to a long
+First real reading landed **2026-08-28 19:24** — `1.68 °C`, in range, gateway and sensor
+both showing Online. The full chain is proven:
+**Dragino LHT65N-E3 → LoRaWAN EU868 → SenseCAP M2 → ChirpStack → HTTP integration →
+`/api/ingest` → Supabase → customer dashboard.**
+
+Two things that had to be fixed to get here, both found during the switch-on:
+
+- **Onboarding rejected LoRaWAN identifiers.** The admin forms still validated
+  prototype hardware — sensors demanded a `28-…` 1-Wire address and gateways a
+  colon-MAC — so neither device could be registered at all. The gateways route had its
+  own private copy of the identifier logic instead of the shared helper `/api/ingest`
+  already used, which is how they silently drifted apart. Now consolidated.
+- **The HTTP integration is per-application.** Registering a device correctly under a
+  tenant does nothing if that *application* has no integration — ChirpStack simply holds
+  the uplinks and never forwards them, with no error anywhere. Documented in
+  `ONBOARDING.md` §0 and first in its troubleshooting table.
+
+### Setup steps (done)
+
+- [x] **Set `CHIRPSTACK_INGEST_SECRET`** in Vercel (admin project, Production) to a long
       random string. **Until this is set, ingest rejects everything** — fail-closed by design.
-- [ ] **Configure the HTTP integration** in ChirpStack: `senso-test` application →
+- [x] **Configure the HTTP integration** in ChirpStack: `senso-test` application →
       Integrations → HTTP → endpoint `https://<admin-domain>/api/ingest`, with header
       `Authorization: Bearer <same secret>`.
-- [ ] **Disable the Pi** — `sudo systemctl disable --now senso-forwarder.service
+- [x] **Disable the Pi** — `sudo systemctl disable --now senso-forwarder.service
       senso-heartbeat.timer`. This is now urgent rather than tidy: the old forwarder's
       per-gateway secret no longer matches, so it will get 401s, and its store-and-forward
       treats 401 as retry-forever — growing `queue.db` on the SD card indefinitely.
-- [ ] **Verify end to end** — a decoded uplink appearing as a reading on the dashboard.
+- [x] **Verify end to end** — decoded uplink visible as a reading on the dashboard.
 - [ ] **Delivery reliability** — confirm/handle the integration's retry behavior so a
       backend blip doesn't silently drop uplinks (this replaces the Pi's store-and-forward
       guarantee).
