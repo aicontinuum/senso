@@ -7,15 +7,18 @@ export default async function ReportsPage() {
 
   const supabase = await createClient();
 
+  // Reports are the one screen that deliberately includes retired sensors. Every
+  // live view hides them, but a report is inherently historical: an auditor asking
+  // for a fridge's records from before it was decommissioned must still be able to
+  // produce them. They're listed with a "Retired" marker and unselected by default.
   const { data: gateways } = await supabase
     .from("gateways")
     .select("sensors (id, name, decommissioned_at)")
-    .eq("customer_id", customer.id)
-    .is("decommissioned_at", null);
+    .eq("customer_id", customer.id);
 
   const sensors = (gateways ?? []).flatMap(
     (g) => ((g.sensors ?? []) as { id: string; name: string; decommissioned_at: string | null }[])
-      .filter((s) => s.decommissioned_at === null) as { id: string; name: string }[],
+      .map((s) => ({ id: s.id, name: s.name, decommissionedAt: s.decommissioned_at })),
   );
   const sensorIds = sensors.map((s) => s.id);
 

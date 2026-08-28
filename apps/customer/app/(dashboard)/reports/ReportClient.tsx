@@ -10,7 +10,7 @@ import {
 } from "@/lib/temperature";
 import { timezoneLabel } from "@/lib/timezones";
 
-type SensorShape = { id: string; name: string };
+type SensorShape = { id: string; name: string; decommissionedAt: string | null };
 type ConfigShape = { sensorId: string; minTemp: number; maxTemp: number };
 type ReadingShape = { id: string; temperature: number; recordedAt: string };
 
@@ -35,6 +35,14 @@ type ReportSensor = {
   config: ConfigShape | undefined;
   readings: ReadingShape[];
 };
+
+// A retired sensor's readings simply stop partway through the period. Saying so on
+// the report explains the gap to an inspector, rather than leaving it to look like
+// the sensor failed or data was lost.
+function retiredNote(sensor: SensorShape, timezone: string): string | null {
+  if (!sensor.decommissionedAt) return null;
+  return `Sensor retired ${formatDateTimeLong(sensor.decommissionedAt, timezone)} — no readings recorded after this time.`;
+}
 
 async function buildReportPDF(
   sensors: ReportSensor[],
@@ -93,7 +101,15 @@ async function buildReportPDF(
     doc.text(`Generated: ${formatDateTimeLong(now, timezone)}`, margin, y);
     y += 5;
     doc.text(`All times shown in ${timezoneLabel(timezone)}`, margin, y);
-    y += 7;
+    y += 5;
+    const pdfRetired = retiredNote(sensor, timezone);
+    if (pdfRetired) {
+      doc.setFont("helvetica", "bold");
+      doc.text(pdfRetired, margin, y);
+      doc.setFont("helvetica", "normal");
+      y += 5;
+    }
+    y += 2;
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, y, margin + contentWidth, y);
     y += 5;
@@ -139,9 +155,14 @@ async function buildReportPDF(
 }
 
 export function ReportClient({ customerName, sensors, configs, timezone }: Props) {
+  // Retired sensors stay listed so their history remains reportable, but they are
+  // not part of the default selection or "Select all" — a routine report should
+  // look exactly as it did before any sensor was retired.
+  const activeSensors = sensors.filter((s) => s.decommissionedAt === null);
+
   const [range, setRange] = useState<RangeValue>("24h");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(sensors.map((s) => s.id)),
+    new Set(activeSensors.map((s) => s.id)),
   );
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -149,11 +170,12 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
 
-  const allSelected = selectedIds.size === sensors.length && sensors.length > 0;
+  const allSelected =
+    activeSensors.length > 0 && activeSensors.every((s) => selectedIds.has(s.id));
   const rangeMs = RANGES.find((r) => r.value === range)!.ms;
 
   function toggleAll() {
-    setSelectedIds(allSelected ? new Set() : new Set(sensors.map((s) => s.id)));
+    setSelectedIds(allSelected ? new Set() : new Set(activeSensors.map((s) => s.id)));
     setGenerated(false);
   }
 
@@ -234,6 +256,8 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
     ];
     for (const { sensor, config, readings } of reportSensors) {
       lines.push(`"${sensor.name}"`);
+      const csvRetired = retiredNote(sensor, timezone);
+      if (csvRetired) lines.push(`"${csvRetired}"`);
       if (config) lines.push(`"Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}"`);
       lines.push('"Date / Time","Temperature","Status"');
       for (const r of readings) {
@@ -299,6 +323,11 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
                       <label key={s.id} className="flex min-w-0 items-center gap-2 text-sm cursor-pointer">
                         <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSensor(s.id)} className="accent-primary shrink-0" />
                         <span className="truncate">{s.name}</span>
+                        {s.decommissionedAt && (
+                          <span className="shrink-0 rounded px-1.5 py-0.5 text-xs bg-muted text-muted-foreground">
+                            Retired
+                          </span>
+                        )}
                       </label>
                     ))}
                   </div>
@@ -369,6 +398,9 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
                 <p className="text-sm text-muted-foreground">Period: {periodLabel}</p>
                 <p className="text-sm text-muted-foreground">Generated: {formatDateTimeLong(now, timezone)}</p>
                 <p className="text-sm text-muted-foreground">{tzNote}</p>
+                {retiredNote(sensor, timezone) && (
+                  <p className="text-sm font-medium mt-1">{retiredNote(sensor, timezone)}</p>
+                )}
               </div>
 
               <hr className="mb-4 border-border" />
