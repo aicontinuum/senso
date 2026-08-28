@@ -20,19 +20,33 @@ Hardware logs temperatures automatically → cloud stores and processes readings
 
 ## Hardware Stack
 
+Off-the-shelf **LoRaWAN**, as of the 2026-08 migration (see `MIGRATION.md`).
+
 ```
-ESP32 + DS18B20 temperature sensor (LoRa)
-        ↓
-Raspberry Pi Zero 2W (gateway — one per customer site)
-        ↓
-Cloud (backend API)
+Dragino LHT65N-E3  (LoRaWAN sensor, external −40 °C probe)
+        ↓  LoRaWAN, EU868 — body + antenna outside, probe inside the fridge
+SenseCAP M2 gateway  (one per customer site; a dumb radio bridge)
+        ↓  Semtech UDP packet forwarder, port 1700
+ChirpStack  (self-hosted network server — lns.sensoqa.com)
+        ↓  HTTP integration, shared-secret header
+Vercel /api/ingest → Supabase
         ↓
 senso.com (customer dashboard)
 ```
 
-- **Sensor type:** Temperature only for now
-- **Architecture:** Designed to be sensor-agnostic for future expansion (humidity, door sensors, etc.) — but do NOT build for this yet. Keep it temperature-only.
-- **One gateway per customer location**
+- **Sensor type:** Temperature is the product. The LHT65N also reports humidity and
+  battery voltage, which we store — but do NOT build features around humidity yet.
+- **Reporting interval:** 15 minutes, standard on every sensor. Devices ship at a 20-min
+  default and are moved to 15 by a downlink (`01000384`, fPort 1) during office prep.
+- **One gateway per customer location.** Gateway choice is backend-invisible — ChirpStack
+  normalizes every gateway's uplinks — so a different model can be used per site.
+- **The Network Server is a real dependency.** Unlike raw LoRa, the gateway cannot talk to
+  our backend directly; ChirpStack decrypts and decodes first. Ops details in
+  `network-server/README.md`, payload contract in `network-server/UPLINK-FORMAT.md`.
+
+**Prototype stack (retired from the product path):** ESP32 + DS18B20 over raw LoRa into a
+Raspberry Pi running the `gateway/` kit. Kept as a **test bench only** — it must not point
+at the production ingest endpoint.
 
 ---
 
@@ -102,15 +116,25 @@ Write-heavy. Senso staff manage customers, devices, and billing.
 
 ```
 Customer
-  └── Gateway (one per site)
-        └── Sensor[] (one or more per gateway)
-              └── Reading[] (timestamped temperature values)
+  └── Gateway (one per site)          · mac_address = LoRaWAN Gateway EUI
+        │                               decommissioned_at (soft delete)
+        └── Sensor[]                  · hardware_id = LoRaWAN DevEUI
+              │                         decommissioned_at (soft delete)
+              └── Reading[]           · temperature  ← object.TempC_DS (external probe)
+                                        humidity, battery_v
+                                        rssi, snr, spreading_factor
+                                        recorded_at
 
-AlertConfig (per Sensor)
-  ├── min_temp
-  ├── max_temp
+AlertConfig (per Sensor)              AlertLog
+  ├── min_temp                          ├── → AlertConfig  (RESTRICT)
+  ├── max_temp                          └── → Reading      (RESTRICT)
   └── email_recipients[]
 ```
+
+- `readings.temperature` is **`TempC_DS`**, the external probe — *not* `TempC_SHT`, which
+  is the unit's internal sensor reading room temperature outside the fridge.
+- A **`sites`/`branches`** layer (`customers → sites → gateways`) is anticipated for
+  multi-branch customers, mirroring ChirpStack's tenant/application split. Not built yet.
 
 ---
 
@@ -129,9 +153,32 @@ AlertConfig (per Sensor)
 - Product architecture and page structures are finalized; tech stack is locked in.
 - **The platform is live on Supabase** — auth, customer scoping (RLS), and real data. The mock-data phase is over; new work wires to real APIs (still ask before inventing endpoints).
 - **Backend / ingest exists** (in `apps/admin`): `POST /api/ingest` (readings, per-gateway secret auth, idempotent upsert), `POST /api/heartbeat` (60s liveness pulse), gateway identified by its 16-hex LoRa concentrator EUI. Duplicate-safe via a `UNIQUE(sensor_id, recorded_at)` index.
-- **Hardware pipeline is real and running**: ESP32+DS18B20 → LoRa → Raspberry Pi gateway → HTTPS → ingest → dashboard. The gateway is provisioned from the version-controlled **`gateway/`** kit (`sudo ./setup.sh`): Wi-Fi resilience, network + hardware watchdogs, 60s heartbeat, and a store-and-forward LoRa forwarder (buffers to disk during outages, backfills with original timestamps — no gaps).
+- **Mid-migration to LoRaWAN** (`MIGRATION.md`). Phases 0–3 and 5 are done: ChirpStack is
+  self-hosted and live, the SenseCAP M2 gateway is online, the first Dragino LHT65N-E3 has
+  joined and decodes correctly on EU868, and the Supabase schema is ready.
+  **Phase 4 — rewriting `/api/ingest` for the ChirpStack payload — is the last step**, and
+  until it lands no LoRaWAN readings reach the dashboard.
+- **The old Pi/ESP32 pipeline is test-bench only** and must be disconnected from the
+  production ingest endpoint (`systemctl disable --now senso-forwarder.service
+  senso-heartbeat.timer`) — leaving the heartbeat running would show a dead gateway as
+  Online forever.
 - **Timestamps are timezone-aware** per customer (`customers.timezone`, default `Asia/Qatar`).
-- Pre-launch tasks (security hardening, retention, golden SD image, etc.) live in `TODO.md`; the running build log is `DEVLOG.md`.
+- **Devices are retired, never deleted.** `decommissioned_at` on `sensors`/`gateways` hides
+  them from every live view while their records survive; the database enforces this with
+  `RESTRICT` on all history foreign keys. See "Data integrity" below.
+- Pre-launch tasks (security hardening, retention, RLS verification, etc.) live in
+  `TODO.md`; the running build log is `DEVLOG.md`.
+
+### Data integrity — the rule that must not be broken
+
+**History tables (`readings`, `alert_logs`) are never cascade-deleted. Structure and config
+tables (`gateways`, `sensors`, `alert_configs`) may be.**
+
+This is enforced in the database via `ON DELETE RESTRICT`, not just in application code,
+because the product's entire value is the record it produces. Removal is a **soft delete**
+(`decommissioned_at`); hard deletes of devices are gone. Reports deliberately still list
+retired sensors — tagged "Retired" with the retirement date — so historical records stay
+producible after equipment is replaced.
 
 ---
 
