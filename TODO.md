@@ -46,7 +46,16 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 - [ ] 🔴 **Deleting a sensor destroys its entire temperature history (CASCADE).** Verified 2026-08-27: `readings_sensor_id_fkey` is `FOREIGN KEY (sensor_id) REFERENCES sensors(id) **ON DELETE CASCADE**`. Two live admin routes hard-delete sensors — `api/customers/[id]/sensors/[sensorId]/route.ts` (single sensor, "Unlink" button) and `api/customers/[id]/gateways/[gatewayId]/route.ts` which deletes **every sensor on the gateway** first. So one admin click on "unlink gateway" permanently erases all readings for all sensors under it. The UI confirm warns that sensors will be removed but says nothing about readings, and there is no undo. For a compliance product this is the worst possible data-loss path: an auditor asking "what was fridge 3 doing last March?" gets nothing, and the customer's retention obligation is silently broken. **Fix (both halves):** (1) change the FK to `ON DELETE RESTRICT` so the database physically refuses to destroy attributed history; (2) make sensor/gateway removal a **soft delete** — add `sensors.decommissioned_at timestamptz`, filter it out of customer + admin dashboards, and stop hard-deleting in those two routes. Also audit every other FK pointing at `sensors`/`gateways` for the same cascade (esp. `alert_configs` → `alert_logs`: losing alert history destroys the proof that someone *was* notified): `select conrelid::regclass, conname, pg_get_constraintdef(oid) from pg_constraint where confrelid in ('sensors'::regclass,'gateways'::regclass) and contype='f';`
 
-- [ ] **Readings data retention policy** — the `readings` table grows indefinitely (every simulator/device tick adds a row, nothing is ever deleted). Before go-live, define a retention window (e.g. keep 2 years, archive or delete older rows) and set up a scheduled job (Supabase cron or pg_cron) to enforce it.
+- [ ] **Readings data retention policy** — the `readings` table grows indefinitely (every device tick adds a row, nothing is ever deleted). Deliberately **deferred** (2026-08-27): it's a pure backend job (`pg_cron` or a Vercel cron endpoint), shippable any time before or after go-live with no client, device or migration work — and the asymmetry favours waiting, since keeping data is cheap while deleting it early is irreversible.
+
+  **Design when we do it:**
+  - Key retention on **reading age**, not on whether the sensor was retired.
+  - **≥ 2 years.** A shorter window (a 5-month idea was floated and rejected) risks falling under the legal minimum — food-safety regimes generally require temperature records for 1–2 years, and Qatar follows Codex/HACCP norms. Records auto-deleted below that would be a compliance failure *caused by us*, and the long-tail queries (inspection, illness investigation, insurance claim, supplier dispute) are exactly the ones that reach back months.
+  - Consider **per-customer windows** — obligations differ by sector (pharmacy ≠ restaurant).
+  - **Export/archive before delete**, so a customer is handed their records rather than losing them.
+  - Delete **readings only**, keep the sensor row, so historical reports still name the device.
+  - Storage is not the pressure: ~35k rows/sensor/year ≈ 2 MB, so 100 sensors × 2 years ≈ 350 MB.
+  - Whatever window is chosen should be stated in the **customer terms** before go-live.
 
 ## Hardware / Ingest
 
