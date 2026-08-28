@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-
-const HARDWARE_ID_RE = /^28-[0-9a-f]{12}$/i;
+import { normaliseDevEui, isValidDevEui } from '@/lib/deveui';
 
 export async function POST(
   request: Request,
@@ -21,11 +20,12 @@ export async function POST(
     return NextResponse.json({ error: 'Gateway and name are required' }, { status: 400 });
   }
   if (!hardwareId?.trim()) {
-    return NextResponse.json({ error: 'Hardware ID is required' }, { status: 400 });
+    return NextResponse.json({ error: 'DevEUI is required' }, { status: 400 });
   }
-  if (!HARDWARE_ID_RE.test(hardwareId.trim())) {
+  const devEui = normaliseDevEui(hardwareId);
+  if (!isValidDevEui(devEui)) {
     return NextResponse.json(
-      { error: 'Invalid hardware ID — expected format 28-xxxxxxxxxxxx' },
+      { error: 'Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c' },
       { status: 400 },
     );
   }
@@ -51,7 +51,7 @@ export async function POST(
     .insert({
       gateway_id: gatewayId,
       name: name.trim(),
-      hardware_id: hardwareId.trim().toLowerCase(),
+      hardware_id: devEui,
       status: 'offline',
     })
     .select('id, name, status, battery_level')

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
+import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import { normaliseDevEui, isValidDevEui } from '@/lib/deveui';
 
 type CustomerRow = {
   id: string;
@@ -40,15 +42,6 @@ interface Props {
   sensors: SensorRow[];
 }
 
-const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;
-
-function normaliseMac(raw: string): string {
-  const stripped = raw.replace(/[\s\-:]/g, '').toLowerCase();
-  if (stripped.length === 12) {
-    return stripped.match(/.{2}/g)!.join(':');
-  }
-  return raw.trim().toLowerCase();
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', {
@@ -186,9 +179,9 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
 
   async function linkGateway() {
     setLinkError('');
-    const normalised = normaliseMac(macInput);
-    if (!MAC_RE.test(normalised)) {
-      setLinkError('Invalid MAC address — use format AA:BB:CC:DD:EE:FF');
+    const normalised = normaliseIdentifier(macInput);
+    if (!isValidGatewayId(normalised)) {
+      setLinkError('Invalid Gateway EUI — expected 16 hex characters, e.g. 2cf7f11081400088');
       return;
     }
     if (!gwName.trim()) {
@@ -244,12 +237,19 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
 
   async function addSensor() {
     setSensorError('');
+    // Normalise here as well as server-side, so a DevEUI pasted from a label or QR
+    // with colons or dashes is accepted rather than bounced back to the technician.
+    const devEui = normaliseDevEui(sensorForm.hardwareId);
+    if (!isValidDevEui(devEui)) {
+      setSensorError('Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c');
+      return;
+    }
     setSavingSensor(true);
     try {
       const res = await fetch(`/api/customers/${customer.id}/sensors`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sensorForm),
+        body: JSON.stringify({ ...sensorForm, hardwareId: devEui }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -415,7 +415,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
               value={macInput}
               onChange={e => { setMacInput(e.target.value); setLinkError(''); }}
               onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="MAC address (AA:BB:CC:DD:EE:FF)"
+              placeholder="Gateway EUI (e.g. 2cf7f11081400088)"
               className={`flex-1 max-w-xs rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${linkError ? 'border-red-400 focus:ring-red-400' : 'border-border'}`}
             />
             <input
@@ -530,11 +530,11 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Hardware ID (1-Wire address)</label>
+              <label className="text-xs text-muted-foreground">DevEUI (from the sensor label / QR)</label>
               <input
                 value={sensorForm.hardwareId}
                 onChange={e => setSensorField('hardwareId')(e.target.value)}
-                placeholder="28-xxxxxxxxxxxx"
+                placeholder="a840419edb62011c"
                 className="w-full rounded-md border border-border bg-background px-3 py-1.5 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
