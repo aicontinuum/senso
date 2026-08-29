@@ -34,7 +34,7 @@ export default async function SensorDetailPage({
 
   const [{ data: configRows }, { data: readingRows }, { data: customerData }] = await Promise.all([
     supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
-    supabase.from("readings").select("id, temperature, recorded_at").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(10),
+    supabase.from("readings").select("id, temperature, recorded_at, battery_v").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(10),
     supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
   ]);
 
@@ -81,7 +81,15 @@ export default async function SensorDetailPage({
   return (
     <>
       <AutoRefresh />
-      <SensorDetailClient sensor={sensor} config={config} gateway={gateway} accountRecipients={accountRecipients} recentReadings={recentReadings} timezone={customer.timezone} />
+      <SensorDetailClient
+        sensor={sensor}
+        config={config}
+        gateway={gateway}
+        accountRecipients={accountRecipients}
+        recentReadings={recentReadings}
+        timezone={customer.timezone}
+        batteryVolts={readingRows?.[0]?.battery_v ?? null}
+      />
     </>
   );
 }

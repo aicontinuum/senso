@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Plus, Pencil } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
+import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -21,9 +22,11 @@ interface Props {
   accountRecipients: string[];
   recentReadings: Reading[];
   timezone: string;
+  /** Latest reported battery voltage. Volts — not a percentage; see @senso/status. */
+  batteryVolts: number | null;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone, batteryVolts }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -120,15 +123,13 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
     setEmailError("");
   }
 
-  const battery = sensor.batteryLevel;
-  const batteryColor =
-    battery === undefined
-      ? "bg-zinc-300"
-      : battery <= 20
-        ? "bg-red-500"
-        : battery <= 40
-          ? "bg-amber-400"
-          : "bg-green-500";
+  const tier = batteryTier(batteryVolts);
+  const batteryBar =
+    tier === "good"
+      ? { color: "bg-green-500", width: "100%" }
+      : tier === "low"
+        ? { color: "bg-amber-400", width: "50%" }
+        : { color: "bg-red-500", width: "15%" };
 
   return (
     <div className="max-w-lg">
@@ -405,23 +406,16 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               {formatReadingTime(sensor.lastReading.recordedAt, timezone)}
             </InfoRow>
           )}
-          {battery !== undefined && (
+          {tier && (
             <InfoRow label="Battery">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn("h-full rounded-full", batteryColor)}
-                    style={{ width: `${battery}%` }}
-                  />
-                </div>
-                <span
-                  className={cn(
-                    "tabular-nums",
-                    battery <= 20 && "font-semibold text-red-600",
-                  )}
-                >
-                  {battery}%
-                </span>
+              <div
+                className="h-2 w-20 overflow-hidden rounded-full bg-muted"
+                title={batteryVolts !== null ? `${batteryVolts.toFixed(2)} V` : undefined}
+              >
+                <div
+                  className={cn("h-full rounded-full", batteryBar.color)}
+                  style={{ width: batteryBar.width }}
+                />
               </div>
             </InfoRow>
           )}

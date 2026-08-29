@@ -36,3 +36,29 @@ export function isSensorOnline(
   if (status === "offline" || !lastReadingAt) return false;
   return now - new Date(lastReadingAt).getTime() <= SENSOR_STALE_MS;
 }
+
+// ── Battery ────────────────────────────────────────────────────────────────
+//
+// Reported as volts (`BatV`) on every uplink — not as a percentage, and
+// deliberately not converted into one. The LHT65N runs a CR17450 Li-MnO2 cell,
+// whose discharge curve is nearly flat: it sits close to its nominal voltage for
+// most of its life and then falls away quickly near the end. A linear
+// volts-to-percent mapping would therefore read ~100% for a year or more and
+// then collapse within weeks — a number precise enough to be trusted and wrong
+// enough to plan swap visits around.
+//
+// Three coarse tiers are honest about what the voltage can actually tell us.
+// Thresholds are from Dragino's guidance (~2.6 V is their replace point); revisit
+// them once we have months of real discharge curves from our own fleet.
+
+export const BATTERY_GOOD_V = 3.0;
+export const BATTERY_LOW_V = 2.7;
+
+export type BatteryTier = "good" | "low" | "critical";
+
+export function batteryTier(volts: number | null | undefined): BatteryTier | null {
+  if (volts === null || volts === undefined || !Number.isFinite(volts)) return null;
+  if (volts >= BATTERY_GOOD_V) return "good";
+  if (volts >= BATTERY_LOW_V) return "low";
+  return "critical";
+}
