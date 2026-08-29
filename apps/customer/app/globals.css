@@ -1,7 +1,15 @@
 @import "tailwindcss";
-/* Design-system tokens, vendored verbatim in packages/tokens. Imported after
-   Tailwind so the system's base element styles win over preflight. */
-@import "@senso/tokens";
+/* Design-system tokens, vendored verbatim in packages/tokens.
+ *
+ * Imported into the `base` layer, which matters more than it looks: Tailwind v4
+ * puts its utilities in cascade layers, and unlayered CSS beats layered CSS
+ * regardless of specificity. Left unlayered, the system's base element styles
+ * would silently outrank every Tailwind utility touching the same property —
+ * its `input:focus-visible { box-shadow }` beat `focus-visible:shadow-none`, and
+ * its `a { color }` and `h1-h6 { font-family }` would have done the same to any
+ * text-* or font-* utility. In the base layer they are defaults that utilities
+ * can override, which is what they should be. */
+@import "@senso/tokens" layer(base);
 
 /* Bridge the design system into Tailwind's utility namespaces.
  *
@@ -151,8 +159,10 @@
 
 /* Tailwind's borders default to `currentColor`; the system's divider weight is
    the sane default for the handful of places that set a width without a colour. */
-* {
-  border-color: var(--border-default);
+@layer base {
+  * {
+    border-color: var(--border-default);
+  }
 }
 
 /* The design system's base layer paints every <a> as a prose link. Every link in
@@ -161,13 +171,15 @@
    contents purple. That also breaks the system's own rule that purple means
    action or brand and never content or status. Genuine text links opt in with
    `text-primary underline`. */
-a {
-  color: inherit;
-}
+@layer base {
+  a {
+    color: inherit;
+  }
 
-a:hover {
-  color: inherit;
-  text-decoration: none;
+  a:hover {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* Numbers that update in place must not jitter or misalign between rows. */

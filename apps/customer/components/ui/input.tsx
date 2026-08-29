@@ -53,7 +53,19 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={describedById}
             className={cn(
               "min-w-0 flex-1 border-none bg-transparent p-0 text-base font-medium text-foreground",
-              "outline-none placeholder:text-text-faint",
+              // The design system's base layer puts the focus ring on every
+              // input:focus-visible. Here the wrapper draws it instead, around
+              // the whole control including its suffix — so the inner field has
+              // to drop both the outline and that inherited shadow, or the two
+              // rings nest visibly.
+              //
+              // Important is deliberate: the rule being overridden is an element
+              // selector in a vendored file we do not edit, and it is unlayered
+              // in dev, where unlayered CSS outranks every Tailwind utility no
+              // matter its specificity. Scoped to this component, so raw inputs
+              // elsewhere keep their focus indicator.
+              "outline-none focus-visible:shadow-none!",
+              "placeholder:text-text-faint",
               className,
             )}
             {...props}
