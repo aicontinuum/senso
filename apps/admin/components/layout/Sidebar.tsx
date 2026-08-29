@@ -57,14 +57,16 @@ export function Sidebar({
         "fixed left-0 top-0 z-30 w-56",
         mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
         "md:relative md:left-auto md:top-auto md:z-auto md:translate-x-0 md:shadow-none",
-        collapsed ? "md:w-16" : "md:w-56",
+        collapsed ? "md:w-20" : "md:w-56",
       )}
     >
       {/* Header row */}
       <div
         className={cn(
           "flex h-14 shrink-0 items-center border-b px-3",
-          // 64px rail leaves little room once the toggle is accounted for.
+          // The collapsed rail has to seat the mark (34px) beside the toggle
+          // (28px) with a gap, so it is sized to that content rather than to a
+          // round number — 80px less px-1 leaves 72px for 66px of controls.
           collapsed && "md:gap-1 md:px-1",
         )}
       >
