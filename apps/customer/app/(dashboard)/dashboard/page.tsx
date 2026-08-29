@@ -7,6 +7,10 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
 import type { Sensor, AlertConfig } from "@senso/types";
 
+// The design system fixes the sensor tile floor at 268px: below that a tile
+// cannot hold a reading and its supporting rows side by side.
+const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]";
+
 export default async function DashboardPage() {
   const customer = await requireCustomer();
 
@@ -155,7 +159,7 @@ export default async function DashboardPage() {
           <p className="mt-1 text-xs text-muted-foreground">Add a gateway and sensors to start monitoring.</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className={SENSOR_GRID}>
           {sensors.map((sensor) => (
             <SensorCard
               key={sensor.id}

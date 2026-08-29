@@ -52,17 +52,17 @@ export function Sidebar({
       className={cn(
         "flex h-full flex-col border-r bg-card transition-all duration-200 print:hidden",
         // Mobile: fixed overlay, slides in/out
-        "fixed left-0 top-0 z-30 w-56",
+        "fixed left-0 top-0 z-30 w-62",
         mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
         // Desktop: in-flow, collapsible width
         "md:relative md:left-auto md:top-auto md:z-auto md:translate-x-0 md:shadow-none",
-        collapsed ? "md:w-16" : "md:w-56",
+        collapsed ? "md:w-16" : "md:w-62",
       )}
     >
       {/* Header row — controls only; the brand sits below the divider */}
       <div
         className={cn(
-          "flex h-14 shrink-0 items-center justify-end border-b px-3",
+          "flex h-(--topbar-height) shrink-0 items-center justify-end border-b px-3",
           collapsed && "md:justify-center md:px-1",
         )}
       >

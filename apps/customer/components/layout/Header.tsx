@@ -10,7 +10,7 @@ interface Props {
 
 export function Header({ onMenuClick, customerName }: Props) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card px-4 sm:px-6 print:hidden">
+    <header className="flex h-(--topbar-height) shrink-0 items-center justify-between border-b bg-card px-4 sm:px-6 print:hidden">
       {/* Left slot: the brand, with the mobile menu button ahead of it. On
           desktop this replaces what was an empty spacer div holding the layout
           apart. */}

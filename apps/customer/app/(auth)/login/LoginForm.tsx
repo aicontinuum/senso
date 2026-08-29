@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { APP_NAME } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -48,38 +50,33 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium mb-1">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          required
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="••••••••"
-          required
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
+      <Input
+        label="Email"
+        type="email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        placeholder="you@example.com"
+        required
+      />
+      <Input
+        label="Password"
+        type="password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        placeholder="••••••••"
+        required
+      />
 
-      {error && <p className="text-sm text-alert-text">{error}</p>}
+      {/* Kept as a form-level message rather than a field error: it also covers
+          cases like an account that is not a registered customer, which belong
+          to neither field. */}
+      {error && (
+        <p role="alert" className="text-sm text-alert-text">{error}</p>
+      )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-      >
+      <Button type="submit" block disabled={loading}>
         {loading ? 'Signing in…' : 'Sign In'}
-      </button>
+      </Button>
     </form>
   );
 }
