@@ -57,21 +57,16 @@ export function Sidebar({
         mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
         // Desktop: in-flow, collapsible width
         "md:relative md:left-auto md:top-auto md:z-auto md:translate-x-0 md:shadow-none",
-        collapsed ? "md:w-20" : "md:w-56",
+        collapsed ? "md:w-16" : "md:w-56",
       )}
     >
-      {/* Header row */}
+      {/* Header row — controls only; the brand sits below the divider */}
       <div
         className={cn(
-          "flex h-14 shrink-0 items-center border-b px-3",
-          // The collapsed rail has to seat the mark (34px) beside the toggle
-          // (28px) with a gap, so it is sized to that content rather than to a
-          // round number — 80px less px-1 leaves 72px for 66px of controls.
-          collapsed && "md:gap-1 md:px-1",
+          "flex h-14 shrink-0 items-center justify-end border-b px-3",
+          collapsed && "md:justify-center md:px-1",
         )}
       >
-        <Logo collapsed={collapsed} />
-
         {/* Mobile: close button */}
         <button
           onClick={onMobileClose}
@@ -84,10 +79,7 @@ export function Sidebar({
         {/* Desktop: collapse toggle */}
         <button
           onClick={onToggleCollapse}
-          className={cn(
-            "hidden rounded-md p-1.5 hover:bg-accent md:block",
-            collapsed && "mx-auto",
-          )}
+          className="hidden rounded-md p-1.5 hover:bg-accent md:block"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
@@ -96,6 +88,16 @@ export function Sidebar({
             <ChevronLeft className="h-4 w-4" />
           )}
         </button>
+      </div>
+
+      {/* Brand */}
+      <div
+        className={cn(
+          "flex shrink-0 items-center px-4 pt-4",
+          collapsed && "md:hidden",
+        )}
+      >
+        <Logo />
       </div>
 
       {/* Nav links */}
