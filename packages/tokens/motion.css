@@ -1,0 +1,20 @@
+:root{
+--dur-instant:80ms;/* @kind other */
+--dur-fast:120ms;/* @kind other */
+--dur-base:180ms;/* @kind other */
+--dur-slow:280ms;/* @kind other */
+--dur-slower:420ms;/* @kind other */
+--ease-out:cubic-bezier(.22,.61,.36,1);/* @kind other */   /* default: things arriving */
+--ease-in:cubic-bezier(.55,.06,.68,.19);/* @kind other */  /* things leaving */
+--ease-standard:cubic-bezier(.4,0,.2,1);/* @kind other */
+--ease-emphasis:cubic-bezier(.34,1.2,.64,1);/* @kind other */ /* the only overshoot allowed, and barely */
+--transition-control:background-color var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);/* @kind other */
+--press-scale:0.985;/* @kind other */
+}
+@media (prefers-reduced-motion:reduce){:root{
+--dur-instant:0ms;/* @kind other */
+--dur-fast:0ms;/* @kind other */
+--dur-base:0ms;/* @kind other */
+--dur-slow:0ms;/* @kind other */
+--dur-slower:0ms;/* @kind other */
+}}

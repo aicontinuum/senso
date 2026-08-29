@@ -1,0 +1,16 @@
+:root{
+/* Shadows are soft, wide and low-opacity — cards lift off the page, they don't cut into it. */
+--shadow-xs:0 1px 2px rgba(23,22,28,.05);
+--shadow-sm:0 1px 3px rgba(23,22,28,.06),0 1px 2px rgba(23,22,28,.04);
+--shadow-md:0 4px 14px rgba(23,22,28,.06);
+--shadow-lg:0 12px 32px rgba(23,22,28,.08);
+--shadow-xl:0 24px 60px rgba(23,22,28,.10);
+--shadow-accent:0 8px 22px rgba(110,91,228,.28);
+--shadow-accent-sm:0 3px 10px rgba(110,91,228,.24);
+--shadow-alert:0 8px 22px rgba(229,72,77,.22);
+--shadow-inset-hairline:inset 0 0 0 1px rgba(23,22,28,.04);
+--blur-glass:blur(14px);/* @kind other */
+--blur-scrim:blur(2px);/* @kind other */
+--scrim-top:linear-gradient(to bottom,rgba(14,14,20,.55),rgba(14,14,20,0));/* @kind color */
+--scrim-bottom:linear-gradient(to top,rgba(14,14,20,.62),rgba(14,14,20,0));/* @kind color */
+}

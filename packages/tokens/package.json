@@ -1,0 +1,11 @@
+{
+  "name": "@senso/tokens",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./index.css",
+  "style": "./index.css",
+  "exports": {
+    ".": "./index.css",
+    "./*": "./*"
+  }
+}

@@ -1,0 +1,13 @@
+:root{
+--radius-xs:6px;--radius-sm:8px;--radius-md:12px;--radius-lg:16px;
+--radius-xl:20px;--radius-2xl:28px;--radius-3xl:36px;--radius-full:999px;
+
+--radius-card:20px;      /* dashboard tiles + marketing cards */
+--radius-inner:12px;     /* chips nested inside a card */
+--radius-control:12px;   /* inputs, selects */
+--radius-button:10px;    /* buttons, segmented controls, nav items */
+--radius-chip:8px;       /* badges, status chips */
+--radius-pill:999px;     /* avatars, dots, counters only — not buttons */
+
+--border-width:1px;--border-width-strong:1.5px;
+}

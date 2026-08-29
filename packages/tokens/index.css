@@ -1,0 +1,19 @@
+/* Senso design-system tokens.
+ *
+ * The files beside this one are vendored VERBATIM from the design system export
+ * so a future export can be diffed rather than re-merged by hand. Do not edit
+ * them — app-specific mapping belongs in each app's globals.css, which bridges
+ * these variables into Tailwind's @theme.
+ *
+ * fonts.css from the export is deliberately NOT vendored: it pulls the three
+ * families through a render-blocking Google Fonts @import. The apps load the
+ * same families via next/font instead and define --font-display / --font-sans /
+ * --font-mono themselves, which is what typography.css expects.
+ */
+@import "./colors.css";
+@import "./typography.css";
+@import "./spacing.css";
+@import "./radius.css";
+@import "./elevation.css";
+@import "./motion.css";
+@import "./base.css";

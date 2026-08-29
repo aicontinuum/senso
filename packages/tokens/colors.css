@@ -1,0 +1,98 @@
+:root{
+/* ---- Brand: sampled from the supplied Senso logo files ---- */
+--brand-violet:#9c60fe; /* gradient start, bottom-left of the lockup */
+--brand-indigo:#495cce; /* gradient end, top-right of the lockup */
+--brand-500:#6e5be4;    /* solid mark colour — the primary brand purple */
+
+--brand-50:#f3f1fe;--brand-100:#e7e3fd;--brand-200:#cfc8fa;--brand-300:#b0a5f5;
+--brand-400:#8e7dee;--brand-600:#5b48d4;--brand-700:#4a3ab4;--brand-800:#392d8c;--brand-900:#241c5c;
+
+/* The brand gradient. Never re-angle it: violet sits low-left, indigo high-right. */
+--brand-gradient:linear-gradient(to top right,var(--brand-violet),var(--brand-indigo));/* @kind color */
+--brand-gradient-soft:linear-gradient(to top right,#f3f1fe,#eaeaf9);/* @kind color */
+
+/* ---- Neutrals: cool, faintly violet-tinted greys ---- */
+--neutral-0:#ffffff;--neutral-25:#fafafc;--neutral-50:#f5f5f8;--neutral-100:#eeeef3;
+--neutral-200:#e2e2ea;--neutral-300:#c9c9d6;--neutral-400:#a0a0b4;--neutral-500:#757589;
+--neutral-600:#55556a;--neutral-700:#3b3b4d;--neutral-800:#262633;--neutral-900:#17161c;--neutral-950:#0e0e14;
+
+/* ---- Status: the readings vocabulary. Every sensor tile speaks in these five. ---- */
+--ok-500:#12a150;--ok-soft:#e7f7ee;--ok-border:#b6e6c9;--ok-text:#0a7038;
+--warn-500:#e9a23b;--warn-soft:#fdf3e3;--warn-border:#f3ddb2;--warn-text:#8a5a0b;
+--alert-500:#e5484d;--alert-soft:#fdecec;--alert-border:#f6c3c4;--alert-text:#a6161b;
+--cold-500:#2e9ad6;--cold-soft:#e8f5fc;--cold-border:#bfe1f3;--cold-text:#0f5f8c;
+--offline-500:#a0a0b4;--offline-soft:#f1f1f5;--offline-border:#dcdce5;--offline-text:#55556a;
+
+/* ---- Semantic aliases: reach for these, not the scales above.
+   These :root values ARE the design system's main mode: LIGHT. ---- */
+--accent:var(--brand-500);
+--accent-hover:var(--brand-600);
+--accent-press:var(--brand-700);
+--accent-soft:var(--brand-50);
+--accent-soft-hover:var(--brand-100);
+--accent-on:var(--neutral-0);
+
+--text-primary:var(--neutral-900);
+--text-secondary:var(--neutral-600);
+--text-muted:var(--neutral-500);
+--text-faint:var(--neutral-400);
+--text-inverse:var(--neutral-0);
+--text-accent:var(--brand-600);
+--text-link:var(--brand-600);
+--text-link-hover:var(--brand-700);
+
+--surface-page:var(--neutral-25);
+--surface-card:var(--neutral-0);
+--surface-sunken:var(--neutral-50);
+--surface-inset:var(--neutral-100);
+--surface-inverse:var(--neutral-900);
+--surface-accent:var(--brand-500);
+--surface-accent-soft:var(--brand-50);
+--surface-overlay:rgba(14,14,20,.5);
+--surface-glass:rgba(255,255,255,.72);
+
+--border-subtle:var(--neutral-100);
+--border-default:var(--neutral-200);
+--border-strong:var(--neutral-300);
+--border-accent:var(--brand-300);
+--border-inverse:rgba(255,255,255,.14);
+
+--focus-ring:0 0 0 3px rgba(110,91,228,.32);
+--chart-grid:var(--neutral-100);
+--chart-track:var(--neutral-200);
+}
+
+/* Secondary dark scope — opt in with data-theme="dark" on a subtree.
+   Never set on <html> by default; light above is the canonical mode. */
+[data-theme="dark"]{
+--text-primary:var(--neutral-0);
+--text-secondary:#b4b4c6;
+--text-muted:#8f8fa4;
+--text-faint:#6a6a80;
+--text-inverse:var(--neutral-900);
+--text-accent:var(--brand-300);
+--text-link:var(--brand-300);
+--text-link-hover:var(--brand-200);
+--surface-page:#0e0e14;
+--surface-card:#191922;
+--surface-sunken:#14141c;
+--surface-inset:#22222d;
+--surface-inverse:var(--neutral-0);
+--surface-glass:rgba(25,25,34,.72);
+--border-subtle:#24242f;
+--border-default:#2e2e3b;
+--border-strong:#3f3f50;
+--accent-soft:#241c5c;
+--accent-soft-hover:#2e2570;
+
+/* Status in the dark: deep tinted fills instead of the light pastels, and the
+   readable text moves from the dark end of each ramp to the light end. */
+--ok-soft:#0f2a1c;--ok-border:#1d4a31;--ok-text:#5fd894;
+--warn-soft:#2b2113;--warn-border:#54401e;--warn-text:#f3c274;
+--alert-soft:#2e1518;--alert-border:#5c2529;--alert-text:#ff9a9d;
+--cold-soft:#0f2431;--cold-border:#1d4560;--cold-text:#79cbf0;
+--offline-soft:#1c1c25;--offline-border:#33333f;--offline-text:#a8a8bd;
+
+--chart-grid:#24242f;
+--chart-track:#2e2e3b;
+}
