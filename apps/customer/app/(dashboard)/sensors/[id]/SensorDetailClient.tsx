@@ -8,6 +8,13 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import {
+  validateSensorName,
+  normaliseSensorName,
+  SENSOR_NAME_MESSAGES,
+  SENSOR_NAME_MAX_LENGTH,
+} from "@/lib/sensor-name";
 import {
   isOutOfRange,
   formatTemp,
@@ -30,6 +37,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
+  const [nameError, setNameError] = useState("");
   const [minTemp, setMinTemp] = useState(String(config.minTemp));
   const [maxTemp, setMaxTemp] = useState(String(config.maxTemp));
   const [emails, setEmails] = useState<string[]>(config.emailRecipients);
@@ -63,6 +71,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
 
   function cancelEditing() {
     setName(sensor.name);
+    setNameError("");
     setMinTemp(String(config.minTemp));
     setMaxTemp(String(config.maxTemp));
     setEmails(config.emailRecipients);
@@ -74,6 +83,11 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
 
   async function handleSave() {
     setSaveError('');
+    setNameError('');
+
+    const nameProblem = validateSensorName(name);
+    if (nameProblem) { setNameError(SENSOR_NAME_MESSAGES[nameProblem]); return; }
+
     const min = Number(minTemp);
     const max = Number(maxTemp);
     if (isNaN(min) || isNaN(max)) { setSaveError('Thresholds must be numbers'); return; }
@@ -84,11 +98,17 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
       const res = await fetch(`/api/sensors/${sensor.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minTemp: min, maxTemp: max, emailRecipients: emails }),
+        body: JSON.stringify({
+          name: normaliseSensorName(name),
+          minTemp: min,
+          maxTemp: max,
+          emailRecipients: emails,
+        }),
       });
       let data: { error?: string } = {};
       try { data = await res.json(); } catch {}
       if (!res.ok) { setSaveError(data.error ?? `Error ${res.status}`); return; }
+      setName(normaliseSensorName(name));
       setEditing(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -253,12 +273,24 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
         </div>
 
         <div className="space-y-5">
-          {/* Name — read-only, set by admin */}
+          {/* Name */}
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Sensor Name
-            </p>
-            <p className="text-sm font-medium">{name}</p>
+            {editing ? (
+              <Input
+                label="Sensor Name"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setNameError(""); }}
+                maxLength={SENSOR_NAME_MAX_LENGTH}
+                error={nameError || undefined}
+              />
+            ) : (
+              <>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Sensor Name
+                </p>
+                <p className="text-sm font-medium">{name}</p>
+              </>
+            )}
           </div>
 
           {/* Thresholds */}
