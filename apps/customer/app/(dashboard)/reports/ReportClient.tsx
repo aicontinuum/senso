@@ -15,9 +15,10 @@ import {
   type ThresholdVersion,
 } from "@/lib/thresholds";
 import { timezoneLabel } from "@/lib/timezones";
+import { formatDevEui } from "@/lib/deveui";
 import { STATUS_TEXT_RGB, NEUTRAL_RGB } from "@/lib/status-colors";
 
-type SensorShape = { id: string; name: string; decommissionedAt: string | null };
+type SensorShape = { id: string; name: string; hardwareId: string | null; decommissionedAt: string | null };
 type ReadingShape = { id: string; temperature: number; recordedAt: string };
 
 // Shape of the embedded select in generate(): each alert_config carries its own
@@ -110,6 +111,18 @@ async function buildReportPDF(
     doc.setFont("helvetica", "bold");
     doc.text(sensor.name, margin, y);
     y += 7;
+    // The device's permanent identity, so the record stays traceable if the
+    // sensor is renamed later.
+    const pdfDeviceId = formatDevEui(sensor.hardwareId);
+    if (pdfDeviceId) {
+      doc.setFontSize(9);
+      doc.setFont("courier", "normal");
+      doc.setTextColor(...NEUTRAL_RGB.muted);
+      doc.text(`Device ID: ${pdfDeviceId}`, margin, y);
+      doc.setTextColor(...NEUTRAL_RGB.primary);
+      doc.setFont("helvetica", "normal");
+      y += 5;
+    }
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text("Monitoring Report", margin, y);
@@ -346,6 +359,8 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
     ];
     for (const { sensor, history, readings } of reportSensors) {
       lines.push(`"${sensor.name}"`);
+      const csvDeviceId = formatDevEui(sensor.hardwareId);
+      if (csvDeviceId) lines.push(`"Device ID: ${csvDeviceId}"`);
       const csvRetired = retiredNote(sensor, timezone);
       if (csvRetired) lines.push(`"${csvRetired}"`);
       const csvSummary = thresholdSummary(history, readings);
@@ -493,6 +508,11 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
             <div key={sensor.id} className={`mb-10 ${i > 0 ? "break-before-page" : ""}`}>
               <div className="mb-3">
                 <h2 className="text-2xl font-bold">{sensor.name}</h2>
+                {formatDevEui(sensor.hardwareId) && (
+                  <p className="font-mono text-xs text-muted-foreground">
+                    Device ID: {formatDevEui(sensor.hardwareId)}
+                  </p>
+                )}
                 <h3 className="text-base font-semibold mt-1">Monitoring Report</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">{customerName}</p>
                 <p className="text-sm text-muted-foreground">Period: {periodLabel}</p>

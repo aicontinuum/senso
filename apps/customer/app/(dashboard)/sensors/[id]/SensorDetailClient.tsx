@@ -9,6 +9,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Refe
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { formatDevEui } from "@/lib/deveui";
 import {
   validateSensorName,
   normaliseSensorName,
@@ -31,9 +32,10 @@ interface Props {
   timezone: string;
   /** Latest reported battery voltage. Volts — not a percentage; see @senso/status. */
   batteryVolts: number | null;
+  hardwareId: string | null;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone, batteryVolts }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -292,6 +294,15 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               </>
             )}
           </div>
+
+          {/* Device ID — the sensor's permanent hardware identity. Deliberately
+              not editable: it is what keeps a record traceable across a rename. */}
+          {formatDevEui(hardwareId) && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Device ID</p>
+              <p className="font-mono text-sm">{formatDevEui(hardwareId)}</p>
+            </div>
+          )}
 
           {/* Thresholds */}
           <div className="space-y-1.5">
