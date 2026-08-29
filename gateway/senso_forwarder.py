@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 UDP_IP = "0.0.0.0"
 UDP_PORT = 1700
 DB_PATH = "/var/lib/senso/queue.db"
-DEFAULT_API_BASE = "https://senso-xsbp.vercel.app"
+DEFAULT_API_BASE = "https://admin.sensoqa.com"
 SEND_INTERVAL = 15      # seconds between flush attempts
 BATCH_SIZE = 200        # readings per POST
 DEDUP_WINDOW = 60       # seconds to remember a payload as "already seen"

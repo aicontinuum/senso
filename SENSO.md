@@ -52,7 +52,11 @@ at the production ingest endpoint.
 
 ## Two Sites
 
-### 1. senso.com — Customer-Facing
+Production domains, both on Vercel with DNS at Cloudflare (proxy off — Vercel
+terminates TLS itself). Sessions are host-scoped, so the two sites share no auth
+context, which is the separation this project requires.
+
+### 1. app.sensoqa.com — Customer-Facing
 
 Read-mostly. Customers view their data, configure alerts, and generate reports.
 
@@ -72,7 +76,7 @@ Read-mostly. Customers view their data, configure alerts, and generate reports.
 
 ---
 
-### 2. senso.admin.com — Internal Operations (Admin)
+### 2. admin.sensoqa.com — Internal Operations (Admin)
 
 Write-heavy. Senso staff manage customers, devices, and billing.
 

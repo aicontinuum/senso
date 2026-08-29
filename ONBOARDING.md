@@ -57,7 +57,7 @@ Only for a customer who has never been set up. For an existing customer, skip to
    site, so the two systems are easy to reconcile.
 2. Inside that tenant, **Applications → Add application** — named for the site.
 3. On that application, **Integrations → HTTP** — endpoint
-   `https://senso-xsbp.vercel.app/api/ingest`, header `Authorization` =
+   `https://admin.sensoqa.com/api/ingest`, header `Authorization` =
    `Bearer <CHIRPSTACK_INGEST_SECRET>`. Payload encoding **JSON**.
    *(Same shared secret every time — it identifies our platform, not the customer.)*
 4. Register the customer's **gateway** under the tenant (region `eu868`).
