@@ -187,3 +187,36 @@ deployed at the time.
 
 Because gateways point at **`lns.sensoqa.com`** rather than a raw IP, moving the server
 itself is a DNS change rather than a visit to every gateway.
+
+---
+
+## Alert scheduler
+
+The alert sweep and email sender live at `https://admin.sensoqa.com/api/cron/alerts`
+and need calling every five minutes. This VPS drives that, not Vercel Cron: the
+Hobby plan caps cron at once per day, which is meaningless for a fridge alert.
+
+The endpoint only checks the bearer token, so the caller is interchangeable —
+moving this to Vercel Cron later is a `vercel.json` entry and deleting this
+crontab line.
+
+Secret lives in a root-only file rather than inline in the crontab, where it
+would be readable by anyone who can run `crontab -l` or read `/var/log/syslog`:
+
+```bash
+printf 'CRON_SECRET=<the same value set in Vercel>\n' > /etc/senso/alerts.env
+chmod 600 /etc/senso/alerts.env
+```
+
+```cron
+*/5 * * * * . /etc/senso/alerts.env && curl -fsS --max-time 30 \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  https://admin.sensoqa.com/api/cron/alerts >> /var/log/senso-alerts.log 2>&1
+```
+
+`-f` makes curl exit non-zero on an HTTP error, so a 401 or 500 shows up in the
+log rather than being silently swallowed.
+
+**This makes the VPS load-bearing for alerting as well as ingest.** If it goes
+down, breaches are still recorded but nobody is told — worth covering with the
+same uptime monitor that watches ChirpStack.

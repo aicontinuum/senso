@@ -13,6 +13,12 @@ import {
 
 // Scheduled alerting. Runs every 5 minutes and does two things ingest cannot.
 //
+// Driven by cron on the ChirpStack VPS rather than Vercel Cron, which on the
+// Hobby plan cannot run more often than once a day — useless for a fridge alert.
+// The endpoint authenticates by bearer token and does not care who calls it, so
+// moving the schedule to Vercel Cron later is a vercel.json entry and nothing
+// else. See network-server/README.md for the crontab entry.
+//
 // 1. Notices silence. Threshold breaches are raised by /api/ingest when a
 //    reading arrives, which by definition cannot notice a sensor that has
 //    stopped sending. A dead sensor is the case that matters most — a fridge
