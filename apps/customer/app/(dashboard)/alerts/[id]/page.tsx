@@ -9,6 +9,7 @@ import {
   ALERT_EPISODE_LEAD_MS,
   ALERT_EPISODE_MAX_POINTS,
   ALERT_EPISODE_FETCH_SLACK,
+  ALERT_EPISODE_CONTEXT_READINGS,
 } from "@/lib/constants";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 
@@ -93,13 +94,14 @@ export default async function AlertDetailPage({
   const alertType: "max" | "min" =
     alertConfig.type === "max" ? "max" : "min";
 
-  // Trim to the episode: the breaching run, plus the in-range reading either
-  // side of it. A fixed window showed twelve hours of unrelated readings around
-  // a two-reading blip, and cut off any breach that outlasted it.
+  // Trim to the episode: the breaching run, plus a couple of in-range readings
+  // either side of it. A fixed window showed twelve hours of unrelated readings
+  // around a two-reading blip, and cut off any breach that outlasted it.
   const episode = alertEpisode(
     (readings ?? []).map((r) => ({ temperature: r.temperature, recordedAt: r.recorded_at })),
     alertLog.triggered_at,
     { min: minTemp, max: maxTemp },
+    ALERT_EPISODE_CONTEXT_READINGS,
     ALERT_EPISODE_MAX_POINTS,
   );
 
