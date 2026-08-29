@@ -9,8 +9,6 @@ import { integrationSecretOk } from '@/lib/ingest-auth';
 // gone along with the prototype stack. Payload contract and field mapping:
 // network-server/UPLINK-FORMAT.md
 
-const COOLDOWN_MS = 30 * 60 * 1000;
-
 /** Only fPort 2 carries a sensor reading. See UPLINK-FORMAT.md §4. */
 const READING_FPORT = 2;
 
@@ -192,23 +190,25 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
 
+      // One row for the whole episode. This used to resolve and re-open every 30
+      // minutes, which turned a six-hour breach into twelve rows in the alert
+      // history — and would now be twelve emails. Re-notification is the
+      // scheduler's job (immediate, +30 min, +2 h); ingest only records that the
+      // breach is still open.
       if (!existing) {
-        await admin.from('alert_logs').insert({
+        const { error } = await admin.from('alert_logs').insert({
           alert_config_id: config.id,
           reading_id: readingId,
+          kind: 'threshold',
           triggered_at: recordedAt,
           is_resolved: false,
         });
-      } else if (nowMs - new Date(existing.triggered_at).getTime() > COOLDOWN_MS) {
-        await admin.from('alert_logs').update({ is_resolved: true }).eq('id', existing.id);
-        await admin.from('alert_logs').insert({
-          alert_config_id: config.id,
-          reading_id: readingId,
-          triggered_at: recordedAt,
-          is_resolved: false,
-        });
+        // 23505 means a concurrent ingest opened it first, which is the partial
+        // unique index doing its job rather than a failure.
+        if (error && error.code !== '23505') {
+          console.error('[ingest] could not open alert', { sensorId: sensor.id, error });
+        }
       }
-      // else: within cooldown — already alerted, stay quiet
     } else {
       await admin
         .from('alert_logs')
