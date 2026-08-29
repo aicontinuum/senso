@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Sensor, AlertConfig } from "@senso/types";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+import { SensorStatusBadge } from "@/components/SensorStatusBadge";
+import { sensorState } from "@/lib/alert-state";
 import {
   isOutOfRange,
   formatTemp,
@@ -30,23 +31,22 @@ export function SensorCard({
     alertConfig !== undefined &&
     isOutOfRange(temp, alertConfig.minTemp, alertConfig.maxTemp);
 
+  const state = sensorState({ isOffline, outOfRange, hasOpenAlert: hasActiveAlert });
+
   return (
     <Link
       href={`/sensors/${sensor.id}`}
       className={cn(
         "block rounded-lg border bg-card p-5 shadow-sm transition-colors hover:bg-accent/40",
         isOffline && "opacity-70",
-        outOfRange && "border-alert-border",
+        state === "breaching" && "border-alert-border",
+        state === "alert-open" && "border-warn-border",
       )}
     >
       {/* Header row */}
       <div className="mb-4 flex items-start justify-between gap-2">
         <span className="font-semibold leading-tight">{sensor.name}</span>
-        <StatusBadge
-          isOffline={isOffline}
-          outOfRange={outOfRange}
-          hasActiveAlert={hasActiveAlert}
-        />
+        <SensorStatusBadge state={state} className="shrink-0" />
       </div>
 
       {/* Temperature */}
@@ -98,22 +98,4 @@ export function SensorCard({
       </div>
     </Link>
   );
-}
-
-function StatusBadge({
-  isOffline,
-  outOfRange,
-  hasActiveAlert,
-}: {
-  isOffline: boolean;
-  outOfRange: boolean | undefined;
-  hasActiveAlert: boolean;
-}) {
-  if (isOffline) {
-    return <Badge variant="offline" dot className="shrink-0">Offline</Badge>;
-  }
-  if (outOfRange || hasActiveAlert) {
-    return <Badge variant="alert" dot className="shrink-0">Alert</Badge>;
-  }
-  return <Badge variant="ok" dot className="shrink-0">Online</Badge>;
 }

@@ -6,11 +6,12 @@ import { X, Plus, Pencil } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SensorStatusBadge } from "@/components/SensorStatusBadge";
+import { sensorState } from "@/lib/alert-state";
 import { formatDevEui } from "@/lib/deveui";
 import {
   validateSensorName,
@@ -35,9 +36,10 @@ interface Props {
   /** Latest reported battery voltage. Volts — not a percentage; see @senso/status. */
   batteryVolts: number | null;
   hardwareId: string | null;
+  hasOpenAlert: boolean;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -170,13 +172,10 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
 
       <div className="mt-4 mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{name}</h1>
-        {isOffline ? (
-          <Badge variant="offline" dot className="shrink-0">Offline</Badge>
-        ) : outOfRange ? (
-          <Badge variant="alert" dot className="shrink-0">Alert</Badge>
-        ) : (
-          <Badge variant="ok" dot className="shrink-0">Online</Badge>
-        )}
+        <SensorStatusBadge
+          state={sensorState({ isOffline, outOfRange, hasOpenAlert })}
+          className="shrink-0"
+        />
       </div>
 
       {/* Current reading */}

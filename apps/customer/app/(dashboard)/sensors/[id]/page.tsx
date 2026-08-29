@@ -38,6 +38,20 @@ export default async function SensorDetailPage({
     supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
   ]);
 
+  // Whether an alert raised for this sensor is still open. The detail page used
+  // to judge purely on the current reading, so a recovered-but-unacknowledged
+  // incident showed as a clean "Online" here while the dashboard said "Alert".
+  const configIds = (configRows ?? []).map((c) => c.id);
+  const { data: openAlerts } = configIds.length > 0
+    ? await supabase
+        .from("alert_logs")
+        .select("id")
+        .in("alert_config_id", configIds)
+        .eq("is_resolved", false)
+        .limit(1)
+    : { data: [] as { id: string }[] };
+  const hasOpenAlert = (openAlerts ?? []).length > 0;
+
   const belowMin = (configRows ?? []).find((c) => c.type === "min");
   const aboveMax = (configRows ?? []).find((c) => c.type === "max");
 
@@ -90,6 +104,7 @@ export default async function SensorDetailPage({
         timezone={customer.timezone}
         batteryVolts={readingRows?.[0]?.battery_v ?? null}
         hardwareId={sensorRow.hardware_id}
+        hasOpenAlert={hasOpenAlert}
       />
     </>
   );
