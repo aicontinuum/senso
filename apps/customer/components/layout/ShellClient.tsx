@@ -5,7 +5,6 @@ import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 
 export function ShellClient({ children, customerName }: { children: React.ReactNode; customerName: string }) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -18,9 +17,7 @@ export function ShellClient({ children, customerName }: { children: React.ReactN
       )}
 
       <Sidebar
-        collapsed={collapsed}
         mobileOpen={mobileOpen}
-        onToggleCollapse={() => setCollapsed((v) => !v)}
         onMobileClose={() => setMobileOpen(false)}
       />
 

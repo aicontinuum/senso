@@ -6,7 +6,7 @@ export const TEMP_UNIT = "°C";
 // numbers, which show as "3.00". Readings sit in columns and update in place, so
 // a varying decimal count makes them jump and misalign; a compliance record also
 // reads as more precise when the precision is stated consistently.
-export const TEMP_DECIMALS = 2;
+export const TEMP_DECIMALS = 1;
 
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
