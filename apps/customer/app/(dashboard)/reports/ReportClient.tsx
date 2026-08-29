@@ -195,6 +195,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   const [generating, setGenerating] = useState(false);
   const [readingsBySensor, setReadingsBySensor] = useState<Map<string, ReadingShape[]>>(new Map());
   const [historyBySensor, setHistoryBySensor] = useState<Map<string, ThresholdVersion[]>>(new Map());
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
 
@@ -226,7 +227,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
     // The full threshold history is loaded, not just the versions overlapping the
     // period: a version that opened long before the period is the one in force at
     // its start, so filtering by the period would drop exactly the row needed.
-    const [{ data }, { data: configRows }] = await Promise.all([
+    const [readingsRes, configsRes] = await Promise.all([
       supabase
         .from("readings")
         .select("id, sensor_id, temperature, recorded_at")
@@ -238,6 +239,37 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
         .select("sensor_id, type, alert_threshold_history (threshold, effective_from, effective_to)")
         .in("sensor_id", ids),
     ]);
+
+    // A report is a compliance record, so a failed query must not quietly become
+    // a plausible-looking document. Without this, an unreadable threshold history
+    // renders as "No limit set" on every row — indistinguishable from a sensor
+    // that genuinely had no limits.
+    if (readingsRes.error || configsRes.error) {
+      console.error("Report data load failed", readingsRes.error, configsRes.error);
+      setLoadError("Could not load the report data. Nothing has been generated — please try again.");
+      setGenerated(false);
+      setGenerating(false);
+      return;
+    }
+
+    const { data } = readingsRes;
+    const configRows = configsRes.data;
+
+    // Every alert_config gets an opening version from the trigger, so a config
+    // with no versions means the threshold history is not in place. Reporting
+    // "No limit set" against a limit that plainly exists would misstate the
+    // record, so refuse rather than guess.
+    const missingHistory = ((configRows ?? []) as ConfigWithHistory[])
+      .filter((c) => (c.alert_threshold_history ?? []).length === 0);
+    if (missingHistory.length > 0) {
+      console.error("alert_configs without threshold history", missingHistory);
+      setLoadError(
+        "Threshold history is unavailable, so readings cannot be checked against the limits that applied when they were recorded. The report has not been generated.",
+      );
+      setGenerated(false);
+      setGenerating(false);
+      return;
+    }
 
     const byId = new Map<string, ReadingShape[]>();
     for (const r of data ?? []) {
@@ -260,6 +292,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       ]);
     }
 
+    setLoadError(null);
     setReadingsBySensor(byId);
     setHistoryBySensor(historyById);
     setGenerated(true);
@@ -404,6 +437,12 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       </div>
 
       {/* Report output */}
+      {loadError && (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </p>
+      )}
+
       {generated && (
         <div>
           {/* Screen-only action bar */}
