@@ -1,4 +1,4 @@
-import { TEMP_UNIT } from "./constants";
+import { TEMP_UNIT, TEMP_DECIMALS } from "./constants";
 import { DEFAULT_TIMEZONE } from "./timezones";
 
 export function isOutOfRange(temp: number, min: number, max: number): boolean {
@@ -6,11 +6,11 @@ export function isOutOfRange(temp: number, min: number, max: number): boolean {
 }
 
 export function formatTemp(temp: number): string {
-  return `${temp}${TEMP_UNIT}`;
+  return `${temp.toFixed(TEMP_DECIMALS)}${TEMP_UNIT}`;
 }
 
 export function formatThreshold(min: number, max: number): string {
-  return `${min}${TEMP_UNIT} – ${max}${TEMP_UNIT}`;
+  return `${min.toFixed(TEMP_DECIMALS)}${TEMP_UNIT} – ${max.toFixed(TEMP_DECIMALS)}${TEMP_UNIT}`;
 }
 
 export function formatReadingTime(

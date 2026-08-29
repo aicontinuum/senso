@@ -8,6 +8,7 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { TEMP_DECIMALS } from "@/lib/constants";
 import {
   isOutOfRange,
   formatTemp,
@@ -190,18 +191,37 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             Recent Readings
           </p>
           <ResponsiveContainer width="100%" height={120}>
-            <LineChart data={recentReadings} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="recordedAt" tickFormatter={(t: string) => formatReadingTime(t, timezone).split(",")[1]?.trim() ?? ""} tick={{ fontSize: 11 }} />
-              <YAxis domain={chartDomain} tick={{ fontSize: 11 }} />
+            <LineChart data={recentReadings} margin={{ top: 4, right: 12, bottom: 0, left: -8 }}>
+              {/* Horizontal hairlines only: the design system allows no vertical
+                  grid, no chart border and no legend box. */}
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+              <XAxis
+                dataKey="recordedAt"
+                tickFormatter={(t: string) => formatReadingTime(t, timezone).split(",")[1]?.trim() ?? ""}
+                tick={{ fontSize: 11, fill: "var(--text-faint)", fontFamily: "var(--font-mono)" }}
+                tickLine={false}
+                stroke="var(--chart-grid)"
+              />
+              <YAxis
+                domain={chartDomain}
+                tickFormatter={(v: number) => v.toFixed(TEMP_DECIMALS)}
+                tick={{ fontSize: 11, fill: "var(--text-faint)", fontFamily: "var(--font-mono)" }}
+                tickLine={false}
+                stroke="var(--chart-grid)"
+                width={48}
+              />
               <Tooltip formatter={(v) => formatTemp(Number(v))} labelFormatter={(l) => formatReadingTime(String(l), timezone)} />
-              <ReferenceLine y={config.minTemp} stroke="var(--primary)" strokeDasharray="4 2" />
-              <ReferenceLine y={config.maxTemp} stroke="var(--primary)" strokeDasharray="4 2" />
+              {/* Safe-range edges, dashed in the ok tone — the design system's
+                  one sanctioned use of green in a chart. */}
+              <ReferenceLine y={config.minTemp} stroke="var(--ok-500)" strokeDasharray="4 2" />
+              <ReferenceLine y={config.maxTemp} stroke="var(--ok-500)" strokeDasharray="4 2" />
               <Line
                 type="monotone"
                 dataKey="temperature"
-                stroke={outOfRange ? "#dc2626" : "var(--primary)"}
+                // Line colour follows the sensor's status, per the design system.
+                stroke={outOfRange ? "var(--alert-500)" : "var(--brand-500)"}
                 strokeWidth={2}
+                strokeLinecap="round"
                 dot={{ r: 3 }}
                 isAnimationActive={false}
               />

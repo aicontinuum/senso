@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { AlertType } from "@senso/types";
+import { TEMP_DECIMALS } from "@/lib/constants";
+import { formatTemp } from "@/lib/temperature";
 
 interface ChartPoint {
   time: string;
@@ -37,7 +39,7 @@ function TwoLineTick({
   const [date, time] = payload.value.split(", ");
   return (
     <g transform={`translate(${x},${y})`}>
-      <text textAnchor="middle" fill="#6b7280" fontSize={10}>
+      <text textAnchor="middle" fill="var(--text-faint)" fontSize={10}>
         <tspan x="0" dy="0.9em">{time}</tspan>
         <tspan x="0" dy="1.3em">{date}</tspan>
       </text>
@@ -50,7 +52,9 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="h-[300px]" />;
   const thresholdLabel =
-    alertType === "max" ? `Max: ${threshold}°C` : `Min: ${threshold}°C`;
+    alertType === "max"
+      ? `Max: ${formatTemp(threshold)}`
+      : `Min: ${formatTemp(threshold)}`;
 
   const temps = data.map((d) => d.temp);
   const allValues = [...temps, threshold];
@@ -65,7 +69,8 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 52, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        {/* Horizontal hairlines only — no vertical grid, no chart border. */}
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
         <XAxis
           dataKey="time"
           tick={<TwoLineTick />}
@@ -74,24 +79,24 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
         />
         <YAxis
           domain={domain}
-          tick={{ fontSize: 11, fill: "#6b7280" }}
+          tick={{ fontSize: 11, fill: "var(--text-faint)", fontFamily: "var(--font-mono)" }}
           tickLine={false}
-          tickFormatter={(v) => `${v}°`}
-          width={36}
+          tickFormatter={(v: number) => v.toFixed(TEMP_DECIMALS)}
+          width={48}
         />
         <Tooltip
-          formatter={(v) => [`${v}°C`, "Temperature"]}
+          formatter={(v) => [formatTemp(Number(v)), "Temperature"]}
           contentStyle={{ fontSize: 12 }}
         />
         <ReferenceLine
           y={threshold}
-          stroke="#ef4444"
+          stroke="var(--alert-500)"
           strokeDasharray="5 3"
           strokeWidth={1.5}
           label={{
             value: thresholdLabel,
             position: "insideLeft",
-            fill: "#ef4444",
+            fill: "var(--alert-text)",
             fontSize: 11,
             dx: 4,
             dy: -8,
@@ -100,9 +105,9 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
         <Line
           type="monotone"
           dataKey="temp"
-          stroke="#3b82f6"
+          stroke="var(--brand-500)"
           strokeWidth={2}
-          dot={{ r: 3, fill: "#3b82f6", strokeWidth: 0 }}
+          dot={{ r: 3, fill: "var(--brand-500)", strokeWidth: 0 }}
           activeDot={{ r: 5 }}
         />
       </LineChart>
