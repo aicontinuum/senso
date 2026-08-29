@@ -8,7 +8,6 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TEMP_DECIMALS } from "@/lib/constants";
 import {
   isOutOfRange,
   formatTemp,
@@ -204,11 +203,10 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               />
               <YAxis
                 domain={chartDomain}
-                tickFormatter={(v: number) => v.toFixed(TEMP_DECIMALS)}
                 tick={{ fontSize: 11, fill: "var(--text-faint)", fontFamily: "var(--font-mono)" }}
                 tickLine={false}
                 stroke="var(--chart-grid)"
-                width={48}
+                width={36}
               />
               <Tooltip formatter={(v) => formatTemp(Number(v))} labelFormatter={(l) => formatReadingTime(String(l), timezone)} />
               {/* Safe-range edges, dashed in the ok tone — the design system's

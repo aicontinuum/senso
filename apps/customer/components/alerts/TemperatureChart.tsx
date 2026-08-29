@@ -11,7 +11,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { AlertType } from "@senso/types";
-import { TEMP_DECIMALS } from "@/lib/constants";
 import { formatTemp } from "@/lib/temperature";
 
 interface ChartPoint {
@@ -81,8 +80,7 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
           domain={domain}
           tick={{ fontSize: 11, fill: "var(--text-faint)", fontFamily: "var(--font-mono)" }}
           tickLine={false}
-          tickFormatter={(v: number) => v.toFixed(TEMP_DECIMALS)}
-          width={48}
+          width={36}
         />
         <Tooltip
           formatter={(v) => [formatTemp(Number(v)), "Temperature"]}
