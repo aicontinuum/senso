@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
+import { validateRecipients, RECIPIENTS_MESSAGES } from '@/lib/recipients';
 import {
   validateSensorName,
   normaliseSensorName,
@@ -70,7 +71,14 @@ export async function PATCH(
     }
   }
 
-  const recipients = Array.isArray(emailRecipients) ? emailRecipients : [];
+  const recipientsResult = validateRecipients(emailRecipients ?? []);
+  if (!recipientsResult.ok) {
+    return NextResponse.json(
+      { error: RECIPIENTS_MESSAGES[recipientsResult.error] },
+      { status: 400 },
+    );
+  }
+  const recipients = recipientsResult.value;
   const thresholds = [
     { type: 'min', threshold: Number(minTemp) },
     { type: 'max', threshold: Number(maxTemp) },
