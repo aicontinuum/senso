@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TIMEZONES } from "@/lib/timezones";
+import { Select } from "@/components/ui/select";
 
 export function TimezoneSection({ initialTimezone }: { initialTimezone: string }) {
   const router = useRouter();
@@ -45,18 +46,18 @@ export function TimezoneSection({ initialTimezone }: { initialTimezone: string }
         <p className="text-xs text-muted-foreground">
           All timestamps and reports are shown in this timezone.
         </p>
-        <select
+        <Select
+          aria-label="Timezone"
           value={timezone}
           onChange={(e) => onChange(e.target.value)}
           disabled={saving}
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
         >
           {TIMEZONES.map((tz) => (
             <option key={tz.value} value={tz.value}>
               {tz.label}
             </option>
           ))}
-        </select>
+        </Select>
         {error && <p className="text-xs text-alert-text">{error}</p>}
         {saved && <p className="text-xs font-medium text-ok-text">✓ Saved</p>}
       </div>

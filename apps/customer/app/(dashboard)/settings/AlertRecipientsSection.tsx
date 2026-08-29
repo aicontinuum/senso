@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { X, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
@@ -77,38 +78,35 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
             className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           >
             <span className="truncate">{email}</span>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => removeEmail(email)}
-              className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
               aria-label={`Remove ${email}`}
+              className="size-7 shrink-0"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
         ))}
 
         <div className="space-y-1 pt-1">
           <div className="flex gap-2">
-            <input
+            <Input
+              aria-label="Add alert recipient"
               type="email"
               value={newEmail}
               onChange={(e) => { setNewEmail(e.target.value); setEmailError(""); }}
               onKeyDown={(e) => e.key === "Enter" && addEmail()}
               placeholder="name@example.com"
-              className={cn(
-                "min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring",
-                emailError ? "border-alert-border focus:ring-alert-500" : "border-input",
-              )}
+              error={emailError || undefined}
+              wrapperClassName="min-w-0 flex-1"
             />
-            <button
-              onClick={addEmail}
-              className="flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
-            >
+            <Button variant="secondary" onClick={addEmail} className="shrink-0">
               <Plus className="h-3.5 w-3.5" />
               Add
-            </button>
+            </Button>
           </div>
-          {emailError && <p className="text-xs text-alert-text">{emailError}</p>}
           {saving && <p className="text-xs text-muted-foreground">Saving…</p>}
           {saveError && <p className="text-xs text-alert-text">{saveError}</p>}
         </div>

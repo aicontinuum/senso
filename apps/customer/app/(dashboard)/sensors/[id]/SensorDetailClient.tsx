@@ -8,6 +8,8 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { TEMP_UNIT } from "@/lib/constants";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatDevEui } from "@/lib/deveui";
 import {
@@ -157,12 +159,14 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
 
   return (
     <div className="max-w-lg">
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => router.back()}
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="mb-6 -ml-3"
       >
         ← Back
-      </button>
+      </Button>
 
       <div className="mt-4 mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{name}</h1>
@@ -257,20 +261,14 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             Settings
           </p>
           {!editing ? (
-            <button
-              onClick={startEditing}
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
+            <Button variant="ghost" size="sm" onClick={startEditing}>
               <Pencil className="h-3.5 w-3.5" />
               Edit
-            </button>
+            </Button>
           ) : (
-            <button
-              onClick={cancelEditing}
-              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
+            <Button variant="ghost" size="sm" onClick={cancelEditing}>
               Cancel
-            </button>
+            </Button>
           )}
         </div>
 
@@ -311,24 +309,20 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             </p>
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Min (°C)</p>
-                  <input
-                    type="number"
-                    value={minTemp}
-                    onChange={(e) => setMinTemp(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Max (°C)</p>
-                  <input
-                    type="number"
-                    value={maxTemp}
-                    onChange={(e) => setMaxTemp(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
+                <Input
+                  label="Min"
+                  suffix={TEMP_UNIT}
+                  type="number"
+                  value={minTemp}
+                  onChange={(e) => setMinTemp(e.target.value)}
+                />
+                <Input
+                  label="Max"
+                  suffix={TEMP_UNIT}
+                  type="number"
+                  value={maxTemp}
+                  onChange={(e) => setMaxTemp(e.target.value)}
+                />
               </div>
             ) : (
               <p className="text-sm font-medium">
@@ -376,20 +370,23 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                     className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
                   >
                     <span className="truncate">{email}</span>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() =>
                         setEmails((prev) => prev.filter((e) => e !== email))
                       }
-                      className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="size-7 shrink-0"
                       aria-label={`Remove ${email}`}
                     >
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
                 <div className="space-y-1">
                   <div className="flex gap-2">
-                    <input
+                    <Input
+                      aria-label="Add alert recipient"
                       type="email"
                       value={newEmail}
                       onChange={(e) => {
@@ -398,22 +395,14 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                       }}
                       onKeyDown={(e) => e.key === "Enter" && addEmail()}
                       placeholder="name@example.com"
-                      className={cn(
-                        "min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring",
-                        emailError ? "border-alert-border focus:ring-alert-500" : "border-input",
-                      )}
+                      error={emailError || undefined}
+                      wrapperClassName="min-w-0 flex-1"
                     />
-                    <button
-                      onClick={addEmail}
-                      className="flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
-                    >
+                    <Button variant="secondary" onClick={addEmail} className="shrink-0">
                       <Plus className="h-3.5 w-3.5" />
                       Add
-                    </button>
+                    </Button>
                   </div>
-                  {emailError && (
-                    <p className="text-xs text-alert-text">{emailError}</p>
-                  )}
                 </div>
               </div>
             ) : (
@@ -429,13 +418,9 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
 
           {editing && (
             <div className="space-y-2">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
+              <Button block onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving…' : 'Save Changes'}
-              </button>
+              </Button>
               {saveError && <p className="text-center text-xs text-alert-text">{saveError}</p>}
             </div>
           )}

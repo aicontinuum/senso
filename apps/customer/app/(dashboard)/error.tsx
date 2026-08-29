@@ -1,5 +1,6 @@
 "use client"; // Error boundaries must be Client Components
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function Error({
   error,
@@ -19,12 +20,9 @@ export default function Error({
         <p className="mt-1 text-sm text-muted-foreground">
           This page couldn’t load. Try again in a moment.
         </p>
-        <button
-          onClick={() => unstable_retry()}
-          className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
+        <Button className="mt-5" onClick={() => unstable_retry()}>
           Reload
-        </button>
+        </Button>
       </div>
     </div>
   );

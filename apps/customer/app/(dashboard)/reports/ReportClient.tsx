@@ -16,6 +16,7 @@ import {
 } from "@/lib/thresholds";
 import { timezoneLabel } from "@/lib/timezones";
 import { formatDevEui } from "@/lib/deveui";
+import { Button } from "@/components/ui/button";
 import { STATUS_TEXT_RGB, NEUTRAL_RGB } from "@/lib/status-colors";
 
 type SensorShape = { id: string; name: string; hardwareId: string | null; decommissionedAt: string | null };
@@ -401,17 +402,15 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
             <p className="text-sm font-medium mb-2">Time range</p>
             <div className="flex gap-2">
               {RANGES.map((r) => (
-                <button
+                <Button
                   key={r.value}
+                  size="sm"
+                  variant={range === r.value ? "primary" : "secondary"}
+                  aria-pressed={range === r.value}
                   onClick={() => { setRange(r.value); setGenerated(false); }}
-                  className={`px-3 py-1.5 rounded-md text-sm border transition-colors ${
-                    range === r.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background border-border text-foreground hover:bg-muted"
-                  }`}
                 >
                   {r.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -445,13 +444,13 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
             )}
           </div>
 
-          <button
+          <Button
             onClick={generate}
             disabled={selectedIds.size === 0 || generating}
-            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed w-fit"
+            className="w-fit"
           >
             {generating ? "Generating…" : "Generate report"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -470,9 +469,9 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
               {reportSensors.length} sensor{reportSensors.length !== 1 ? "s" : ""} · {RANGES.find((r) => r.value === range)!.label}
             </p>
             <div className="flex items-center gap-2">
-              <button onClick={handlePrint} className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted">Print</button>
+              <Button variant="secondary" size="sm" onClick={handlePrint}>Print</Button>
               <div className="relative">
-                <button onClick={handleShare} className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted">Export</button>
+                <Button variant="secondary" size="sm" onClick={handleShare}>Export</Button>
                 {shareOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShareOpen(false)} />
@@ -490,7 +489,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
                 )}
               </div>
               <div className="relative">
-                <button onClick={() => setDownloadOpen((v) => !v)} className="px-3 py-1.5 rounded-md border border-border text-sm hover:bg-muted">Download</button>
+                <Button variant="secondary" size="sm" onClick={() => setDownloadOpen((v) => !v)}>Download</Button>
                 {downloadOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setDownloadOpen(false)} />

@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function ChangePasswordSection() {
   const [current, setCurrent] = useState("");
@@ -69,55 +71,34 @@ export function ChangePasswordSection() {
         Change Password
       </p>
       <div className="space-y-3">
-        <Field label="Current Password">
-          <input
-            type="password"
-            value={current}
-            onChange={(e) => { setCurrent(e.target.value); setError(""); }}
-            autoComplete="current-password"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="New Password">
-          <input
-            type="password"
-            value={next}
-            onChange={(e) => { setNext(e.target.value); setError(""); }}
-            autoComplete="new-password"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Confirm New Password">
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => { setConfirm(e.target.value); setError(""); }}
-            autoComplete="new-password"
-            className={inputCls}
-          />
-        </Field>
+        <Input
+          label="Current Password"
+          type="password"
+          value={current}
+          onChange={(e) => { setCurrent(e.target.value); setError(""); }}
+          autoComplete="current-password"
+        />
+        <Input
+          label="New Password"
+          type="password"
+          value={next}
+          onChange={(e) => { setNext(e.target.value); setError(""); }}
+          autoComplete="new-password"
+        />
+        <Input
+          label="Confirm New Password"
+          type="password"
+          value={confirm}
+          onChange={(e) => { setConfirm(e.target.value); setError(""); }}
+          autoComplete="new-password"
+        />
         {error && <p className="text-xs text-alert-text">{error}</p>}
         {saved && <p className="text-xs font-medium text-ok-text">✓ Password updated</p>}
-        <button
-          onClick={handleSubmit}
-          disabled={saving}
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button block onClick={handleSubmit} disabled={saving}>
           {saving ? "Updating…" : "Update Password"}
-        </button>
+        </Button>
       </div>
     </section>
   );
 }
 
-const inputCls =
-  "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      {children}
-    </div>
-  );
-}

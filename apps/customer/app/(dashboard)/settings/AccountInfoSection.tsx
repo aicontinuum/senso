@@ -3,6 +3,9 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import type { Customer } from "@senso/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field } from "./Field";
 
 export function AccountInfoSection({ customer }: { customer: Customer }) {
   const [editing, setEditing] = useState(false);
@@ -48,20 +51,18 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
           Account Info
         </p>
         {!editing ? (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => { setEditing(true); setSaved(false); }}
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
-          </button>
+          </Button>
         ) : (
-          <button
-            onClick={cancel}
-            className="rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
+          <Button variant="ghost" size="sm" onClick={cancel}>
             Cancel
-          </button>
+          </Button>
         )}
       </div>
 
@@ -71,7 +72,7 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
         </Field>
         <Field label="Contact Name">
           {editing ? (
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputCls} />
+            <Input aria-label="Contact Name" value={contactName} onChange={(e) => setContactName(e.target.value)} />
           ) : (
             <p className="text-sm font-medium">{contactName || <span className="text-muted-foreground">Not set</span>}</p>
           )}
@@ -81,7 +82,7 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
         </Field>
         <Field label="Phone">
           {editing ? (
-            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+974 xxxx xxxx" className={inputCls} />
+            <Input aria-label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+974 xxxx xxxx" />
           ) : (
             <p className={cn("text-sm font-medium", !phone && "text-muted-foreground")}>
               {phone || "Not set"}
@@ -91,13 +92,9 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
 
         {editing && (
           <div className="space-y-1.5">
-            <button
-              onClick={save}
-              disabled={saving}
-              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button block onClick={save} disabled={saving}>
               {saving ? "Saving…" : "Save Changes"}
-            </button>
+            </Button>
             {error && <p className="text-center text-xs text-alert-text">{error}</p>}
           </div>
         )}
@@ -109,14 +106,3 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
   );
 }
 
-const inputCls =
-  "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      {children}
-    </div>
-  );
-}
