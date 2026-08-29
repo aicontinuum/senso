@@ -56,16 +56,28 @@ export function TemperatureChart({ data, minTemp, maxTemp, alertType }: Props) {
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="h-[300px]" />;
   const temps = data.map((d) => d.temp);
-  // Both bounds join the domain, or a threshold outside the readings would sit
-  // off-chart and look as though it were missing.
-  const allValues = [...temps, minTemp, maxTemp];
-  const min = Math.min(...allValues);
-  const max = Math.max(...allValues);
+  // The breached bound always joins the domain: the whole point of this chart is
+  // how far past it the readings went. The opposite bound does not. A fridge set
+  // to 1–10 that dipped to 3.5 would otherwise be scaled to fit a maximum it was
+  // never near, squashing the readings into a flat band at the bottom and hiding
+  // the very movement the alert is about.
+  const breachedBound = alertType === "min" ? minTemp : maxTemp;
+  const scaleValues = [...temps, breachedBound];
+  const min = Math.min(...scaleValues);
+  const max = Math.max(...scaleValues);
   const padding = Math.max((max - min) * 0.2, 1);
   const domain: [number, number] = [
     Math.round((min - padding) * 10) / 10,
     Math.round((max + padding) * 10) / 10,
   ];
+
+  // The opposite bound is drawn only when it lands inside that scale. Off-chart
+  // it would be silently clipped — a labelled line that renders nothing — so the
+  // safe-range band, which clips honestly at the chart edge, carries it instead.
+  const bounds = (["min", "max"] as const).filter((bound) => {
+    const value = bound === "min" ? minTemp : maxTemp;
+    return alertType === bound || (value >= domain[0] && value <= domain[1]);
+  });
 
   return (
     <ResponsiveContainer width="100%" height={320}>
@@ -97,7 +109,7 @@ export function TemperatureChart({ data, minTemp, maxTemp, alertType }: Props) {
           fillOpacity={0.07}
           stroke="none"
         />
-        {(["min", "max"] as const).map((bound) => {
+        {bounds.map((bound) => {
           const value = bound === "min" ? minTemp : maxTemp;
           // The bound this alert breached is the one worth pointing at; the
           // other is context.
