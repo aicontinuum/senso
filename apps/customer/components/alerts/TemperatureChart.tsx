@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceLine,
+  ReferenceArea,
   ResponsiveContainer,
 } from "recharts";
 import type { AlertType } from "@senso/types";
@@ -20,7 +21,11 @@ interface ChartPoint {
 
 interface Props {
   data: ChartPoint[];
-  threshold: number;
+  /** Both bounds, so the chart shows the whole safe range and not only the
+   *  edge that happened to fire. */
+  minTemp: number;
+  maxTemp: number;
+  /** Which bound this alert breached — that one is drawn in the alert tone. */
   alertType: AlertType;
 }
 
@@ -46,17 +51,14 @@ function TwoLineTick({
   );
 }
 
-export function TemperatureChart({ data, threshold, alertType }: Props) {
+export function TemperatureChart({ data, minTemp, maxTemp, alertType }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="h-[300px]" />;
-  const thresholdLabel =
-    alertType === "max"
-      ? `Max: ${formatTemp(threshold)}`
-      : `Min: ${formatTemp(threshold)}`;
-
   const temps = data.map((d) => d.temp);
-  const allValues = [...temps, threshold];
+  // Both bounds join the domain, or a threshold outside the readings would sit
+  // off-chart and look as though it were missing.
+  const allValues = [...temps, minTemp, maxTemp];
   const min = Math.min(...allValues);
   const max = Math.max(...allValues);
   const padding = Math.max((max - min) * 0.2, 1);
@@ -86,20 +88,38 @@ export function TemperatureChart({ data, threshold, alertType }: Props) {
           formatter={(v) => [formatTemp(Number(v)), "Temperature"]}
           contentStyle={{ fontSize: 12 }}
         />
-        <ReferenceLine
-          y={threshold}
-          stroke="var(--alert-500)"
-          strokeDasharray="5 3"
-          strokeWidth={1.5}
-          label={{
-            value: thresholdLabel,
-            position: "insideLeft",
-            fill: "var(--alert-text)",
-            fontSize: 11,
-            dx: 4,
-            dy: -8,
-          }}
+        {/* The safe range: the design system's one sanctioned green tint, with
+            dashed edges. Drawn first so the reading line sits over it. */}
+        <ReferenceArea
+          y1={minTemp}
+          y2={maxTemp}
+          fill="var(--ok-500)"
+          fillOpacity={0.07}
+          stroke="none"
         />
+        {(["min", "max"] as const).map((bound) => {
+          const value = bound === "min" ? minTemp : maxTemp;
+          // The bound this alert breached is the one worth pointing at; the
+          // other is context.
+          const breached = alertType === bound;
+          return (
+            <ReferenceLine
+              key={bound}
+              y={value}
+              stroke={breached ? "var(--alert-500)" : "var(--ok-500)"}
+              strokeDasharray="5 3"
+              strokeWidth={1.5}
+              label={{
+                value: `${bound === "max" ? "Max" : "Min"}: ${formatTemp(value)}`,
+                position: "insideLeft",
+                fill: breached ? "var(--alert-text)" : "var(--ok-text)",
+                fontSize: 11,
+                dx: 4,
+                dy: bound === "max" ? -8 : 12,
+              }}
+            />
+          );
+        })}
         <Line
           type="monotone"
           dataKey="temp"

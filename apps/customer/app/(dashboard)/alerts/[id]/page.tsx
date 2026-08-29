@@ -86,8 +86,6 @@ export default async function AlertDetailPage({
   const alertType: "max" | "min" =
     alertConfig.type === "max" ? "max" : "min";
 
-  const threshold = alertConfig.threshold;
-
   const closestReading = (readings ?? []).reduce<{ temperature: number; recorded_at: string } | null>((best, r) => {
     if (!best) return r;
     const diffR = Math.abs(new Date(r.recorded_at).getTime() - alertTime);
@@ -135,7 +133,8 @@ export default async function AlertDetailPage({
           </p>
           <TemperatureChart
             data={chartData}
-            threshold={threshold}
+            minTemp={minTemp}
+            maxTemp={maxTemp}
             alertType={alertType}
           />
         </div>
