@@ -123,13 +123,15 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
     setEmailError("");
   }
 
+  // Three segments, one lit per tier — so the level reads at a glance from the
+  // count as well as the colour, rather than from bar length alone.
   const tier = batteryTier(batteryVolts);
-  const batteryBar =
+  const battery =
     tier === "good"
-      ? { color: "bg-green-500", width: "100%" }
+      ? { color: "bg-green-500", segments: 3 }
       : tier === "low"
-        ? { color: "bg-amber-400", width: "50%" }
-        : { color: "bg-red-500", width: "15%" };
+        ? { color: "bg-amber-400", segments: 2 }
+        : { color: "bg-red-500", segments: 1 };
 
   return (
     <div className="max-w-lg">
@@ -409,13 +411,18 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           {tier && (
             <InfoRow label="Battery">
               <div
-                className="h-2 w-20 overflow-hidden rounded-full bg-muted"
+                className="flex w-20 gap-1"
                 title={batteryVolts !== null ? `${batteryVolts.toFixed(2)} V` : undefined}
               >
-                <div
-                  className={cn("h-full rounded-full", batteryBar.color)}
-                  style={{ width: batteryBar.width }}
-                />
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-2 flex-1 rounded-full",
+                      i < battery.segments ? battery.color : "bg-muted",
+                    )}
+                  />
+                ))}
               </div>
             </InfoRow>
           )}
