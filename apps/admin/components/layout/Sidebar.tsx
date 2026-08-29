@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/lib/constants";
-import { Logo } from "./Logo";
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   "/dashboard": LayoutDashboard,
@@ -86,16 +85,6 @@ export function Sidebar({
             <ChevronLeft className="h-4 w-4" />
           )}
         </button>
-      </div>
-
-      {/* Brand */}
-      <div
-        className={cn(
-          "flex shrink-0 items-center px-4 pt-4",
-          collapsed && "md:hidden",
-        )}
-      >
-        <Logo />
       </div>
 
       {/* Nav links */}

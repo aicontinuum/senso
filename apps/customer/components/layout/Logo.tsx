@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { APP_NAME } from "@/lib/constants";
 
-// Brand lockup for the sidebar, sized by height with `w-auto` so the artwork's
-// own aspect ratio decides the width.
+// Brand lockup for the top header bar, sized by height with `w-auto` so the
+// artwork's own aspect ratio decides the width.
 //
-// Only the wide lockup exists: it sits in its own row above the nav, which is
-// hidden outright on the collapsed rail rather than swapped for a square mark.
+// It lives in the header rather than the sidebar so it stays put when the rail
+// collapses — which is why there is no square mark variant.
 //
 // Falls back to the app name if the file is missing, so a bad deploy degrades to
 // text rather than a broken-image icon.
