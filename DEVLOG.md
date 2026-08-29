@@ -4,6 +4,67 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-08-29 — Effective-Dated Alert Thresholds
+
+### The bug
+
+Changing a sensor's minimum from 1°C to 1.5°C and regenerating a report marked
+*past* readings as "Out of range" — readings that never alerted and that nobody
+was ever notified about. `alert_configs.threshold` was edited in place, and the
+report recomputed all history against the current value.
+
+The reverse direction was the more serious one: raising a threshold back up made
+genuine past violations disappear from every future report, with no trace. For a
+compliance product that is a one-click way to erase evidence, and nothing in the
+UI would reveal it had happened.
+
+The same root cause hit `alerts/[id]`: an old alert resolved its threshold
+through `alert_config_id`, so it reported today's number as the one that fired it.
+
+### The fix
+
+`supabase/migrations/20260829_threshold_history.sql` adds
+`alert_threshold_history` (effective-dated versions, one open row per config)
+maintained by an `after insert or update of threshold` trigger on
+`alert_configs`. A trigger rather than app code because thresholds are written
+from three places — the customer API, the admin API, and the SQL console — and
+only the database sees all three.
+
+`alert_configs.threshold` stays as the current value, so ingest, the dashboard
+and the admin views are untouched. Only the report and the alert page resolve
+history.
+
+- `apps/customer/lib/thresholds.ts` — resolves the version covering a reading's
+  `recorded_at`.
+- The report drops its `alert_configs` fetch entirely and loads history in
+  `generate()`, so no path remains where it can read today's number.
+- New **Range** column in all three outputs (screen, PDF, CSV), showing the
+  limits that applied to each row.
+- Header line reads `Threshold: changed during this period — see Range column`
+  when it changed mid-period, instead of stating one value that is wrong for
+  part of the range.
+
+### Decisions worth knowing
+
+- **Backfill uses `-infinity`**, so pre-migration readings are judged by today's
+  threshold — the exact behaviour being removed, accepted once because those are
+  test runs. From the migration forward it cannot recur.
+- **No covering version now yields "No limit set"**, not a verdict. Previously
+  the report fell back to a hardcoded 2–8°C, which put a fabricated limit into a
+  compliance record for sensors that had no config at the time.
+- **Half-open windows** — the instant a version is replaced belongs to its
+  successor, so contiguous versions never both match.
+- `clock_timestamp()`, not `now()`: `now()` is fixed per transaction, so two
+  edits in one transaction would produce a zero-width window and trip the check
+  constraint.
+- Postgres serialises `-infinity` as a string that `new Date()` reads as
+  `Invalid Date`, silently matching no version. `lib/thresholds.ts` maps it
+  explicitly.
+- RLS reuses the existing `customer_owns_sensor()` helper rather than
+  re-deriving the sensor → gateway → customer chain.
+
+---
+
 ## 2026-08-27 — LoRaWAN migration (Phases 0–3, 5) + stopping deletion from destroying history
 
 Two threads: finishing the hardware pivot onto off-the-shelf LoRaWAN, and a critical

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { rangeAt, type ThresholdVersion } from "@/lib/thresholds";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { formatDateTimeLong } from "@/lib/temperature";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
@@ -42,16 +43,32 @@ export default async function AlertDetailPage({
 
   if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customer.id) notFound();
 
-  // Get all configs for this sensor to derive both min and max thresholds for the chart
+  // Both min and max thresholds for the chart, resolved to the versions that were
+  // in force when the alert fired rather than to today's values — otherwise a
+  // later threshold edit rewrites what this alert says triggered it.
   const { data: allConfigs } = await supabase
     .from("alert_configs")
-    .select("type, threshold")
+    .select("type, threshold, alert_threshold_history (threshold, effective_from, effective_to)")
     .eq("sensor_id", alertConfig.sensor_id);
 
+  const versions: ThresholdVersion[] = (allConfigs ?? []).flatMap((c) =>
+    ((c.alert_threshold_history ?? []) as {
+      threshold: number; effective_from: string; effective_to: string | null;
+    }[]).map((v) => ({
+      type: c.type as "min" | "max",
+      threshold: v.threshold,
+      effectiveFrom: v.effective_from,
+      effectiveTo: v.effective_to,
+    })),
+  );
+
+  const applied = rangeAt(versions, alertLog.triggered_at);
   const belowMin = (allConfigs ?? []).find((c) => c.type === "min");
   const aboveMax = (allConfigs ?? []).find((c) => c.type === "max");
-  const minTemp = belowMin?.threshold ?? 2;
-  const maxTemp = aboveMax?.threshold ?? 8;
+  // Falls back to the current value only where no version covers the trigger
+  // instant, which can only happen for alerts predating the history backfill.
+  const minTemp = applied.min ?? belowMin?.threshold ?? 2;
+  const maxTemp = applied.max ?? aboveMax?.threshold ?? 8;
 
   // Fetch readings ±12h around the alert
   const alertTime = new Date(alertLog.triggered_at).getTime();

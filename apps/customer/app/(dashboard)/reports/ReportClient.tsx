@@ -2,22 +2,38 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  isOutOfRange,
   formatTemp,
-  formatThreshold,
   formatReadingTime,
   formatDateTimeLong,
 } from "@/lib/temperature";
+import {
+  rangeAt,
+  formatRange,
+  isOutOfRangeAt,
+  hasRange,
+  thresholdSummary,
+  type ThresholdVersion,
+} from "@/lib/thresholds";
 import { timezoneLabel } from "@/lib/timezones";
 
 type SensorShape = { id: string; name: string; decommissionedAt: string | null };
-type ConfigShape = { sensorId: string; minTemp: number; maxTemp: number };
 type ReadingShape = { id: string; temperature: number; recordedAt: string };
+
+// Shape of the embedded select in generate(): each alert_config carries its own
+// effective-dated versions.
+type ConfigWithHistory = {
+  sensor_id: string;
+  type: "min" | "max";
+  alert_threshold_history: {
+    threshold: number;
+    effective_from: string;
+    effective_to: string | null;
+  }[] | null;
+};
 
 interface Props {
   customerName: string;
   sensors: SensorShape[];
-  configs: ConfigShape[];
   timezone: string;
 }
 
@@ -32,7 +48,7 @@ const RANGES: { label: string; value: RangeValue; ms: number }[] = [
 
 type ReportSensor = {
   sensor: SensorShape;
-  config: ConfigShape | undefined;
+  history: ThresholdVersion[];
   readings: ReadingShape[];
 };
 
@@ -58,9 +74,13 @@ async function buildReportPDF(
   const contentWidth = 210 - margin * 2;
   const pageH = 297;
   const bottomMargin = 15;
+  // Four columns across 182mm of content width. "Range" carries the limits that
+  // applied to that row, so a threshold change mid-period is visible per reading
+  // rather than hidden behind a single header value.
   const col1 = margin;
-  const col2 = margin + 65;
-  const col3 = margin + 105;
+  const col2 = margin + 58;
+  const col3 = margin + 95;
+  const col4 = margin + 140;
 
   const periodLabel = `${formatDateTimeLong(now - rangeMs, timezone)} – ${formatDateTimeLong(now, timezone)}`;
 
@@ -70,7 +90,8 @@ async function buildReportPDF(
     doc.setTextColor(100, 100, 100);
     doc.text("Date / Time", col1, y);
     doc.text("Temperature", col2, y);
-    doc.text("Status", col3, y);
+    doc.text("Range", col3, y);
+    doc.text("Status", col4, y);
     doc.setTextColor(0, 0, 0);
     const lineY = y + 3;
     doc.setDrawColor(200, 200, 200);
@@ -79,7 +100,7 @@ async function buildReportPDF(
   };
 
   let isFirst = true;
-  for (const { sensor, config, readings } of sensors) {
+  for (const { sensor, history, readings } of sensors) {
     if (!isFirst) doc.addPage();
     isFirst = false;
     let y = margin;
@@ -114,10 +135,11 @@ async function buildReportPDF(
     doc.line(margin, y, margin + contentWidth, y);
     y += 5;
 
-    if (config) {
+    const pdfSummary = thresholdSummary(history, readings);
+    if (pdfSummary) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.text(`Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}`, margin, y);
+      doc.text(pdfSummary, margin, y);
       y += 7;
     }
 
@@ -139,13 +161,18 @@ async function buildReportPDF(
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
       }
-      const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
+      const applied = rangeAt(history, r.recordedAt);
+      const known = hasRange(applied);
+      const out = isOutOfRangeAt(r.temperature, applied);
       doc.setTextColor(80, 80, 80);
       doc.text(formatReadingTime(r.recordedAt, timezone), col1, y);
       doc.setTextColor(0, 0, 0);
       doc.text(formatTemp(r.temperature), col2, y);
-      doc.setTextColor(out ? 220 : 22, out ? 38 : 163, out ? 38 : 74);
-      doc.text(out ? "Out of range" : "OK", col3, y);
+      doc.setTextColor(80, 80, 80);
+      doc.text(formatRange(applied), col3, y);
+      if (!known) doc.setTextColor(120, 120, 120);
+      else doc.setTextColor(out ? 220 : 22, out ? 38 : 163, out ? 38 : 74);
+      doc.text(known ? (out ? "Out of range" : "OK") : "No limit set", col4, y);
       doc.setTextColor(0, 0, 0);
       y += 4.5;
     }
@@ -154,7 +181,7 @@ async function buildReportPDF(
   return doc;
 }
 
-export function ReportClient({ customerName, sensors, configs, timezone }: Props) {
+export function ReportClient({ customerName, sensors, timezone }: Props) {
   // Retired sensors stay listed so their history remains reportable, but they are
   // not part of the default selection or "Select all" — a routine report should
   // look exactly as it did before any sensor was retired.
@@ -167,6 +194,7 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [readingsBySensor, setReadingsBySensor] = useState<Map<string, ReadingShape[]>>(new Map());
+  const [historyBySensor, setHistoryBySensor] = useState<Map<string, ThresholdVersion[]>>(new Map());
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
 
@@ -195,12 +223,21 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
     const since = new Date(now - rangeMs).toISOString();
     const ids = Array.from(selectedIds);
 
-    const { data } = await supabase
-      .from("readings")
-      .select("id, sensor_id, temperature, recorded_at")
-      .in("sensor_id", ids)
-      .gte("recorded_at", since)
-      .order("recorded_at", { ascending: false });
+    // The full threshold history is loaded, not just the versions overlapping the
+    // period: a version that opened long before the period is the one in force at
+    // its start, so filtering by the period would drop exactly the row needed.
+    const [{ data }, { data: configRows }] = await Promise.all([
+      supabase
+        .from("readings")
+        .select("id, sensor_id, temperature, recorded_at")
+        .in("sensor_id", ids)
+        .gte("recorded_at", since)
+        .order("recorded_at", { ascending: false }),
+      supabase
+        .from("alert_configs")
+        .select("sensor_id, type, alert_threshold_history (threshold, effective_from, effective_to)")
+        .in("sensor_id", ids),
+    ]);
 
     const byId = new Map<string, ReadingShape[]>();
     for (const r of data ?? []) {
@@ -208,7 +245,23 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
       arr.push({ id: r.id, temperature: r.temperature, recordedAt: r.recorded_at });
       byId.set(r.sensor_id, arr);
     }
+
+    const historyById = new Map<string, ThresholdVersion[]>();
+    for (const config of (configRows ?? []) as ConfigWithHistory[]) {
+      const versions = (config.alert_threshold_history ?? []).map((v) => ({
+        type: config.type,
+        threshold: v.threshold,
+        effectiveFrom: v.effective_from,
+        effectiveTo: v.effective_to,
+      }));
+      historyById.set(config.sensor_id, [
+        ...(historyById.get(config.sensor_id) ?? []),
+        ...versions,
+      ]);
+    }
+
     setReadingsBySensor(byId);
+    setHistoryBySensor(historyById);
     setGenerated(true);
     setGenerating(false);
   }
@@ -221,7 +274,7 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
     .filter((s) => selectedIds.has(s.id))
     .map((s) => ({
       sensor: s,
-      config: configs.find((c) => c.sensorId === s.id),
+      history: historyBySensor.get(s.id) ?? [],
       readings: readingsBySensor.get(s.id) ?? [],
     }));
 
@@ -254,15 +307,19 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
       `"${tzNote}"`,
       "",
     ];
-    for (const { sensor, config, readings } of reportSensors) {
+    for (const { sensor, history, readings } of reportSensors) {
       lines.push(`"${sensor.name}"`);
       const csvRetired = retiredNote(sensor, timezone);
       if (csvRetired) lines.push(`"${csvRetired}"`);
-      if (config) lines.push(`"Threshold: ${formatThreshold(config.minTemp, config.maxTemp)}"`);
-      lines.push('"Date / Time","Temperature","Status"');
+      const csvSummary = thresholdSummary(history, readings);
+      if (csvSummary) lines.push(`"${csvSummary}"`);
+      lines.push('"Date / Time","Temperature","Range","Status"');
       for (const r of readings) {
-        const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
-        lines.push(`"${formatReadingTime(r.recordedAt, timezone)}","${formatTemp(r.temperature)}","${out ? "Out of range" : "OK"}"`);
+        const applied = rangeAt(history, r.recordedAt);
+        const status = hasRange(applied)
+          ? (isOutOfRangeAt(r.temperature, applied) ? "Out of range" : "OK")
+          : "No limit set";
+        lines.push(`"${formatReadingTime(r.recordedAt, timezone)}","${formatTemp(r.temperature)}","${formatRange(applied)}","${status}"`);
       }
       lines.push("");
     }
@@ -389,7 +446,7 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
             </div>
           </div>
 
-          {reportSensors.map(({ sensor, config, readings }, i) => (
+          {reportSensors.map(({ sensor, history, readings }, i) => (
             <div key={sensor.id} className={`mb-10 ${i > 0 ? "break-before-page" : ""}`}>
               <div className="mb-3">
                 <h2 className="text-2xl font-bold">{sensor.name}</h2>
@@ -405,9 +462,9 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
 
               <hr className="mb-4 border-border" />
 
-              {config && (
+              {thresholdSummary(history, readings) && (
                 <p className="text-sm text-muted-foreground mb-3">
-                  Threshold: {formatThreshold(config.minTemp, config.maxTemp)}
+                  {thresholdSummary(history, readings)}
                 </p>
               )}
 
@@ -420,18 +477,26 @@ export function ReportClient({ customerName, sensors, configs, timezone }: Props
                       <tr className="border-b border-border">
                         <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Date / Time</th>
                         <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Temperature</th>
+                        <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Range</th>
                         <th className="text-left py-2 font-medium text-muted-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {readings.map((r) => {
-                        const out = config ? isOutOfRange(r.temperature, config.minTemp, config.maxTemp) : false;
+                        const applied = rangeAt(history, r.recordedAt);
+                        const known = hasRange(applied);
+                        const out = isOutOfRangeAt(r.temperature, applied);
                         return (
                           <tr key={r.id} className="border-b border-border/50">
                             <td className="py-1.5 pr-6 text-muted-foreground">{formatReadingTime(r.recordedAt, timezone)}</td>
                             <td className="py-1.5 pr-6 font-mono">{formatTemp(r.temperature)}</td>
-                            <td className={`py-1.5 font-medium ${out ? "text-red-600" : "text-green-600"}`}>
-                              {out ? "✗ Out of range" : "✓ OK"}
+                            <td className="py-1.5 pr-6 font-mono text-muted-foreground">{formatRange(applied)}</td>
+                            <td
+                              className={`py-1.5 font-medium ${
+                                !known ? "text-muted-foreground" : out ? "text-red-600" : "text-green-600"
+                              }`}
+                            >
+                              {known ? (out ? "✗ Out of range" : "✓ OK") : "No limit set"}
                             </td>
                           </tr>
                         );

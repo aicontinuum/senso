@@ -20,31 +20,14 @@ export default async function ReportsPage() {
     (g) => ((g.sensors ?? []) as { id: string; name: string; decommissioned_at: string | null }[])
       .map((s) => ({ id: s.id, name: s.name, decommissionedAt: s.decommissioned_at })),
   );
-  const sensorIds = sensors.map((s) => s.id);
-
-  const { data: alertConfigRows } = sensorIds.length > 0
-    ? await supabase
-        .from("alert_configs")
-        .select("sensor_id, type, threshold")
-        .in("sensor_id", sensorIds)
-    : { data: [] as { sensor_id: string; type: string; threshold: number }[] };
-
-  const configs = sensorIds.map((sid) => {
-    const rows = (alertConfigRows ?? []).filter((c) => c.sensor_id === sid);
-    const belowMin = rows.find((c) => c.type === "min");
-    const aboveMax = rows.find((c) => c.type === "max");
-    return {
-      sensorId: sid,
-      minTemp: belowMin?.threshold ?? 2,
-      maxTemp: aboveMax?.threshold ?? 8,
-    };
-  });
-
+  // Thresholds are deliberately not fetched here. A report judges each reading
+  // against the limits in force when it was recorded, so the client loads the
+  // effective-dated history alongside the readings once a period is chosen —
+  // fetching today's values here is what made reports rewrite their own history.
   return (
     <ReportClient
       customerName={customer.name}
       sensors={sensors}
-      configs={configs}
       timezone={customer.timezone}
     />
   );
