@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the placeholder template, which is the only record of which
+# variables this app needs. Real values live in Vercel.
+!.env.example
 
 # vercel
 .vercel

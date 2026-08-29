@@ -13,7 +13,7 @@ Hardware logs temperatures automatically → cloud stores and processes readings
 - **Pricing currency:** QAR (Qatari Riyal)
 - **Billing:** Manual invoicing only — no payment gateway integrated. Admin portal tracks billing status only.
 - **Billing statuses:** Active / Overdue / Suspended
-- **Onboarding:** White-glove only. A Senso technician physically visits the customer site, installs the gateway and sensors, logs into senso.com using the customer's credentials (no separate technician role), links the gateway, names sensors, sets alert thresholds and email recipients, then hands credentials to the customer.
+- **Onboarding:** White-glove only. A Senso technician physically visits the customer site, installs the gateway and sensors, logs into app.sensoqa.com using the customer's credentials (no separate technician role), links the gateway, names sensors, sets alert thresholds and email recipients, then hands credentials to the customer.
 - **Notification channel:** Email only (no SMS, no push notifications)
 
 ---
@@ -31,7 +31,7 @@ ChirpStack  (self-hosted network server — lns.sensoqa.com)
         ↓  HTTP integration, shared-secret header
 Vercel /api/ingest → Supabase
         ↓
-senso.com (customer dashboard)
+app.sensoqa.com (customer dashboard)
 ```
 
 - **Sensor type:** Temperature is the product. The LHT65N also reports humidity and
@@ -91,10 +91,10 @@ Write-heavy. Senso staff manage customers, devices, and billing.
 | Settings | Internal platform settings |
 
 **Key rules:**
-- Admin creates a customer account → customer can then log in to senso.com
+- Admin creates a customer account → customer can then log in to app.sensoqa.com
 - Admin assigns a gateway and sensors to a customer
 - Changes made on the admin side reflect immediately on the customer side
-- Admin does NOT interact with senso.com directly
+- Admin does NOT interact with app.sensoqa.com directly
 
 ---
 
@@ -104,12 +104,19 @@ Write-heavy. Senso staff manage customers, devices, and billing.
 |-------|--------|
 | Framework | Next.js (App Router) |
 | Language | TypeScript |
-| Styling | Tailwind CSS |
-| Components | shadcn/ui |
-| Package manager | npm |
+| Styling | Tailwind CSS v4, driven by the Senso design system |
+| Components | Design-system primitives in `apps/*/components/ui`, shell in `packages/ui` |
+| Email | Resend |
+| Package manager | npm (workspaces) |
+
+**Workspaces:** `apps/{customer,admin}` and `packages/{tokens,ui,types,status,mock-data}`.
+`packages/tokens` is the design system's CSS vendored verbatim; `packages/ui` is the app
+shell shared by both sites.
 
 **Rules:**
-- Use shadcn/ui components wherever possible before building custom ones
+- Reach for an existing primitive in `components/ui` before building a new one; the
+  design system is the source of truth for colour, type, radius and elevation
+- No inline styles — Tailwind utilities backed by design-system tokens
 - App Router only — no Pages Router patterns
 - Keep components in `/components`, pages in `/app`
 - Do not add new dependencies without asking first
@@ -130,10 +137,24 @@ Customer
                                         recorded_at
 
 AlertConfig (per Sensor)              AlertLog
-  ├── min_temp                          ├── → AlertConfig  (RESTRICT)
-  ├── max_temp                          └── → Reading      (RESTRICT)
-  └── email_recipients[]
+  ├── type: min | max                     ├── kind: threshold | sensor_offline
+  ├── threshold                           │         | gateway_offline
+  ├── email_recipients[]                  ├── → AlertConfig  (RESTRICT)
+  │                                       ├── → Reading      (RESTRICT)
+  └── AlertThresholdHistory[]             ├── → Sensor / Gateway (offline kinds)
+        ├── threshold                     ├── is_resolved
+        ├── effective_from                └── notify_count
+        └── effective_to  (null = open)      last_notified_at, notifying_at
 ```
+
+- **`alert_threshold_history` is the compliance record of the limits themselves.** A
+  reading is judged against the threshold in force when it was *recorded*, not today's
+  value, so editing a limit can neither invent past violations nor erase real ones.
+  Maintained by a trigger on `alert_configs`, because thresholds are written from the
+  customer API, the admin API and the SQL console and only the database sees all three.
+- **One `alert_logs` row per incident**, enforced by partial unique indexes on the open
+  ones. `notify_count` tracks the immediate / +30 min / +2 h reminder schedule;
+  `notifying_at` is a send lease, not a flag.
 
 - `readings.temperature` is **`TempC_DS`**, the external probe — *not* `TempC_SHT`, which
   is the unit's internal sensor reading room temperature outside the fridge.
@@ -150,6 +171,12 @@ AlertConfig (per Sensor)              AlertLog
 - Sensor status (online/offline) and temperature out-of-range should be visually obvious
 - Reports must be print-friendly
 
+The **Senso design system** now supplies the specifics: tokens in `packages/tokens`,
+bridged into Tailwind by each app's `globals.css`. Status is a five-tone vocabulary —
+`ok`, `warn`, `alert`, `cold`, `offline` — and tone is never decorative. Purple means
+action or brand, never content or status. Print styling for reports stays ours; the
+design system does not cover print geometry.
+
 ---
 
 ## Current State
@@ -157,11 +184,21 @@ AlertConfig (per Sensor)              AlertLog
 - Product architecture and page structures are finalized; tech stack is locked in.
 - **The platform is live on Supabase** — auth, customer scoping (RLS), and real data. The mock-data phase is over; new work wires to real APIs (still ask before inventing endpoints).
 - **Backend / ingest exists** (in `apps/admin`): `POST /api/ingest` (readings, per-gateway secret auth, idempotent upsert), `POST /api/heartbeat` (60s liveness pulse), gateway identified by its 16-hex LoRa concentrator EUI. Duplicate-safe via a `UNIQUE(sensor_id, recorded_at)` index.
-- **Mid-migration to LoRaWAN** (`MIGRATION.md`). Phases 0–3 and 5 are done: ChirpStack is
-  self-hosted and live, the SenseCAP M2 gateway is online, the first Dragino LHT65N-E3 has
-  joined and decodes correctly on EU868, and the Supabase schema is ready.
-  **Phase 4 — rewriting `/api/ingest` for the ChirpStack payload — is the last step**, and
-  until it lands no LoRaWAN readings reach the dashboard.
+- **The LoRaWAN migration is complete** (`MIGRATION.md`, all phases). ChirpStack is
+  self-hosted and live, the SenseCAP M2 gateway is online, the first Dragino LHT65N-E3
+  joined and decodes correctly on EU868, and `/api/ingest` takes the ChirpStack payload.
+  Real readings have been flowing since **2026-08-28 19:24**.
+- **Live on production domains:** `app.sensoqa.com` (customer) and `admin.sensoqa.com`
+  (admin) on Vercel, DNS at Cloudflare, with Supabase's Site URL and redirect allowlist
+  pointed at them.
+- **Email alerting is live** — Resend, sending from `sensoqa.com`. Threshold breaches and
+  silence (a sensor or a gateway that has stopped reporting) both raise alerts; each is
+  emailed immediately, again after 30 minutes, again after 2 hours, then goes quiet until
+  it resolves. No all-clear email, no quiet hours.
+- **The alert scheduler runs from the ChirpStack VPS**, not Vercel Cron, which on the
+  Hobby plan will not run more often than daily. `network-server/README.md` has the
+  crontab. This makes the VPS load-bearing for alerting as well as ingest: if it goes
+  down, breaches are still recorded but nobody is told.
 - **The old Pi/ESP32 pipeline is test-bench only** and must be disconnected from the
   production ingest endpoint (`systemctl disable --now senso-forwarder.service
   senso-heartbeat.timer`) — leaving the heartbeat running would show a dead gateway as
@@ -170,6 +207,13 @@ AlertConfig (per Sensor)              AlertLog
 - **Devices are retired, never deleted.** `decommissioned_at` on `sensors`/`gateways` hides
   them from every live view while their records survive; the database enforces this with
   `RESTRICT` on all history foreign keys. See "Data integrity" below.
+- **Both apps are on the Senso design system** — tokens vendored in `packages/tokens`, the
+  app shell shared in `packages/ui`. Zero hardcoded palette classes remain in either app
+  (`text-red-600`, `bg-green-500` and the rest are gone); status is the five-tone
+  vocabulary throughout. The admin app's inner pages are themed through the token bridge
+  but still use hand-rolled markup rather than the ported primitives.
+- **Sensor names are customer-editable, so reports also carry the device ID** — the
+  DevEUI, fixed at manufacture — and a rename can no longer break traceability.
 - Pre-launch tasks (security hardening, retention, RLS verification, etc.) live in
   `TODO.md`; the running build log is `DEVLOG.md`.
 

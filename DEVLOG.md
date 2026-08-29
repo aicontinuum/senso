@@ -4,6 +4,262 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-08-29 — Alert charts show the episode, not a fixed window
+
+The alert detail chart had three separate problems, all found by reading it on a
+real alert.
+
+**It drew only the bound that fired.** A "too low" alert showed the minimum line
+and nothing else, so there was no way to see the safe band the reading had left.
+Both bounds are passed now, with a tinted safe-range area between them; the
+breached one is drawn in the alert tone and the other in the ok tone.
+
+**Then the y-axis broke.** With both bounds in the scale, an alert on a sensor
+configured 6–10 °C stretched the axis from −0.7 to 11.8 to fit a maximum the
+readings never approached, flattening every reading into a band at the bottom.
+Only the breached bound scales the chart now. The other is drawn when it happens
+to land inside that scale and left out when it does not — a labelled reference
+line silently clipped to nothing is what made the maximum look "missing" in the
+first place.
+
+**And the window was a fixed ±12 hours around the trigger** — about 96 readings,
+nearly all unrelated, and a hard cut for any breach that outlasted it, with
+nothing on screen saying so. `apps/customer/lib/alert-episode.ts` now trims the
+series to the episode: the run of out-of-range readings plus two in-range
+readings either side.
+
+### Decisions worth knowing
+
+- **Breaches are judged against the range in force when the alert fired**, not
+  today's range and not per-reading history. That is the same pair the chart
+  draws, so what trimmed the series and what the eye reads off it always agree.
+- **Context stops at another breach**, not just at the end of the series. Two
+  readings either side can otherwise reach into a *separate* episode: a sensor
+  that dips, recovers for one reading and dips again would draw the next breach
+  onto this alert's chart and count it in the "N readings out of range" line. At
+  one reading either side this could not happen; at two it can.
+- **Capped at 120 points** (30 hours at the 15-minute cadence). An open breach
+  has no end — a week of one is 672 readings, a smear on the chart and a payload
+  to match. The cap keeps the *onset*, never drops points from inside the range
+  shown (so it cannot hide a spike), and the chart says when it has cut the rest
+  short and points at Reports. A compliance chart that quietly omits a reading
+  would be worse than one that is hard to read.
+- The two constants — `ALERT_EPISODE_CONTEXT_READINGS`, `ALERT_EPISODE_MAX_POINTS`
+  — are in `lib/constants.ts`, so changing either is one line.
+
+Verified by running the real module (via `jiti`) over single-reading blips, long
+runs, still-open breaches, a neighbouring breach in both directions, max-side
+breaches, the cap, a series starting mid-breach, and an in-range trigger.
+
+### The thing that looked like a bug and was not
+
+An alert's chart read `Min: 6.0 / Max: 10.0` while the sensor card read
+`1.0 – 3.0`, which looked badly wrong. It was correct: the threshold history had
+a 6/10 version whose window covered the trigger instant, and the alert's own
+subtitle ("Too low · 3.5 °C") could only be true against a minimum above 3.5.
+
+The confusion was **UTC versus display time**. `alert_threshold_history` stores
+`timestamptz`, so the SQL editor shows UTC; every screen renders `Asia/Qatar`,
+three hours ahead. The alert's `19:54` on screen is `16:54` in the history table.
+Worth remembering before concluding history has resolved wrongly — subtract three
+hours from what the UI shows.
+
+---
+
+## 2026-08-29 — One rule for a sensor's state
+
+The dashboard card showed "Alert" while the sensor's own page showed "Online",
+for the same sensor at the same moment. Two views were each deriving state from a
+different mix of `sensors.status`, the latest reading and open `alert_logs`, so a
+breach that had recovered but whose alert row was still open landed differently
+in each.
+
+`apps/customer/lib/alert-state.ts` now holds the single rule, in priority order:
+
+```
+offline  →  breaching  →  alert-open  →  ok
+```
+
+`alert-open` is deliberately its own state rather than being folded into
+`breaching`: the reading is back in range but the incident has not been closed
+out, and flattening that to "ok" would hide an unresolved alert.
+
+---
+
+## 2026-08-29 — Email alerting, end to end
+
+Breaches were recorded but nobody was told. `supabase/migrations/20260829_alert_notifications.sql`
+plus `apps/admin/app/api/cron/alerts/route.ts` close that.
+
+**When it fires.** Two jobs run on one endpoint. A sweep raises alerts for
+silence — a sensor that has stopped reporting, or a gateway that has — which
+threshold evaluation can never catch, because a dead sensor sends nothing and no
+code runs. A sender then emails whatever is due.
+
+**The schedule is immediate, +30 minutes, +2 hours, then quiet** until the alert
+resolves. No all-clear email and no quiet hours, both by decision: an operations
+inbox does not need a "nothing is wrong now" message, and a fridge failing at
+3 a.m. is exactly when someone must be woken.
+
+### Decisions worth knowing
+
+- **`notifying_at` is a lease, not a flag.** A sender claims a row by stamping
+  it and clears it only once the send succeeded; a run that dies mid-send leaves
+  a stale lease that becomes claimable again after five minutes. Incrementing
+  the count up front would have been simpler but would burn a reminder slot on a
+  failed send — for a fridge alert a missed notification is worse than a
+  duplicate.
+- **Double-send is prevented in the database, not the application.**
+  `claim_due_alerts()` uses `for update skip locked`, so two overlapping cron
+  runs skip each other's rows instead of both sending. PostgREST cannot express
+  row locking, which is why claiming is a `SECURITY DEFINER` function rather
+  than a query.
+- **One row per incident.** Partial unique indexes enforce one open alert per
+  config / per offline sensor / per offline gateway. Previously a persistent
+  breach resolved and re-opened every 30 minutes, so a six-hour problem became
+  twelve rows in the history — and would have become twelve emails.
+- **A gateway going offline suppresses its sensors' individual alerts.** One
+  site-level email, not one per fridge.
+- **`emailConfigured()` releases every claim rather than counting sends.** With
+  no API key the alerts stay due instead of being marked as notified, so
+  mis-configuration delays alerting rather than silently swallowing it.
+- **Customer timezone is stored, never inferred.** `customers.timezone` is
+  passed into the email renderer as a required argument with no default, so a
+  server in UTC cannot quietly render Qatar times three hours off. Verified:
+  `11:41Z` → `14:41` Asia/Qatar, `07:41` America/New_York.
+- **Resend over a thin `fetch` wrapper**, not the SDK — one POST, no dependency,
+  10-second timeout so a hung provider cannot hold the run open until the
+  platform kills it and strands every claimed lease.
+- Failures log server-side only; Resend's error body can echo recipient
+  addresses.
+
+### Applying it
+
+The same partial-apply trap as the threshold migration: pasted whole, the three
+`$$`-quoted functions silently did not create, with no error. Run it in blocks
+and verify explicitly:
+
+```sql
+select proname from pg_proc
+ where proname in ('claim_due_alerts','mark_alerts_notified','release_alert_claims');
+```
+
+Three rows, or the sender will claim nothing and send nothing while looking
+healthy.
+
+### Verification
+
+The migration was applied to a real local PostgreSQL 16 and six scenarios were
+run against it: it applies clean, both unique indexes reject duplicates, the
+kind constraint rejects mismatched references, two concurrent claimers overlap
+on nothing, the `[immediate, +30 min, +2 h]` schedule sends exactly three times
+and then stops, and an expired lease makes an alert claimable again without
+counting a send.
+
+Then proven in production — a real breach produced a real email.
+
+---
+
+## 2026-08-29 — Production domains, and the scheduler moved to the VPS
+
+**`app.sensoqa.com`** (customer) and **`admin.sensoqa.com`** (admin) are live on
+Vercel with DNS at Cloudflare. Docs and the forwarder point at them rather than
+at `*.vercel.app` deployment URLs.
+
+Supabase's URL configuration had to change with them — Site URL and the redirect
+allowlist. Two entries there were typo'd onto domains we do not own; an auth
+redirect allowlist pointing at someone else's domain is an open-redirect handoff
+of a session, so they were corrected before anything else.
+
+**Alert cron runs from the ChirpStack VPS, not Vercel Cron.** Vercel's Hobby
+plan caps cron at once per day, which is meaningless for a fridge alert — and
+worse, the rejected `*/5` schedule *failed the build*, so production stayed
+pinned to an older deployment and `/api/cron/alerts` returned 404 while existing
+in the source. The crontab entry and its root-only secret file are documented in
+`network-server/README.md`.
+
+The endpoint only checks its bearer token and does not care who calls it, so
+moving back to Vercel Cron later is a `vercel.json` entry and deleting one
+crontab line.
+
+**This makes the VPS load-bearing for alerting as well as ingest.** If it goes
+down, breaches are still recorded but nobody is told.
+
+---
+
+## 2026-08-29 — Editable sensor names, and a device ID that outlives them
+
+Customers can rename their own sensors. That immediately raises a compliance
+problem: a report identifying a fridge only by a name the customer can change is
+not traceable — rename it and last month's record now refers to something that,
+on paper, no longer exists.
+
+So reports and the sensor page also carry the **device ID**: the DevEUI, the
+LoRaWAN identity assigned at manufacture and fixed for the life of the hardware,
+displayed in groups of four.
+
+### Decisions worth knowing
+
+- **The DevEUI is an identifier, not a credential.** Joining the network needs
+  the AppKey (on the device label's QR code, never in this system) and posting a
+  reading needs the ingest secret. Showing it grants nothing.
+- **It identifies the *device*, not the monitoring point.** Replacing a failed
+  sensor starts a new identity in the record. That is the honest outcome —
+  those readings did come from a different instrument.
+- **Name validation is an allowlist, not a blocklist**, and shared between the
+  field and the API so the client copy is convenience while the server stays the
+  authority. It permits any script (Arabic included — these are Qatar sites) and
+  the punctuation of real equipment names, plus typographic quotes, because iOS
+  autocorrect turns "Chef's fridge" into a curly apostrophe and rejecting that
+  would be baffling.
+
+---
+
+## 2026-08-29 — The Senso design system, applied to both apps
+
+Both apps ran a default shadcn-style theme with no relationship to the brand, and
+**104 hardcoded palette classes** (`text-red-600`, `bg-green-500`, `bg-zinc-400`
+…) that bypassed tokens entirely — carrying exactly the states operations staff
+read at a glance. Plan in `.claude/plans/cuddly-crunching-sundae.md`.
+
+- **`packages/tokens`** — the design system's CSS vendored verbatim, so a future
+  export can be diffed rather than re-merged by hand.
+- **`packages/ui`** — the app shell (`AppShell`, `Sidebar`, `Header`, `Logo`,
+  `nav`, `cn`, `Spinner`, `Skeleton`), previously duplicated in both apps and
+  already drifting.
+- Status colours became the five-tone vocabulary: `ok`, `warn`, `alert`, `cold`,
+  `offline`, each with `-500 / -soft / -border / -text`.
+- Fonts come from `next/font` (Poppins, Plus Jakarta Sans, JetBrains Mono), not
+  the design system's render-blocking Google Fonts `@import`.
+- Components were ported to Tailwind utilities rather than dropped in, because
+  the design system ships inline `style={{}}` objects and `CLAUDE.md` forbids
+  them. Accepted cost: a future export needs re-porting.
+
+### Gotchas worth not rediscovering
+
+- **Unlayered CSS beats layered CSS regardless of specificity.** Left unlayered,
+  the design system's `input:focus-visible { box-shadow }` outranked
+  `focus-visible:shadow-none`, and its `a { color }` would have done the same to
+  every text utility. Importing the tokens with `layer(base)` makes them
+  defaults that utilities can override, which is what they should be.
+- **Tailwind v4 wants `h-(--var)`, not `h-[--var]`** — the bracket form silently
+  generates no CSS. Caught by grepping the built stylesheet, not the source.
+- **Order longest-first when bulk-replacing class names.** `bg-green-50` ran
+  before `bg-green-500` and produced `bg-ok-soft0` on nine status dots.
+- `@source "../../../packages/ui"` is required or classes used only inside the
+  shared package never generate. Verified by planting a package-only class and
+  confirming it reached the built CSS.
+- Static assets 307-redirected to `/login` until `proxy.ts`'s matcher excluded
+  image extensions.
+
+Also in this pass: temperatures fixed to one decimal everywhere including
+reports, chart axis ticks left as plain numbers, the sidebar sized by the
+viewport, and the logo cropped **at the source SVG** — its `viewBox` was
+`0 0 1877 1783` while the artwork occupied 1159×210 of it, so it rendered ~3 px
+tall. Fixed in the file rather than compensated for in CSS.
+
+---
+
 ## 2026-08-29 — Effective-Dated Alert Thresholds
 
 ### The bug

@@ -16,7 +16,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 - [ ] **Duplicate RLS policies.** `alert_configs` carries three SELECT policies (`customers_read_own_alert_configs`, `customers_select_own_alert_configs`, `alert_configs_select_own`) and `readings` carries two (`customers_select_own_readings`, `readings_select_own`). Permissive policies are OR'd so this is not currently a hole — but it is a trap: tightening one and missing its twins leaves the loosest one in force. Prune to one policy per table per command.
 
-- [ ] **No rate limiting anywhere** — login, `/api/ingest`, `/api/heartbeat`, and all admin/customer APIs. Enables gateway enumeration, ingest flooding, and credential brute-force. Add per-IP + per-gateway throttling.
+- [ ] **No rate limiting anywhere** — login, `/api/ingest`, `/api/heartbeat`, `/api/cron/alerts`, and all admin/customer APIs. Enables gateway enumeration, ingest flooding, and credential brute-force. Add per-IP + per-gateway throttling. `/api/cron/alerts` is bearer-token-only and world-reachable, so an attacker who guesses the token can burn the reminder schedule; throttling it is cheap because the legitimate caller runs once every five minutes.
 - [ ] **Unbounded `readings[]` in `/api/ingest`** — no length cap; each element runs several sequential service-role queries. One POST with 100k entries = DoS + unbounded inserts (no auth needed given fail-open). Cap array length and validate.
 - [ ] **LAN packet injection into the forwarder** — `senso_forwarder.py` binds `0.0.0.0:1700` with no source check and trusts the raw payload (no LoRaWAN MIC). Anyone on the customer LAN can spoof `PUSH_DATA` for any `hardware_id`/temperature; the Pi then forwards it *authenticated* (it holds the secret) into the compliance record. Bind `127.0.0.1` (lora_pkt_fwd is local).
 - [ ] **`/etc/senso/gateway.env` not `chmod 600` on all paths** — created `install -m 644` (world-readable); `chmod 600` only runs on the auto-generate branch, so a hand-set secret stays 644. Any local user reads the gateway secret. Always `chmod 600`.
@@ -76,3 +76,47 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 ## Gateway provisioning
 
 - [ ] **Golden SD-card image** — build a master image so a new gateway is "flash card → plug in → running" instead of provisioning from scratch. Must handle the **per-gateway identity**: the LoRa concentrator EUI differs per device, so it can't be baked into a shared image. Plan: have the heartbeat auto-derive the gateway EUI from the concentrator's `lora_pkt_fwd` config (the forwarder already reads it from each packet) so `/etc/senso/gateway.env` needs no per-device editing — then the image is truly generic. Capture the image after `gateway/setup.sh` is run and verified on a reference Pi.
+
+## Alerting & operations — added 2026-08-29
+
+- [ ] **The VPS is now load-bearing for alerting, and nothing watches it.** The alert cron
+  runs from the ChirpStack VPS crontab (`network-server/README.md`). If the VPS is down,
+  or the crontab entry is removed, or `CRON_SECRET` drifts out of sync with Vercel,
+  breaches are still recorded but **no one is told, and nothing anywhere says so**. This is
+  the quietest failure mode in the product. Needs an external check that alerts *us* —
+  either an uptime monitor on a health endpoint that reports when the sender last ran, or
+  a dead-man's-switch ping from the cron line itself. Same monitor should cover ChirpStack.
+
+- [ ] **An alert with no recipients is silently swallowed.** If a sensor's
+  `email_recipients` is empty the send is skipped and the alert is marked notified, so it
+  burns its schedule with nobody emailed. Deliberately left as-is for now (deliberate
+  decision, 2026-08-29 — no configured address means no one to tell), but it should at
+  least log, and ideally show on the admin dashboard, so an unconfigured customer is
+  visible rather than quietly unmonitored.
+
+- [ ] **Sensor-offline detection takes ~35 minutes**, inherited from the ingest cadence
+  rather than chosen. Fine for a fridge, slow for a freezer. Revisit alongside reading
+  gateway state from ChirpStack's own gateway API instead of inferring it.
+
+- [ ] **No `.env` documentation drift check.** `.env.example` now exists for both apps
+  (added 2026-08-29). Keep them updated when a variable is added — a missing one is
+  invisible until something fails in production, which is how the Resend key was missed.
+
+## Code health — added 2026-08-29
+
+- [ ] **`deveui.ts` is duplicated byte-for-byte** between `apps/customer/lib/deveui.ts` and
+  `apps/admin/lib/deveui-format.ts`. Now that `packages/` exists, move it to a shared
+  package — this is exactly the drift that made the app shell worth extracting.
+
+- [ ] **`apps/admin/vercel.json` is an empty `{}`** left behind when the cron block was
+  removed. Harmless, but it reads as configuration that isn't there. Decide whether Vercel
+  needs the file at all before deleting it.
+
+- [ ] **The admin app's inner pages are themed but still hand-rolled markup** — customer
+  detail, devices, billing. They pick up the design system's colours and type through the
+  token bridge, but do not use the ported primitives. Follow-up to the design-system pass.
+
+- [ ] **The threshold-history backfill used `-infinity`**, so readings predating the
+  migration are still judged against today's threshold — the exact behaviour the feature
+  removes. Accepted at the time because those were test runs. If any pre-migration reading
+  ever needs to be defensible, this is the gap.

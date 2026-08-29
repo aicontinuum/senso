@@ -30,6 +30,7 @@ Infrastructure details live in **`network-server/README.md`** (as-built).
 The exact uplink JSON and field mapping Phase 4 must consume is in
 **`network-server/UPLINK-FORMAT.md`**.
 Domain: **sensoqa.com** (Cloudflare) · LNS: **lns.sensoqa.com**
+Apps: **app.sensoqa.com** (customer) · **admin.sensoqa.com** (admin), both on Vercel.
 
 ---
 
@@ -324,15 +325,30 @@ Split into **office prep** and **site install**.
 - [ ] **API-based onboarding** — senso.admin calls the ChirpStack API to register devices
       behind the scenes (needs a ChirpStack API key). Build after doing the manual flow
       once.
-- [ ] **Email alerts system** (plan already complete): inline threshold eval at ingest,
-      `pg_cron` absence-of-data sweep, confirmation-delay state machine (two consecutive
-      breaches), gateway rollup, backfill suppression, idempotency keys, and an
-      `alert_notifications` audit table.
+- [x] ~~**Email alerts system**~~ **BUILT 2026-08-29** — live and proven in production.
+      `supabase/migrations/20260829_alert_notifications.sql` +
+      `apps/admin/app/api/cron/alerts/route.ts`, transport is Resend. Threshold breaches
+      raise at ingest; a sweep raises sensor- and gateway-silence. Reminder schedule is
+      immediate / +30 min / +2 h, then quiet until resolved. Gateway rollup kept.
+
+      **Where the build departs from the plan, and why:**
+      - **No `alert_notifications` table.** Notification state (`notify_count`,
+        `last_notified_at`, `notifying_at`) lives on `alert_logs` instead, because
+        partial unique indexes now make one row *be* one incident. A second table would
+        have needed its own guard against the same double-send it was meant to record.
+      - **No confirmation delay / two-consecutive-breaches rule.** Rejected: it delays a
+        real fridge failure by a full reading interval to suppress a class of noise we
+        have not actually observed. Revisit with field data, not before.
+      - **Not `pg_cron`.** A crontab on the ChirpStack VPS calls the endpoint every five
+        minutes; Vercel's Hobby plan caps cron at once per day. `pg_cron` stays an option
+        — the endpoint only checks its bearer token and does not care who calls it.
+      - **Idempotency comes from `for update skip locked` + a send lease**, not from
+        idempotency keys. See DEVLOG 2026-08-29.
 - [ ] **Upgrade Resend to Pro** before the first paying customer.
 - [ ] **Cut over and retire the Pi from the product path** — run both in parallel for
       validation, verify readings/alerts/status/reports all work off LoRaWAN, then demote
       the Pi `gateway/` kit to test-only and mark it clearly.
-- [ ] Update **DEVLOG / SENSO** docs to reflect the LoRaWAN architecture.
+- [x] ~~Update **DEVLOG / SENSO** docs to reflect the LoRaWAN architecture.~~ Done 2026-08-29.
 - [ ] Use **downlinks** to remotely reconfigure deployed sensors (interval, thresholds).
 - [ ] Capture **RSSI / SNR** per uplink for signal-quality visibility.
 
@@ -347,7 +363,9 @@ Phase 3 is fully closed — no outstanding items from it.
 3. **Qatar trademark clearance for "Senso"** in the temperature-monitoring class — owning
    the domain does not clear the name for use.
 4. **Resilience gaps** — automated DB backups, VPS snapshots, and an external uptime
-   monitor are all still unconfigured (`network-server/README.md` §7).
+   monitor are all still unconfigured (`network-server/README.md` §7). Now more urgent:
+   since 2026-08-29 the VPS also drives the alert scheduler, so if it stops, breaches are
+   recorded but nobody is told and nothing says so.
 5. Test gateway is on the dev **`HOME`** WiFi; production gateways go on customer networks.
 
 _Credentials note: the `sensor0` AppKey and the ChirpStack admin password live in the
