@@ -88,7 +88,10 @@ export function TemperatureChart({ data, minTemp, maxTemp, alertType }: Props) {
           dataKey="time"
           tick={<TwoLineTick />}
           tickLine={false}
-          interval={Math.ceil((data.length - 1) / 5)}
+          // Roughly six labels whatever the length. The old formula rounded up
+          // to 1 for a three-point series, hiding the middle reading — which is
+          // the breach itself now that the chart is trimmed to the episode.
+          interval={Math.max(0, Math.ceil(data.length / 6) - 1)}
         />
         <YAxis
           domain={domain}

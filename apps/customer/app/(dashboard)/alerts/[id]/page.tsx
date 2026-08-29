@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { rangeAt, type ThresholdVersion } from "@/lib/thresholds";
 import { requireCustomer } from "@/lib/supabase/get-customer";
-import { formatDateTimeLong } from "@/lib/temperature";
+import { formatDateTimeLong, formatTemp } from "@/lib/temperature";
+import { alertEpisode } from "@/lib/alert-episode";
+import {
+  ALERT_EPISODE_LEAD_MS,
+  ALERT_EPISODE_MAX_POINTS,
+  ALERT_EPISODE_FETCH_SLACK,
+} from "@/lib/constants";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 
 export default async function AlertDetailPage({
@@ -70,29 +76,43 @@ export default async function AlertDetailPage({
   const minTemp = applied.min ?? belowMin?.threshold ?? 2;
   const maxTemp = applied.max ?? aboveMax?.threshold ?? 8;
 
-  // Fetch readings ±12h around the alert
+  // Readings from a little before the alert onwards. Ascending with a limit
+  // takes the start of the episode rather than an arbitrary slice of it, and
+  // bounds the query for a breach that is still open and has no end yet.
   const alertTime = new Date(alertLog.triggered_at).getTime();
-  const windowStart = new Date(alertTime - 12 * 60 * 60 * 1000).toISOString();
-  const windowEnd = new Date(alertTime + 12 * 60 * 60 * 1000).toISOString();
+  const fetchFrom = new Date(alertTime - ALERT_EPISODE_LEAD_MS).toISOString();
 
   const { data: readings } = await supabase
     .from("readings")
     .select("id, temperature, recorded_at")
     .eq("sensor_id", alertConfig.sensor_id)
-    .gte("recorded_at", windowStart)
-    .lte("recorded_at", windowEnd)
-    .order("recorded_at", { ascending: true });
+    .gte("recorded_at", fetchFrom)
+    .order("recorded_at", { ascending: true })
+    .limit(ALERT_EPISODE_MAX_POINTS + ALERT_EPISODE_FETCH_SLACK);
 
   const alertType: "max" | "min" =
     alertConfig.type === "max" ? "max" : "min";
 
-  const closestReading = (readings ?? []).reduce<{ temperature: number; recorded_at: string } | null>((best, r) => {
-    if (!best) return r;
-    const diffR = Math.abs(new Date(r.recorded_at).getTime() - alertTime);
-    const diffBest = Math.abs(new Date(best.recorded_at).getTime() - alertTime);
-    return diffR < diffBest ? r : best;
-  }, null);
-  const triggeringTemp = closestReading?.temperature;
+  // Trim to the episode: the breaching run, plus the in-range reading either
+  // side of it. A fixed window showed twelve hours of unrelated readings around
+  // a two-reading blip, and cut off any breach that outlasted it.
+  const episode = alertEpisode(
+    (readings ?? []).map((r) => ({ temperature: r.temperature, recordedAt: r.recorded_at })),
+    alertLog.triggered_at,
+    { min: minTemp, max: maxTemp },
+    ALERT_EPISODE_MAX_POINTS,
+  );
+
+  const nearestToTrigger = episode.readings.reduce<{ temperature: number; recordedAt: string } | null>(
+    (best, r) => {
+      if (!best) return r;
+      const here = Math.abs(new Date(r.recordedAt).getTime() - alertTime);
+      const bestGap = Math.abs(new Date(best.recordedAt).getTime() - alertTime);
+      return here < bestGap ? r : best;
+    },
+    null,
+  );
+  const triggeringTemp = nearestToTrigger?.temperature;
 
   // Short "DD/MM, HH:MM" chart labels rendered in the customer's timezone
   const chartLabelFmt = new Intl.DateTimeFormat("en-GB", {
@@ -102,8 +122,8 @@ export default async function AlertDetailPage({
     minute: "2-digit",
     timeZone: customer.timezone,
   });
-  const chartData = (readings ?? []).map((r) => ({
-    time: chartLabelFmt.format(new Date(r.recorded_at)),
+  const chartData = episode.readings.map((r) => ({
+    time: chartLabelFmt.format(new Date(r.recordedAt)),
     temp: r.temperature,
   }));
 
@@ -120,7 +140,7 @@ export default async function AlertDetailPage({
         <h1 className="text-2xl font-bold">{sensor.name}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {alertType === "max" ? "Too high" : "Too low"}
-          {triggeringTemp !== undefined && <> · {triggeringTemp}°C</>}
+          {triggeringTemp !== undefined && <> · {formatTemp(triggeringTemp)}</>}
           {" · "}{formatDateTimeLong(alertLog.triggered_at, customer.timezone)}
           {alertLog.is_resolved && <> · Resolved</>}
         </p>
@@ -129,7 +149,11 @@ export default async function AlertDetailPage({
       {chartData.length > 0 ? (
         <div className="rounded-lg border p-4">
           <p className="mb-4 text-sm font-medium text-muted-foreground">
-            Temperature readings — {sensor.name}
+            {episode.breachCount === 1
+              ? "1 reading out of range"
+              : `${episode.breachCount} readings out of range`}
+            {" · "}
+            {chartData.length} shown
           </p>
           <TemperatureChart
             data={chartData}
@@ -137,10 +161,16 @@ export default async function AlertDetailPage({
             maxTemp={maxTemp}
             alertType={alertType}
           />
+          {episode.truncated && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              The breach continues past the last reading shown. Reports carry the
+              full series.
+            </p>
+          )}
         </div>
       ) : (
         <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
-          No readings available for this time window.
+          No readings recorded around this alert.
         </div>
       )}
     </div>
