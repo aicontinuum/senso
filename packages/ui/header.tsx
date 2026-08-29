@@ -1,19 +1,20 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { Logo } from "./Logo";
+import { Logo } from "./logo";
 
-interface Props {
+interface HeaderProps {
   onMenuClick: () => void;
-  customerName: string;
+  appName: string;
+  /** Right-hand slot: the customer's name on one app, a role label on the other. */
+  right?: React.ReactNode;
 }
 
-export function Header({ onMenuClick, customerName }: Props) {
+export function Header({ onMenuClick, appName, right }: HeaderProps) {
   return (
     // Three tracks rather than flex with justify-between, so the brand is centred
     // on the bar itself and not on whatever space the side content leaves over.
-    // The middle track is sized to the logo; the outer two share the remainder
-    // equally, which keeps it centred even as the customer name changes length.
+    // It stays centred as the right-hand content changes length.
     <header className="grid h-(--topbar-height) shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b bg-card px-4 sm:px-6 print:hidden">
       <div className="flex min-w-0 justify-start">
         <button
@@ -26,13 +27,15 @@ export function Header({ onMenuClick, customerName }: Props) {
       </div>
 
       <div className="flex justify-center">
-        <Logo />
+        <Logo appName={appName} />
       </div>
 
       <div className="flex min-w-0 justify-end">
-        <span className="truncate text-sm text-muted-foreground">
-          {customerName}
-        </span>
+        {typeof right === "string" ? (
+          <span className="truncate text-sm text-muted-foreground">{right}</span>
+        ) : (
+          right
+        )}
       </div>
     </header>
   );

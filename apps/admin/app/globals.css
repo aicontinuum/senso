@@ -1,54 +1,194 @@
 @import "tailwindcss";
+/* Tailwind v4 auto-detects sources next to this file, which stops at the app
+   boundary. Without this the classes used only inside @senso/ui are never
+   generated and those components render unstyled. */
+@source "../../../packages/ui";
+/* Design-system tokens, vendored verbatim in packages/tokens.
+ *
+ * Imported into the `base` layer, which matters more than it looks: Tailwind v4
+ * puts its utilities in cascade layers, and unlayered CSS beats layered CSS
+ * regardless of specificity. Left unlayered, the system's base element styles
+ * would silently outrank every Tailwind utility touching the same property —
+ * its `input:focus-visible { box-shadow }` beat `focus-visible:shadow-none`, and
+ * its `a { color }` and `h1-h6 { font-family }` would have done the same to any
+ * text-* or font-* utility. In the base layer they are defaults that utilities
+ * can override, which is what they should be. */
+@import "@senso/tokens" layer(base);
 
+/* Bridge the design system into Tailwind's utility namespaces.
+ *
+ * Colours use `var()` references, so the whole palette stays single-sourced in
+ * packages/tokens/colors.css — and the [data-theme="dark"] scope defined there
+ * flows through the utilities for free if we ever switch it on.
+ *
+ * Radii, shadows and type sizes are written as literals instead. Tailwind's
+ * namespaces for those (--radius-*, --shadow-*, --text-*) collide with the names
+ * the design system already uses, and a var() pointing at its own name is a
+ * cycle CSS resolves to nothing. These mirror packages/tokens/{radius,elevation,
+ * typography}.css — keep them in sync when the design system is re-exported.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* ── Surfaces and text ─────────────────────────────────────────────── */
+  --color-background: var(--surface-page);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-card);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-card);
+  --color-popover-foreground: var(--text-primary);
+  --color-sunken: var(--surface-sunken);
+  --color-inset: var(--surface-inset);
+  --color-inverse: var(--surface-inverse);
+  --color-overlay: var(--surface-overlay);
+
+  --color-muted: var(--surface-sunken);
+  /* Deliberately --text-secondary, not --text-muted. This is the workhorse for
+     timestamps and secondary labels at body size, and --text-muted (#757589)
+     measures 4.32:1 on the page ground — under WCAG AA for normal text.
+     --text-secondary is 6.96:1 and carries the same intent. --color-text-muted
+     below stays available for genuinely de-emphasised text. */
+  --color-muted-foreground: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-secondary: var(--surface-sunken);
+  --color-secondary-foreground: var(--text-primary);
+  /* `accent` is Tailwind's hover surface, not the brand. The system is explicit:
+     neutral surfaces hover to --surface-sunken, never to a purple tint. */
+  --color-accent: var(--surface-sunken);
+  --color-accent-foreground: var(--text-primary);
+
+  --color-text-secondary: var(--text-secondary);
+  --color-text-faint: var(--text-faint);
+  --color-text-inverse: var(--text-inverse);
+
+  /* ── Brand ─────────────────────────────────────────────────────────── */
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
+  --color-primary-press: var(--accent-press);
+  --color-primary-foreground: var(--accent-on);
+  --color-primary-soft: var(--accent-soft);
+  --color-brand-100: var(--brand-100);
+  --color-brand-300: var(--brand-300);
+
+  /* ── Status: the readings vocabulary ───────────────────────────────── */
+  --color-ok-500: var(--ok-500);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-border: var(--ok-border);
+  --color-ok-text: var(--ok-text);
+  --color-warn-500: var(--warn-500);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-border: var(--warn-border);
+  --color-warn-text: var(--warn-text);
+  --color-alert-500: var(--alert-500);
+  --color-alert-soft: var(--alert-soft);
+  --color-alert-border: var(--alert-border);
+  --color-alert-text: var(--alert-text);
+  --color-cold-500: var(--cold-500);
+  --color-cold-soft: var(--cold-soft);
+  --color-cold-border: var(--cold-border);
+  --color-cold-text: var(--cold-text);
+  --color-offline-500: var(--offline-500);
+  --color-offline-soft: var(--offline-soft);
+  --color-offline-border: var(--offline-border);
+  --color-offline-text: var(--offline-text);
+
+  /* `destructive` stays mapped to the alert tone so existing usages keep
+     working; new code should name the status directly. */
+  --color-destructive: var(--alert-500);
+  --color-destructive-foreground: var(--neutral-0);
+
+  /* ── Borders ───────────────────────────────────────────────────────── */
+  /* Default is the divider weight; cards use the lighter hairline. */
+  --color-border: var(--border-default);
+  --color-hairline: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--border-default);
+  --color-ring: var(--brand-500);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-track: var(--chart-track);
+
+  /* ── Type ──────────────────────────────────────────────────────────── */
+  /* Families come from next/font in layout.tsx; these override the design
+     system's own --font-* declarations, which name families we don't load. */
+  --font-display: var(--font-poppins), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-3xs: 10px;
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 30px;
+  --text-3xl: 38px;
+  --text-4xl: 48px;
+  --text-5xl: 60px;
+  --text-6xl: 76px;
+
+  --tracking-tighter: -0.03em;
+  --tracking-tight: -0.018em;
+  --tracking-wide: 0.02em;
+  --tracking-caps: 0.08em;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* ── Radii ─────────────────────────────────────────────────────────── */
+  /* Roles, not sizes: a control is rounder than a button so "type here" reads
+     differently from "press me". Pills are for dots and counters only. */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-card: 20px;
+  --radius-inner: 12px;
+  --radius-control: 12px;
+  --radius-button: 10px;
+  --radius-chip: 8px;
+
+  /* ── Elevation ─────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(23, 22, 28, 0.05);
+  --shadow-sm: 0 1px 3px rgba(23, 22, 28, 0.06), 0 1px 2px rgba(23, 22, 28, 0.04);
+  --shadow-md: 0 4px 14px rgba(23, 22, 28, 0.06);
+  --shadow-lg: 0 12px 32px rgba(23, 22, 28, 0.08);
+  --shadow-xl: 0 24px 60px rgba(23, 22, 28, 0.1);
+  --shadow-accent: 0 8px 22px rgba(110, 91, 228, 0.28);
+  --shadow-accent-sm: 0 3px 10px rgba(110, 91, 228, 0.24);
 }
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.552 0.016 285.938);
-  --radius: 0.5rem;
+/* Tailwind's borders default to `currentColor`; the system's divider weight is
+   the sane default for the handful of places that set a width without a colour. */
+@layer base {
+  * {
+    border-color: var(--border-default);
+  }
 }
 
-* {
-  border-color: var(--border);
+/* The design system's base layer paints every <a> as a prose link. Every link in
+   this app is a UI affordance instead — a sensor card, a nav row, a table row —
+   that carries its own colour, and inheriting brand purple turns a card's whole
+   contents purple. That also breaks the system's own rule that purple means
+   action or brand and never content or status. Genuine text links opt in with
+   `text-primary underline`. */
+@layer base {
+  a {
+    color: inherit;
+  }
+
+  a:hover {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+/* Numbers that update in place must not jitter or misalign between rows. */
+.tabular-nums,
+th,
+td {
+  font-variant-numeric: tabular-nums;
 }

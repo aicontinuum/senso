@@ -135,7 +135,7 @@ export default function NewCustomerPage() {
             {FIELDS.map(f => (
               <div key={f.key}>
                 <label className="block text-sm font-medium mb-1">
-                  {f.label}{f.required && <span className="text-red-500 ml-0.5">*</span>}
+                  {f.label}{f.required && <span className="text-alert-text ml-0.5">*</span>}
                 </label>
                 <input
                   type={f.type ?? 'text'}
@@ -143,18 +143,18 @@ export default function NewCustomerPage() {
                   onChange={set(f.key)}
                   placeholder={f.placeholder}
                   className={`w-full max-w-md rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${
-                    errors[f.key] ? 'border-red-500' : 'border-border'
+                    errors[f.key] ? 'border-alert-500' : 'border-border'
                   }`}
                 />
                 {errors[f.key] && (
-                  <p className="mt-1 text-xs text-red-500">{errors[f.key]}</p>
+                  <p className="mt-1 text-xs text-alert-text">{errors[f.key]}</p>
                 )}
               </div>
             ))}
           </div>
 
           {serverError && (
-            <div className="mx-6 mb-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="mx-6 mb-4 rounded-md bg-alert-soft border border-alert-border px-4 py-3 text-sm text-alert-text">
               {serverError}
             </div>
           )}

@@ -318,7 +318,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
               <button onClick={() => { setEditing(false); setSaveError(''); setForm({ name: customer.name, contactName: customer.contact_name ?? '', email: customer.email, phone: customer.phone ?? '' }); }} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted">Cancel</button>
               <button onClick={saveAccount} disabled={saving} className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">{saving ? 'Saving…' : 'Save'}</button>
             </div>
-            {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+            {saveError && <p className="text-xs text-alert-text">{saveError}</p>}
           </div>
         )}
       </div>
@@ -340,7 +340,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                 onChange={e => { setNewPassword(e.target.value); setPasswordError(''); setPasswordSuccess(false); }}
                 onKeyDown={e => e.key === 'Enter' && updatePassword()}
                 placeholder="New password"
-                className={`w-48 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${passwordError ? 'border-red-400 focus:ring-red-400' : 'border-border'}`}
+                className={`w-48 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${passwordError ? 'border-alert-border focus:ring-alert-500' : 'border-border'}`}
               />
               <button
                 onClick={updatePassword}
@@ -350,8 +350,8 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                 {passwordSaving ? 'Updating…' : 'Update'}
               </button>
             </div>
-            {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
-            {passwordSuccess && <p className="text-xs text-green-700">Password updated.</p>}
+            {passwordError && <p className="text-xs text-alert-text">{passwordError}</p>}
+            {passwordSuccess && <p className="text-xs text-ok-text">Password updated.</p>}
           </div>
         </div>
       </Section>
@@ -374,8 +374,8 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-green-700' : 'text-muted-foreground'}`}>
-                    <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                  <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-ok-text' : 'text-muted-foreground'}`}>
+                    <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-ok-500' : 'bg-offline-500'}`} />
                     {g.is_online ? 'Online' : 'Offline'}
                   </span>
                   {confirmUnlinkId === g.id ? (
@@ -384,7 +384,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                       <button
                         onClick={() => unlinkGateway(g.id)}
                         disabled={unlinking}
-                        className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                        className="font-medium text-alert-text hover:text-alert-text disabled:opacity-50"
                       >
                         {unlinking ? 'Removing…' : 'Yes'}
                       </button>
@@ -398,7 +398,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                   ) : (
                     <button
                       onClick={() => setConfirmUnlinkId(g.id)}
-                      className="text-xs text-muted-foreground hover:text-red-600"
+                      className="text-xs text-muted-foreground hover:text-alert-text"
                     >
                       Unlink
                     </button>
@@ -416,7 +416,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
               onChange={e => { setEuiInput(e.target.value); setLinkError(''); }}
               onKeyDown={e => e.key === 'Enter' && linkGateway()}
               placeholder="Gateway EUI (e.g. 2cf7f11081400088)"
-              className={`flex-1 max-w-xs rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${linkError ? 'border-red-400 focus:ring-red-400' : 'border-border'}`}
+              className={`flex-1 max-w-xs rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${linkError ? 'border-alert-border focus:ring-alert-500' : 'border-border'}`}
             />
             <input
               value={gwName}
@@ -433,7 +433,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
               {linking ? 'Linking…' : 'Link Gateway'}
             </button>
           </div>
-          {linkError && <p className="text-xs text-red-600">{linkError}</p>}
+          {linkError && <p className="text-xs text-alert-text">{linkError}</p>}
         </div>
       </Section>
 
@@ -461,8 +461,8 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                       {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
                     </td>
                     <td className="py-2.5 pr-8">
-                      <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-green-700' : 'text-muted-foreground'}`}>
-                        <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                      <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-ok-text' : 'text-muted-foreground'}`}>
+                        <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-ok-500' : 'bg-offline-500'}`} />
                         {s.status === 'online' ? 'Online' : 'Offline'}
                       </span>
                     </td>
@@ -473,7 +473,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                       {confirmUnlinkSensorId === s.id ? (
                         <span className="flex items-center justify-end gap-1.5 text-xs">
                           <span className="text-muted-foreground">Remove?</span>
-                          <button onClick={() => unlinkSensor(s.id)} disabled={unlinkingSensor} className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50">
+                          <button onClick={() => unlinkSensor(s.id)} disabled={unlinkingSensor} className="font-medium text-alert-text hover:text-alert-text disabled:opacity-50">
                             {unlinkingSensor ? 'Removing…' : 'Yes'}
                           </button>
                           <button onClick={() => setConfirmUnlinkSensorId(null)} className="text-muted-foreground hover:text-foreground">Cancel</button>
@@ -481,7 +481,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                       ) : (
                         <span className="flex items-center justify-end gap-3">
                           <Link href={`/customers/${customer.id}/sensors/${s.id}`} className="text-xs text-muted-foreground hover:text-foreground">Settings</Link>
-                          <button onClick={() => setConfirmUnlinkSensorId(s.id)} className="text-xs text-muted-foreground hover:text-red-600">Remove</button>
+                          <button onClick={() => setConfirmUnlinkSensorId(s.id)} className="text-xs text-muted-foreground hover:text-alert-text">Remove</button>
                         </span>
                       )}
                     </td>
@@ -539,7 +539,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
               />
             </div>
 
-            {sensorError && <p className="text-xs text-red-600">{sensorError}</p>}
+            {sensorError && <p className="text-xs text-alert-text">{sensorError}</p>}
             <div className="flex gap-2 pt-1">
               <button
                 onClick={addSensor}
@@ -565,7 +565,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
         </p>
         <EmailRecipientsEditor emails={acctEmails} onChange={saveAcctEmails} />
         {savingAcctEmails && <p className="mt-2 text-xs text-muted-foreground">Saving…</p>}
-        {acctEmailError && <p className="mt-2 text-xs text-red-600">{acctEmailError}</p>}
+        {acctEmailError && <p className="mt-2 text-xs text-alert-text">{acctEmailError}</p>}
       </Section>
     </div>
   );

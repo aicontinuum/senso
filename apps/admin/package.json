@@ -9,17 +9,19 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@senso/mock-data": "*",
+    "@senso/status": "*",
+    "@senso/tokens": "*",
+    "@senso/types": "*",
+    "@senso/ui": "*",
+    "@supabase/ssr": "*",
+    "@supabase/supabase-js": "*",
+    "clsx": "*",
+    "lucide-react": "*",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "lucide-react": "*",
-    "clsx": "*",
-    "tailwind-merge": "*",
-    "@senso/mock-data": "*",
-    "@senso/status": "*",
-    "@senso/types": "*",
-    "@supabase/supabase-js": "*",
-    "@supabase/ssr": "*"
+    "tailwind-merge": "*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

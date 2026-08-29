@@ -105,13 +105,13 @@ export default async function AdminDashboardPage() {
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
           <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline}</p>
           <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-            <p><span className="font-medium text-green-600">{sensorsOnline}</span> online</p>
-            <p><span className="font-medium text-red-600">{sensorsOffline}</span> offline</p>
+            <p><span className="font-medium text-ok-text">{sensorsOnline}</span> online</p>
+            <p><span className="font-medium text-alert-text">{sensorsOffline}</span> offline</p>
           </div>
         </div>
         <div className="px-6 py-5">
           <p className="text-sm font-medium text-muted-foreground">Alerts (past 24h)</p>
-          <p className={`mt-1 text-3xl font-bold ${totalAlerts > 0 ? 'text-red-600' : ''}`}>{totalAlerts}</p>
+          <p className={`mt-1 text-3xl font-bold ${totalAlerts > 0 ? 'text-alert-text' : ''}`}>{totalAlerts}</p>
           <p className="mt-2 text-sm text-muted-foreground">across all customers</p>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default async function AdminDashboardPage() {
                       const online = isGatewayOnline(g.is_online, g.last_seen_at);
                       return (
                         <span key={g.id} className="flex items-center gap-1.5 text-sm">
-                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-green-500' : 'bg-zinc-400'}`} />
+                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-ok-500' : 'bg-offline-500'}`} />
                           {online ? 'Online' : 'Offline'}
                         </span>
                       );
@@ -152,7 +152,7 @@ export default async function AdminDashboardPage() {
                   <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
                   <td className="px-6 py-4 tabular-nums">
                     {alertCount > 0
-                      ? <span className="font-medium text-red-600">{alertCount}</span>
+                      ? <span className="font-medium text-alert-text">{alertCount}</span>
                       : <span className="text-muted-foreground">0</span>}
                   </td>
                 </tr>

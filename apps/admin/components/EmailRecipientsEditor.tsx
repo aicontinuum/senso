@@ -55,7 +55,7 @@ export function EmailRecipientsEditor({ emails, onChange }: Props) {
             placeholder="name@example.com"
             className={cn(
               'min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring',
-              error ? 'border-red-400 focus:ring-red-400' : 'border-border',
+              error ? 'border-alert-border focus:ring-alert-500' : 'border-border',
             )}
           />
           <button
@@ -66,7 +66,7 @@ export function EmailRecipientsEditor({ emails, onChange }: Props) {
             Add
           </button>
         </div>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {error && <p className="text-xs text-alert-text">{error}</p>}
       </div>
     </div>
   );

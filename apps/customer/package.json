@@ -15,6 +15,7 @@
     "@senso/status": "*",
     "@senso/tokens": "*",
     "@senso/types": "*",
+    "@senso/ui": "*",
     "@supabase/ssr": "*",
     "@supabase/supabase-js": "*",
     "class-variance-authority": "^0.7.1",

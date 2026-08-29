@@ -86,8 +86,8 @@ export default async function CustomersPage() {
                   <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
                   <td className="px-6 py-4">
                     <span className="flex items-center gap-1.5">
-                      <span className={`inline-block h-2 w-2 rounded-full ${gwStatus === 'online' ? 'bg-green-500' : gwStatus === 'offline' ? 'bg-zinc-400' : 'bg-zinc-300'}`} />
-                      <span className={gwStatus === 'online' ? 'text-green-700' : 'text-muted-foreground'}>
+                      <span className={`inline-block h-2 w-2 rounded-full ${gwStatus === 'online' ? 'bg-ok-500' : gwStatus === 'offline' ? 'bg-offline-500' : 'bg-offline-border'}`} />
+                      <span className={gwStatus === 'online' ? 'text-ok-text' : 'text-muted-foreground'}>
                         {gwStatus === 'online' ? 'Online' : gwStatus === 'offline' ? 'Offline' : '—'}
                       </span>
                     </span>
@@ -101,7 +101,7 @@ export default async function CustomersPage() {
                       >
                         View
                       </Link>
-                      <button className="text-sm text-red-500 hover:text-red-700 transition-colors">
+                      <button className="text-sm text-alert-text hover:text-alert-text transition-colors">
                         Delete
                       </button>
                     </div>

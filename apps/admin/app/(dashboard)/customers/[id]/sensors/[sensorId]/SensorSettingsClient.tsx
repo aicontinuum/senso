@@ -124,8 +124,8 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{sensor.name}</h1>
-          <span className={`mt-1 inline-flex items-center gap-1.5 text-sm ${sensor.status === 'online' ? 'text-green-700' : 'text-muted-foreground'}`}>
-            <span className={`inline-block h-2 w-2 rounded-full ${sensor.status === 'online' ? 'bg-green-500' : 'bg-zinc-400'}`} />
+          <span className={`mt-1 inline-flex items-center gap-1.5 text-sm ${sensor.status === 'online' ? 'text-ok-text' : 'text-muted-foreground'}`}>
+            <span className={`inline-block h-2 w-2 rounded-full ${sensor.status === 'online' ? 'bg-ok-500' : 'bg-offline-500'}`} />
             {sensor.status === 'online' ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -211,8 +211,8 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
           </Row>
         </dl>
 
-        {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
-        {saved && !editing && <p className="mt-4 text-xs text-green-700">✓ Saved</p>}
+        {error && <p className="mt-4 text-xs text-alert-text">{error}</p>}
+        {saved && !editing && <p className="mt-4 text-xs text-ok-text">✓ Saved</p>}
       </Section>
     </div>
   );

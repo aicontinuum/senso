@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Tailwind v4 auto-detects sources next to this file, which stops at the app
+   boundary. Without this the classes used only inside @senso/ui are never
+   generated and those components render unstyled. */
+@source "../../../packages/ui";
 /* Design-system tokens, vendored verbatim in packages/tokens.
  *
  * Imported into the `base` layer, which matters more than it looks: Tailwind v4

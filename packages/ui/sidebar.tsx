@@ -1,26 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import {
-  LayoutDashboard,
-  Bell,
-  FileText,
-  Settings,
-  X,
-  LogOut,
-  type LucideIcon,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "@/lib/constants";
-
-const NAV_ICONS: Record<string, LucideIcon> = {
-  "/dashboard": LayoutDashboard,
-  "/alerts": Bell,
-  "/reports": FileText,
-  "/settings": Settings,
-};
+import { usePathname } from "next/navigation";
+import { X, LogOut } from "lucide-react";
+import { cn } from "./cn";
+import type { NavItem } from "./nav";
 
 // The rail adapts to the viewport rather than to a toggle:
 //
@@ -33,27 +17,21 @@ const NAV_ICONS: Record<string, LucideIcon> = {
 //
 // This is why there is no collapse state: the design system defines exactly one
 // --sidebar-width and no collapsed variant, and letting CSS decide removes a
-// boolean, a toggle button and nine conditionals from this file.
+// boolean, a toggle button and nine conditionals.
 //
 // Labels are hidden only in the middle tier. The mobile drawer is the full 248px
 // when open, so it shows them like the wide rail does.
 const RAIL_LABEL = "inline md:hidden lg:inline";
 
-interface Props {
+interface SidebarProps {
+  navItems: NavItem[];
   mobileOpen: boolean;
   onMobileClose: () => void;
+  onLogout: () => void;
 }
 
-export function Sidebar({ mobileOpen, onMobileClose }: Props) {
+export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
-  }
 
   return (
     <aside
@@ -79,12 +57,11 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
         </button>
       </div>
 
-      {/* Nav links */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = NAV_ICONS[item.href];
+          const Icon = item.icon;
           return (
             <Link
               key={item.href}
@@ -97,7 +74,6 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
               aria-label={item.label}
               className={cn(
                 "flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors",
-                // Icons-only tier: centre the glyph and drop the gap.
                 "md:justify-center md:gap-0 lg:justify-start lg:gap-3",
                 isActive
                   ? "bg-primary text-primary-foreground"
@@ -105,20 +81,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: Props) {
               )}
             >
               {Icon && <Icon className="h-4 w-4 shrink-0" />}
-              {/* Hidden visually at the icons-only tier but still announced, so
-                  the nav keeps its accessible names where the text is gone.
-                  `title` alone would not do this — it is unreliable for screen
-                  readers and never appears on keyboard focus. */}
               <span className={RAIL_LABEL}>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Logout */}
       <div className="shrink-0 border-t px-2 py-3">
         <button
-          onClick={handleLogout}
+          onClick={onLogout}
           aria-label="Logout"
           className={cn(
             "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",

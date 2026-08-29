@@ -1,31 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { Sidebar } from "./Sidebar";
-import { Header } from "./Header";
+import { useRouter } from "next/navigation";
+import { LayoutDashboard, Users, Cpu, CreditCard, Settings } from "lucide-react";
+import { AppShell, type NavItem } from "@senso/ui";
+import { createClient } from "@/lib/supabase/client";
+import { APP_NAME, NAV_ITEMS } from "@/lib/constants";
+
+const NAV_ICONS: Record<string, NavItem["icon"]> = {
+  "/dashboard": LayoutDashboard,
+  "/customers": Users,
+  "/devices": Cpu,
+  "/billing": CreditCard,
+  "/settings": Settings,
+};
+
+const navItems: NavItem[] = NAV_ITEMS.map((item) => ({
+  ...item,
+  icon: NAV_ICONS[item.href],
+}));
 
 export function ShellClient({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+
+  // Sign-out stays here rather than in the shared shell: each app has its own
+  // Supabase client and its own post-logout destination.
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <Sidebar
-        collapsed={collapsed}
-        mobileOpen={mobileOpen}
-        onToggleCollapse={() => setCollapsed((v) => !v)}
-        onMobileClose={() => setMobileOpen(false)}
-      />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={() => setMobileOpen((v) => !v)} />
-        <main className="flex-1 overflow-auto p-4 sm:p-6">{children}</main>
-      </div>
-    </div>
+    <AppShell
+      appName={APP_NAME}
+      navItems={navItems}
+      headerRight="Admin"
+      onLogout={handleLogout}
+    >
+      {children}
+    </AppShell>
   );
 }
