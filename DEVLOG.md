@@ -63,6 +63,39 @@ history.
 - RLS reuses the existing `customer_owns_sensor()` helper rather than
   re-deriving the sensor → gateway → customer chain.
 
+### Applying it — read this before running the migration anywhere else
+
+Pasting the whole file into the Supabase SQL editor ran only as far as the table
+and indexes. Everything after it — the trigger function, the trigger, the
+backfill, RLS and the grant — silently did not apply, with no error surfaced.
+The likely cause is the `$$`-quoted function body: a client that splits
+statements on `;` mangles it, and the rest of the script goes with it.
+
+Run it in blocks: (1) table + indexes, (2) function, (3) trigger, (4) backfill,
+(5) RLS + policy, (6) grant. Then verify rather than assume:
+
+```sql
+select to_regclass('public.alert_threshold_history');                    -- table
+select count(*) from alert_threshold_history;                            -- = count(alert_configs)
+select tgname, tgenabled from pg_trigger
+  where tgname = 'alert_configs_threshold_history';                      -- one row, tgenabled = O
+select policyname from pg_policies
+  where tablename = 'alert_threshold_history';                           -- the select policy
+select grantee, privilege_type from information_schema.role_table_grants
+  where table_name = 'alert_threshold_history' and privilege_type = 'SELECT';
+```
+
+The partial apply was hard to spot from the UI: with no SELECT grant the report
+showed "No limit set" on every row rather than failing, because `generate()`
+discarded the query error. Fixed in `1c48863` — a failed load, or an
+`alert_config` with no versions, now refuses to generate and says so. A report
+built from a failed query is worse than no report.
+
+A working install shows one open version per config. Rows staying at
+`-infinity` with `effective_to` null after a threshold edit means the trigger
+did not install — the report still looks entirely normal in that state, so it
+is worth checking explicitly rather than inferring from the UI.
+
 ---
 
 ## 2026-08-27 — LoRaWAN migration (Phases 0–3, 5) + stopping deletion from destroying history
