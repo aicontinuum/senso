@@ -53,5 +53,12 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/).*)'],
+  // Static assets are excluded so they are served directly. Without the file
+  // extensions here every image request runs a Supabase auth check first, and an
+  // unauthenticated one gets redirected to /login instead of the file — which
+  // would break the sidebar logo on the login page and waste a round-trip on
+  // every asset elsewhere.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+  ],
 };

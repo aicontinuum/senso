@@ -15,7 +15,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_NAME, NAV_ITEMS } from "@/lib/constants";
+import { NAV_ITEMS } from "@/lib/constants";
+import { Logo } from "./Logo";
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   "/dashboard": LayoutDashboard,
@@ -56,19 +57,18 @@ export function Sidebar({
         mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
         // Desktop: in-flow, collapsible width
         "md:relative md:left-auto md:top-auto md:z-auto md:translate-x-0 md:shadow-none",
-        collapsed ? "md:w-14" : "md:w-56",
+        collapsed ? "md:w-16" : "md:w-56",
       )}
     >
       {/* Header row */}
-      <div className="flex h-14 shrink-0 items-center border-b px-3">
-        <span
-          className={cn(
-            "flex-1 truncate px-1 text-lg font-bold tracking-tight",
-            collapsed && "md:hidden",
-          )}
-        >
-          {APP_NAME}
-        </span>
+      <div
+        className={cn(
+          "flex h-14 shrink-0 items-center border-b px-3",
+          // 64px rail leaves little room once the toggle is accounted for.
+          collapsed && "md:gap-1 md:px-1",
+        )}
+      >
+        <Logo collapsed={collapsed} />
 
         {/* Mobile: close button */}
         <button
