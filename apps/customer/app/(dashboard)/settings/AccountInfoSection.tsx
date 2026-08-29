@@ -98,11 +98,11 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
             >
               {saving ? "Saving…" : "Save Changes"}
             </button>
-            {error && <p className="text-center text-xs text-red-600">{error}</p>}
+            {error && <p className="text-center text-xs text-alert-text">{error}</p>}
           </div>
         )}
         {saved && !editing && (
-          <p className="text-center text-xs font-medium text-green-700">✓ Changes saved</p>
+          <p className="text-center text-xs font-medium text-ok-text">✓ Changes saved</p>
         )}
       </div>
     </section>

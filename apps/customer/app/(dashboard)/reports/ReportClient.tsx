@@ -15,6 +15,7 @@ import {
   type ThresholdVersion,
 } from "@/lib/thresholds";
 import { timezoneLabel } from "@/lib/timezones";
+import { STATUS_TEXT_RGB, NEUTRAL_RGB } from "@/lib/status-colors";
 
 type SensorShape = { id: string; name: string; decommissionedAt: string | null };
 type ReadingShape = { id: string; temperature: number; recordedAt: string };
@@ -87,14 +88,14 @@ async function buildReportPDF(
   const drawTableHeader = (y: number): number => {
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(100, 100, 100);
+    doc.setTextColor(...NEUTRAL_RGB.muted);
     doc.text("Date / Time", col1, y);
     doc.text("Temperature", col2, y);
     doc.text("Range", col3, y);
     doc.text("Status", col4, y);
-    doc.setTextColor(0, 0, 0);
+    doc.setTextColor(...NEUTRAL_RGB.primary);
     const lineY = y + 3;
-    doc.setDrawColor(200, 200, 200);
+    doc.setDrawColor(...NEUTRAL_RGB.rule);
     doc.line(margin, lineY, margin + contentWidth, lineY);
     return lineY + 3;
   };
@@ -131,7 +132,7 @@ async function buildReportPDF(
       y += 5;
     }
     y += 2;
-    doc.setDrawColor(200, 200, 200);
+    doc.setDrawColor(...NEUTRAL_RGB.rule);
     doc.line(margin, y, margin + contentWidth, y);
     y += 5;
 
@@ -164,16 +165,19 @@ async function buildReportPDF(
       const applied = rangeAt(history, r.recordedAt);
       const known = hasRange(applied);
       const out = isOutOfRangeAt(r.temperature, applied);
-      doc.setTextColor(80, 80, 80);
+      doc.setTextColor(...NEUTRAL_RGB.secondary);
       doc.text(formatReadingTime(r.recordedAt, timezone), col1, y);
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(...NEUTRAL_RGB.primary);
       doc.text(formatTemp(r.temperature), col2, y);
-      doc.setTextColor(80, 80, 80);
+      doc.setTextColor(...NEUTRAL_RGB.secondary);
       doc.text(formatRange(applied), col3, y);
-      if (!known) doc.setTextColor(120, 120, 120);
-      else doc.setTextColor(out ? 220 : 22, out ? 38 : 163, out ? 38 : 74);
+      // Same status tones the screen uses, so the exported record and the page
+      // an inspector is shown cannot disagree about what counts as a breach.
+      doc.setTextColor(
+        ...(!known ? STATUS_TEXT_RGB.offline : out ? STATUS_TEXT_RGB.alert : STATUS_TEXT_RGB.ok),
+      );
       doc.text(known ? (out ? "Out of range" : "OK") : "No limit set", col4, y);
-      doc.setTextColor(0, 0, 0);
+      doc.setTextColor(...NEUTRAL_RGB.primary);
       y += 4.5;
     }
   }
@@ -438,7 +442,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
 
       {/* Report output */}
       {loadError && (
-        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p role="alert" className="mb-4 rounded-md border border-alert-border bg-alert-soft px-4 py-3 text-sm text-alert-text">
           {loadError}
         </p>
       )}
@@ -532,7 +536,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
                             <td className="py-1.5 pr-6 font-mono text-muted-foreground">{formatRange(applied)}</td>
                             <td
                               className={`py-1.5 font-medium ${
-                                !known ? "text-muted-foreground" : out ? "text-red-600" : "text-green-600"
+                                !known ? "text-muted-foreground" : out ? "text-alert-text" : "text-ok-text"
                               }`}
                             >
                               {known ? (out ? "✗ Out of range" : "✓ OK") : "No limit set"}

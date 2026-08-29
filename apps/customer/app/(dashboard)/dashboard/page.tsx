@@ -123,7 +123,7 @@ export default async function DashboardPage() {
             <span className="text-sm text-muted-foreground">None</span>
           ) : (
             <span className="flex items-center gap-1.5 text-sm font-medium">
-              <span className={gatewayOnline ? "size-2 rounded-full bg-green-500" : "size-2 rounded-full bg-zinc-400"} />
+              <span className={gatewayOnline ? "size-2 rounded-full bg-ok-500" : "size-2 rounded-full bg-offline-500"} />
               {gatewayOnline ? "Online" : "Offline"}
             </span>
           )}
@@ -134,17 +134,17 @@ export default async function DashboardPage() {
             <span className="text-sm text-muted-foreground">None</span>
           ) : (
             <span className="text-sm font-medium">
-              <span className="text-green-700">{onlineCount} online</span>
-              {offlineCount > 0 && <> · <span className="text-zinc-500">{offlineCount} offline</span></>}
+              <span className="text-ok-text">{onlineCount} online</span>
+              {offlineCount > 0 && <> · <span className="text-offline-text">{offlineCount} offline</span></>}
             </span>
           )}
         </SummaryItem>
 
         <SummaryItem label="Alerts (past 24h)">
           {recentAlertCount > 0 ? (
-            <span className="text-sm font-medium text-red-600">{recentAlertCount} alert{recentAlertCount > 1 ? "s" : ""}</span>
+            <span className="text-sm font-medium text-alert-text">{recentAlertCount} alert{recentAlertCount > 1 ? "s" : ""}</span>
           ) : (
-            <span className="text-sm font-medium text-green-700">None</span>
+            <span className="text-sm font-medium text-ok-text">None</span>
           )}
         </SummaryItem>
       </div>

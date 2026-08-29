@@ -19,7 +19,7 @@ export function SensorsSection({ sensors }: { sensors: Sensor[] }) {
               <span
                 className={cn(
                   "size-2 shrink-0 rounded-full",
-                  sensor.status === "online" ? "bg-green-500" : "bg-zinc-400",
+                  sensor.status === "online" ? "bg-ok-500" : "bg-offline-500",
                 )}
               />
               <span className="text-sm font-medium">{sensor.name}</span>

@@ -15,7 +15,7 @@ export function GatewaysSection({ gateways, timezone }: { gateways: Gateway[]; t
               <span
                 className={cn(
                   "size-2 shrink-0 rounded-full",
-                  gw.status === "online" ? "bg-green-500" : "bg-zinc-400",
+                  gw.status === "online" ? "bg-ok-500" : "bg-offline-500",
                 )}
               />
               <div>
@@ -29,7 +29,7 @@ export function GatewaysSection({ gateways, timezone }: { gateways: Gateway[]; t
               <p
                 className={cn(
                   "text-sm font-medium",
-                  gw.status === "online" ? "text-green-700" : "text-zinc-500",
+                  gw.status === "online" ? "text-ok-text" : "text-offline-text",
                 )}
               >
                 {gw.status === "online" ? "Online" : "Offline"}

@@ -128,10 +128,10 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
   const tier = batteryTier(batteryVolts);
   const battery =
     tier === "good"
-      ? { color: "bg-green-500", segments: 3 }
+      ? { color: "bg-ok-500", segments: 3 }
       : tier === "low"
-        ? { color: "bg-amber-400", segments: 2 }
-        : { color: "bg-red-500", segments: 1 };
+        ? { color: "bg-warn-500", segments: 2 }
+        : { color: "bg-alert-500", segments: 1 };
 
   return (
     <div className="max-w-lg">
@@ -145,20 +145,11 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
       <div className="mt-4 mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{name}</h1>
         {isOffline ? (
-          <Badge variant="secondary" className="shrink-0 gap-1.5">
-            <span className="size-1.5 rounded-full bg-zinc-400" />
-            Offline
-          </Badge>
+          <Badge variant="offline" dot className="shrink-0">Offline</Badge>
         ) : outOfRange ? (
-          <Badge className="shrink-0 gap-1.5 bg-red-100 text-red-700 hover:bg-red-100">
-            <span className="size-1.5 rounded-full bg-red-500" />
-            Alert
-          </Badge>
+          <Badge variant="alert" dot className="shrink-0">Alert</Badge>
         ) : (
-          <Badge className="shrink-0 gap-1.5 bg-green-50 text-green-700 hover:bg-green-50">
-            <span className="size-1.5 rounded-full bg-green-500" />
-            Online
-          </Badge>
+          <Badge variant="ok" dot className="shrink-0">Online</Badge>
         )}
       </div>
 
@@ -172,7 +163,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             className={cn(
               "text-4xl font-bold tabular-nums",
               isOffline && "text-muted-foreground",
-              outOfRange && "text-red-600",
+              outOfRange && "text-alert-text",
             )}
           >
             {temp !== undefined ? formatTemp(temp) : "—"}
@@ -183,8 +174,8 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               isOffline
                 ? "text-muted-foreground"
                 : outOfRange
-                  ? "font-semibold text-red-600"
-                  : "text-green-700",
+                  ? "font-semibold text-alert-text"
+                  : "text-ok-text",
             )}
           >
             {isOffline ? "Offline" : outOfRange ? "Out of range" : "In range"}
@@ -348,7 +339,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                       placeholder="name@example.com"
                       className={cn(
                         "min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring",
-                        emailError ? "border-red-400 focus:ring-red-400" : "border-input",
+                        emailError ? "border-alert-border focus:ring-alert-500" : "border-input",
                       )}
                     />
                     <button
@@ -360,7 +351,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                     </button>
                   </div>
                   {emailError && (
-                    <p className="text-xs text-red-600">{emailError}</p>
+                    <p className="text-xs text-alert-text">{emailError}</p>
                   )}
                 </div>
               </div>
@@ -384,12 +375,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               >
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
-              {saveError && <p className="text-center text-xs text-red-600">{saveError}</p>}
+              {saveError && <p className="text-center text-xs text-alert-text">{saveError}</p>}
             </div>
           )}
 
           {saved && !editing && (
-            <p className="text-center text-xs font-medium text-green-700">
+            <p className="text-center text-xs font-medium text-ok-text">
               ✓ Changes saved
             </p>
           )}

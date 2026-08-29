@@ -97,7 +97,7 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
               placeholder="name@example.com"
               className={cn(
                 "min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring",
-                emailError ? "border-red-400 focus:ring-red-400" : "border-input",
+                emailError ? "border-alert-border focus:ring-alert-500" : "border-input",
               )}
             />
             <button
@@ -108,9 +108,9 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
               Add
             </button>
           </div>
-          {emailError && <p className="text-xs text-red-600">{emailError}</p>}
+          {emailError && <p className="text-xs text-alert-text">{emailError}</p>}
           {saving && <p className="text-xs text-muted-foreground">Saving…</p>}
-          {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+          {saveError && <p className="text-xs text-alert-text">{saveError}</p>}
         </div>
       </div>
     </section>

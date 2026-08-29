@@ -68,7 +68,7 @@ export default async function AlertsPage() {
                     {alert.is_resolved ? (
                       <span className="text-muted-foreground">Resolved</span>
                     ) : (
-                      <span className="font-medium text-red-600">Active</span>
+                      <span className="font-medium text-alert-text">Active</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">

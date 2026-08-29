@@ -57,8 +57,8 @@ export function TimezoneSection({ initialTimezone }: { initialTimezone: string }
             </option>
           ))}
         </select>
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        {saved && <p className="text-xs font-medium text-green-700">✓ Saved</p>}
+        {error && <p className="text-xs text-alert-text">{error}</p>}
+        {saved && <p className="text-xs font-medium text-ok-text">✓ Saved</p>}
       </div>
     </section>
   );

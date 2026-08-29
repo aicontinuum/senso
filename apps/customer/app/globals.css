@@ -29,7 +29,13 @@
   --color-overlay: var(--surface-overlay);
 
   --color-muted: var(--surface-sunken);
-  --color-muted-foreground: var(--text-muted);
+  /* Deliberately --text-secondary, not --text-muted. This is the workhorse for
+     timestamps and secondary labels at body size, and --text-muted (#757589)
+     measures 4.32:1 on the page ground — under WCAG AA for normal text.
+     --text-secondary is 6.96:1 and carries the same intent. --color-text-muted
+     below stays available for genuinely de-emphasised text. */
+  --color-muted-foreground: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
   --color-secondary: var(--surface-sunken);
   --color-secondary-foreground: var(--text-primary);
   /* `accent` is Tailwind's hover surface, not the brand. The system is explicit:
@@ -147,6 +153,21 @@
    the sane default for the handful of places that set a width without a colour. */
 * {
   border-color: var(--border-default);
+}
+
+/* The design system's base layer paints every <a> as a prose link. Every link in
+   this app is a UI affordance instead — a sensor card, a nav row, a table row —
+   that carries its own colour, and inheriting brand purple turns a card's whole
+   contents purple. That also breaks the system's own rule that purple means
+   action or brand and never content or status. Genuine text links opt in with
+   `text-primary underline`. */
+a {
+  color: inherit;
+}
+
+a:hover {
+  color: inherit;
+  text-decoration: none;
 }
 
 /* Numbers that update in place must not jitter or misalign between rows. */

@@ -96,8 +96,8 @@ export function ChangePasswordSection() {
             className={inputCls}
           />
         </Field>
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        {saved && <p className="text-xs font-medium text-green-700">✓ Password updated</p>}
+        {error && <p className="text-xs text-alert-text">{error}</p>}
+        {saved && <p className="text-xs font-medium text-ok-text">✓ Password updated</p>}
         <button
           onClick={handleSubmit}
           disabled={saving}

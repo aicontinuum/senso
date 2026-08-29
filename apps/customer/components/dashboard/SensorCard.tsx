@@ -36,7 +36,7 @@ export function SensorCard({
       className={cn(
         "block rounded-lg border bg-card p-5 shadow-sm transition-colors hover:bg-accent/40",
         isOffline && "opacity-70",
-        outOfRange && "border-red-400",
+        outOfRange && "border-alert-border",
       )}
     >
       {/* Header row */}
@@ -55,7 +55,7 @@ export function SensorCard({
           className={cn(
             "text-4xl font-bold tabular-nums",
             isOffline && "text-muted-foreground",
-            outOfRange && "text-red-600",
+            outOfRange && "text-alert-text",
           )}
         >
           {temp !== undefined ? formatTemp(temp) : "—"}
@@ -69,11 +69,11 @@ export function SensorCard({
             Offline
           </span>
         ) : outOfRange ? (
-          <span className="text-xs font-semibold uppercase tracking-wide text-red-600">
+          <span className="text-xs font-semibold uppercase tracking-wide text-alert-text">
             Out of range
           </span>
         ) : (
-          <span className="text-xs font-medium uppercase tracking-wide text-green-700">
+          <span className="text-xs font-medium uppercase tracking-wide text-ok-text">
             In range
           </span>
         )}
@@ -110,28 +110,10 @@ function StatusBadge({
   hasActiveAlert: boolean;
 }) {
   if (isOffline) {
-    return (
-      <Badge variant="secondary" className="shrink-0 gap-1.5">
-        <span className="size-1.5 rounded-full bg-zinc-400" />
-        Offline
-      </Badge>
-    );
+    return <Badge variant="offline" dot className="shrink-0">Offline</Badge>;
   }
   if (outOfRange || hasActiveAlert) {
-    return (
-      <Badge
-        variant="destructive"
-        className="shrink-0 gap-1.5 bg-red-100 text-red-700 hover:bg-red-100"
-      >
-        <span className="size-1.5 rounded-full bg-red-500" />
-        Alert
-      </Badge>
-    );
+    return <Badge variant="alert" dot className="shrink-0">Alert</Badge>;
   }
-  return (
-    <Badge variant="secondary" className="shrink-0 gap-1.5 bg-green-50 text-green-700">
-      <span className="size-1.5 rounded-full bg-green-500" />
-      Online
-    </Badge>
-  );
+  return <Badge variant="ok" dot className="shrink-0">Online</Badge>;
 }
