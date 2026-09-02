@@ -31,8 +31,8 @@ export default async function CustomerDetailPage({
   // Retired sensors keep their readings for the compliance record but are not
   // listed as live devices.
   const { data: sensors } = gatewayIds.length > 0
-    ? await admin.from('sensors').select('id, name, status, battery_level, gateway_id').in('gateway_id', gatewayIds).is('decommissioned_at', null)
-    : { data: [] as { id: string; name: string; status: string; battery_level: number | null; gateway_id: string }[] };
+    ? await admin.from('sensors').select('id, name, status, battery_level, gateway_id, commissioned_at').in('gateway_id', gatewayIds).is('decommissioned_at', null)
+    : { data: [] as { id: string; name: string; status: string; battery_level: number | null; gateway_id: string; commissioned_at: string | null }[] };
 
   // Freshness-based status, same rules as the customer site — the raw
   // is_online/status flags never flip for a device that dies silently.

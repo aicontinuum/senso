@@ -137,7 +137,10 @@ Then open the sensor and set:
 2. In ChirpStack, watch **Events** for a **join**, then an **uplink** on **fPort 2**
    whose decoded object contains `TempC_DS`, `TempC_SHT`, `Hum_SHT`, `BatV`.
 3. Check the reading reaches the **website** — it should appear on the customer's
-   dashboard within a few minutes.
+   dashboard within a few minutes, badged **Not in service**. That badge is
+   correct and expected: until the sensor is commissioned (step 6) its readings
+   are stored but raise no alerts and appear in no report, so a bench sitting at
+   25 °C cannot land in the customer's compliance record as a fridge failure.
 4. **Ice-water accuracy check:** pack a cup with crushed ice, add cold water, stir,
    and immerse the probe tip for ~2 minutes. `TempC_DS` should read **≈ 0 °C**.
    This is the one test that proves the whole chain end to end, and it is the
@@ -158,16 +161,27 @@ Do not go to site until all four pass.
    is weak.** SF12 costs far more battery per transmit than SF7 — placement affects
    battery life more than the reporting interval does. If you see SF12/SF11,
    reposition the gateway or the sensor before leaving.
-5. **Send a test alert** so the customer sees what one looks like and you've proven
+5. **Mark the sensor as installed** — admin site → the customer → the sensor →
+   **Service status** → **Mark as installed**. This is the moment its readings
+   start counting: from here they alert the customer and appear in reports.
+   Everything before it stays out of the record, which is what keeps your bench
+   test off their inspection.
+
+   Do this **before** the test alert below. Alerts are suppressed until a sensor
+   is in service, so one sent first will simply not fire.
+6. **Send a test alert** so the customer sees what one looks like and you've proven
    the email path.
 
 ## 7. Handover
 
 - Show the customer their dashboard and where readings appear
 - Confirm the alert recipient list with them
-- Mark the sensor active and invoice on the admin side
+- Confirm the sensor reads **In service** on the admin page (§6, step 5) —
+  a sensor left uncommissioned is a customer with no monitoring and no record,
+  and the admin dashboard counts them under **awaiting commissioning**
+- Invoice on the admin side
 
-**The customer only ever sees senso.com.** ChirpStack is internal infrastructure —
+**The customer only ever sees app.sensoqa.com.** ChirpStack is internal infrastructure —
 they should never be given a login or told it exists.
 
 ---
@@ -198,3 +212,4 @@ Longer job; the parts that catch people out:
 | Readings look like room temperature | Reading `TempC_SHT` (internal) instead of `TempC_DS` — or the probe isn't actually inside the fridge |
 | Still 20-minute spacing | The interval downlink hasn't been delivered yet, or was queued on the wrong fPort |
 | SF11/SF12 after mounting | Poor RF path — reposition before leaving, or battery life suffers badly |
+| Readings show on the dashboard, but no alerts fire and reports are empty | Sensor is **not in service** — it was never marked as installed (§6, step 5) |

@@ -16,10 +16,19 @@ import {
 } from "@/lib/thresholds";
 import { timezoneLabel } from "@/lib/timezones";
 import { formatDevEui } from "@/lib/deveui";
+import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { STATUS_TEXT_RGB, NEUTRAL_RGB } from "@/lib/status-colors";
 
-type SensorShape = { id: string; name: string; hardwareId: string | null; decommissionedAt: string | null };
+type SensorShape = {
+  id: string;
+  name: string;
+  hardwareId: string | null;
+  decommissionedAt: string | null;
+  /** Null means never installed — bench readings only, nothing reportable. */
+  commissionedAt: string | null;
+};
 type ReadingShape = { id: string; temperature: number; recordedAt: string };
 
 // Shape of the embedded select in generate(): each alert_config carries its own
@@ -138,6 +147,17 @@ async function buildReportPDF(
     y += 5;
     doc.text(`All times shown in ${timezoneLabel(timezone)}`, margin, y);
     y += 5;
+    const pdfCommissioned = commissionedNote(sensor.commissionedAt, now - rangeMs, timezone);
+    if (pdfCommissioned) {
+      doc.setFont("helvetica", "bold");
+      // Long enough to wrap on A4, and a note that runs off the page edge says
+      // nothing at all.
+      for (const line of doc.splitTextToSize(pdfCommissioned, contentWidth)) {
+        doc.text(line, margin, y);
+        y += 5;
+      }
+      doc.setFont("helvetica", "normal");
+    }
     const pdfRetired = retiredNote(sensor, timezone);
     if (pdfRetired) {
       doc.setFont("helvetica", "bold");
@@ -200,10 +220,13 @@ async function buildReportPDF(
 }
 
 export function ReportClient({ customerName, sensors, timezone }: Props) {
-  // Retired sensors stay listed so their history remains reportable, but they are
-  // not part of the default selection or "Select all" — a routine report should
-  // look exactly as it did before any sensor was retired.
-  const activeSensors = sensors.filter((s) => s.decommissionedAt === null);
+  // A sensor that was never commissioned has no reportable history at all — only
+  // readings taken before it was installed — so it cannot be selected. Retired
+  // sensors are the opposite: still selectable, because their history is real,
+  // but kept out of the default selection and "Select all" so a routine report
+  // looks exactly as it did before any sensor was retired.
+  const reportableSensors = sensors.filter((s) => s.commissionedAt !== null);
+  const activeSensors = reportableSensors.filter((s) => s.decommissionedAt === null);
 
   const [range, setRange] = useState<RangeValue>("24h");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -240,7 +263,9 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
     const supabase = createClient();
     const now = Date.now();
     const since = new Date(now - rangeMs).toISOString();
-    const ids = Array.from(selectedIds);
+    // Never query for a sensor that has nothing reportable, whatever state the
+    // selection got into.
+    const ids = reportableSensors.filter((x) => selectedIds.has(x.id)).map((x) => x.id);
 
     // The full threshold history is loaded, not just the versions overlapping the
     // period: a version that opened long before the period is the one in force at
@@ -321,12 +346,16 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   const periodLabel = `${formatDateTimeLong(now - rangeMs, timezone)} – ${formatDateTimeLong(now, timezone)}`;
   const tzNote = `All times shown in ${timezoneLabel(timezone)}`;
 
-  const reportSensors: ReportSensor[] = sensors
+  // Readings from before the sensor entered service are dropped here rather than
+  // in the query: one `.in()` fetch cannot carry a different lower bound per
+  // sensor, and every output builds from this list, so trimming once is what
+  // keeps screen, PDF and CSV agreeing.
+  const reportSensors: ReportSensor[] = reportableSensors
     .filter((s) => selectedIds.has(s.id))
     .map((s) => ({
       sensor: s,
       history: historyBySensor.get(s.id) ?? [],
-      readings: readingsBySensor.get(s.id) ?? [],
+      readings: inServiceReadings(s.commissionedAt, readingsBySensor.get(s.id) ?? []),
     }));
 
   async function handlePrint() {
@@ -362,6 +391,8 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       lines.push(`"${sensor.name}"`);
       const csvDeviceId = formatDevEui(sensor.hardwareId);
       if (csvDeviceId) lines.push(`"Device ID: ${csvDeviceId}"`);
+      const csvCommissioned = commissionedNote(sensor.commissionedAt, now - rangeMs, timezone);
+      if (csvCommissioned) lines.push(`"${csvCommissioned}"`);
       const csvRetired = retiredNote(sensor, timezone);
       if (csvRetired) lines.push(`"${csvRetired}"`);
       const csvSummary = thresholdSummary(history, readings);
@@ -427,17 +458,40 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
                 </label>
                 <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2">
                   <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
-                    {sensors.map((s) => (
-                      <label key={s.id} className="flex min-w-0 items-center gap-2 text-sm cursor-pointer">
-                        <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSensor(s.id)} className="accent-primary shrink-0" />
-                        <span className="truncate">{s.name}</span>
-                        {s.decommissionedAt && (
-                          <span className="shrink-0 rounded px-1.5 py-0.5 text-xs bg-muted text-muted-foreground">
-                            Retired
-                          </span>
-                        )}
-                      </label>
-                    ))}
+                    {sensors.map((s) => {
+                      // Listed but not selectable: showing it explains why a sensor
+                      // on their dashboard is missing here, which silently omitting
+                      // it would not.
+                      const reportable = s.commissionedAt !== null;
+                      return (
+                        <label
+                          key={s.id}
+                          className={cn(
+                            "flex min-w-0 items-center gap-2 text-sm",
+                            reportable ? "cursor-pointer" : "cursor-not-allowed opacity-60",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(s.id)}
+                            onChange={() => toggleSensor(s.id)}
+                            disabled={!reportable}
+                            className="accent-primary shrink-0"
+                          />
+                          <span className="truncate">{s.name}</span>
+                          {s.decommissionedAt && (
+                            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs bg-muted text-muted-foreground">
+                              Retired
+                            </span>
+                          )}
+                          {!reportable && (
+                            <span className="shrink-0 rounded px-1.5 py-0.5 text-xs bg-muted text-muted-foreground">
+                              Not in service
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -517,6 +571,11 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
                 <p className="text-sm text-muted-foreground">Period: {periodLabel}</p>
                 <p className="text-sm text-muted-foreground">Generated: {formatDateTimeLong(now, timezone)}</p>
                 <p className="text-sm text-muted-foreground">{tzNote}</p>
+                {commissionedNote(sensor.commissionedAt, now - rangeMs, timezone) && (
+                  <p className="text-sm font-medium mt-1">
+                    {commissionedNote(sensor.commissionedAt, now - rangeMs, timezone)}
+                  </p>
+                )}
                 {retiredNote(sensor, timezone) && (
                   <p className="text-sm font-medium mt-1">{retiredNote(sensor, timezone)}</p>
                 )}

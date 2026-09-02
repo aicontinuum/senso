@@ -18,7 +18,7 @@ export default async function SensorDetailPage({
 
   const { data: sensorRow } = await supabase
     .from("sensors")
-    .select("id, name, status, battery_level, hardware_id, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id)")
+    .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id)")
     .eq("id", id)
     .is("decommissioned_at", null)
     .single();
@@ -62,6 +62,7 @@ export default async function SensorDetailPage({
     name: sensorRow.name,
     status: isSensorOnline(sensorRow.status, readingRows?.[0]?.recorded_at) ? "online" : "offline",
     batteryLevel: sensorRow.battery_level ?? undefined,
+    commissionedAt: sensorRow.commissioned_at,
     lastReading: readingRows?.[0]
       ? { id: readingRows[0].id, sensorId: id, temperature: readingRows[0].temperature, recordedAt: readingRows[0].recorded_at }
       : undefined,

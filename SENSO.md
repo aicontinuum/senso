@@ -136,6 +136,9 @@ Customer
                                         rssi, snr, spreading_factor
                                         recorded_at
 
+Sensor lifecycle                      commissioned_at  → in the record from here
+                                      decommissioned_at → retired, history kept
+
 AlertConfig (per Sensor)              AlertLog
   ├── type: min | max                     ├── kind: threshold | sensor_offline
   ├── threshold                           │         | gateway_offline
@@ -214,6 +217,12 @@ design system does not cover print geometry.
   but still use hand-rolled markup rather than the ported primitives.
 - **Sensor names are customer-editable, so reports also carry the device ID** — the
   DevEUI, fixed at manufacture — and a rename can no longer break traceability.
+- **A sensor joins the compliance record only when it is commissioned.**
+  `sensors.commissioned_at` is stamped by a technician at install (`ONBOARDING.md`
+  §6). Before it, readings are stored but raise no alerts and appear in no report,
+  so a bench test at office temperature can never land in a customer's record as a
+  fridge failure. Reversible, admin-only, and every change is logged to
+  `sensor_commissioning_events` with a reason. **Gateways do not have this yet.**
 - Pre-launch tasks (security hardening, retention, RLS verification, etc.) live in
   `TODO.md`; the running build log is `DEVLOG.md`.
 

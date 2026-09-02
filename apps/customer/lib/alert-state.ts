@@ -6,6 +6,13 @@
 // the other. This exists so that cannot happen again.
 
 export type SensorState =
+  /**
+   * Registered but not yet installed at the site, so it is not part of the
+   * customer's compliance record. Its readings are real measurements of the
+   * wrong thing — a bench, a van, a store cupboard — and are stored but never
+   * reported or alerted on.
+   */
+  | "not-in-service"
   /** No recent reading; the device is silent. */
   | "offline"
   /** The current reading is outside its limits right now. */
@@ -16,10 +23,16 @@ export type SensorState =
   | "ok";
 
 export function sensorState(input: {
+  inService: boolean;
   isOffline: boolean;
   outOfRange: boolean;
   hasOpenAlert: boolean;
 }): SensorState {
+  // Outranks everything, offline included. A sensor still in its box is not
+  // "offline" in any sense worth showing as a fault, and a reading from one is
+  // not in range or out of it — there is nothing yet for it to be measured
+  // against.
+  if (!input.inService) return "not-in-service";
   if (input.isOffline) return "offline";
   if (input.outOfRange) return "breaching";
   // Deliberately distinct from "breaching": the fridge went out of range and has

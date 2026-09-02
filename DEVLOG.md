@@ -4,6 +4,110 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-02 — Sensors are not in the record until someone says they are installed
+
+### The problem
+
+A sensor is registered in the admin app during office prep, then powered on for
+the bench test — and from that moment its readings were attributed to the
+customer exactly as if it were already in their fridge. It is sitting on a desk
+in Doha reading 25 °C. Those readings reached their dashboard, alerted them, and
+landed in their compliance report as a documented excursion that never happened.
+
+An inspector reading that report sees a two-hour failure. The customer cannot
+disprove it. And it is entirely our doing — the wrong data got there because of
+how *we* commission hardware, not because of anything they did.
+
+`ONBOARDING.md` step 7 has always said "mark the sensor active". That step had
+never been built.
+
+### The fix
+
+`sensors.commissioned_at`, the mirror of `decommissioned_at` at the other end of
+a sensor's life. Null means not in service. Readings are still stored — the bench
+test depends on watching one arrive — but they raise no alerts and appear in no
+report until a technician marks the sensor installed.
+
+- `apps/customer/lib/commissioning.ts` — `inServiceReadings()` and
+  `commissionedNote()`, the two rules that decide what counts.
+- `POST .../sensors/[sensorId]/commission` — admin-only, both directions.
+- `CommissioningPanel.tsx` — kept out of `SensorSettingsClient`, which is already
+  over the 150-line guidance and edits how a sensor *behaves*; this changes what
+  its history *means* and should not sit behind the same Save button as a rename.
+
+### Decisions worth knowing
+
+- **Backfill sets `commissioned_at = created_at` for every existing sensor**,
+  retired ones included, so the migration changes no existing report by a single
+  row. A migration that retroactively removed readings from a compliance record
+  would be the exact failure this feature exists to prevent.
+- **The default is out of service, and that fails in the right direction.** If a
+  technician forgets to commission, the customer sees *no data* — loud, obvious,
+  someone rings within the day. The old behaviour failed the other way: wrong
+  data that looks entirely fine until an inspector reads it. Silent-wrong is far
+  more dangerous than visibly-missing.
+- **Uncommissioned sensors stay visible on the customer dashboard**, badged
+  `Not in service`. Onboarding step 5 has the technician confirm a reading
+  arrives while logged in as the customer, so hiding them would break the bench
+  test.
+- **Reports say what they excluded.** A sensor put into service mid-period prints
+  *"Sensor put into service … — readings before this were taken before
+  installation and are excluded"* on screen, in the PDF and in the CSV. A
+  silently short report is exactly the kind of gap an inspector is entitled to
+  ask about; the answer should already be on the page.
+- **A never-commissioned sensor cannot be selected in the report picker at all**
+  — it has no service history, only bench readings. It is still *listed*, greyed
+  and labelled, because silently omitting a sensor the customer can see on their
+  dashboard raises a different question.
+- **`not-in-service` outranks `offline`** in `sensorState()`. A sensor still in
+  its box is not offline in any sense worth showing as a fault.
+- **Un-commissioning demands a reason.** It removes readings from a report the
+  customer may already have produced, so it is never a silent clear: both
+  directions write to `sensor_commissioning_events` with the admin who acted, and
+  the reverse direction refuses without a stated reason.
+- **Ingest returns `notInService: true`** rather than pretending nothing
+  happened, so a bench sensor's suppressed alerting is visible in the logs.
+
+### The prerequisite that was not optional
+
+`customers_update_own_sensors` is row-scoped but **not** column-scoped — a
+customer could already write any column of their own sensor straight from
+devtools (a standing item in `TODO.md`). Adding `commissioned_at` to that table
+without fixing it would have handed every customer a switch that erases readings
+from their own compliance report: set it forward a month and last month is gone.
+
+That would have been strictly worse than shipping nothing, so the migration also
+revokes table-wide UPDATE from `anon`/`authenticated` and grants only
+`UPDATE (name)` — the one column the rename feature needs.
+
+### Verification
+
+Applied to a real PostgreSQL 16 against a fixture of the live schema:
+
+- Backfill leaves zero uncommissioned sensors, retired ones included.
+- A customer renaming their own sensor still **succeeds**.
+- The same role writing `commissioned_at`, `decommissioned_at` or `hardware_id`
+  is **refused** — permission denied, at the database, not in application code.
+- The ordering constraint rejects a sensor retired before it was installed.
+- The audit table rejects an un-commissioning with no reason, and a
+  commissioning with no timestamp.
+- A sensor with commissioning history cannot be hard-deleted.
+
+Plus 18 cases against the real modules covering the boundary reading (`>=`, not
+`>`), a never-commissioned sensor yielding nothing, unparseable timestamps
+failing *closed* rather than admitting everything, the note appearing only when
+readings were actually excluded and rendering in the customer's timezone, and
+`not-in-service` outranking both offline and a live breach.
+
+### Left undone, deliberately
+
+**Gateways have the same gap.** A bench gateway assigned to a customer will still
+be swept as offline and emailed about. The column and the sweep filter are nearly
+identical; the UI is not, which is why it is in `TODO.md` rather than bundled
+into a change that is already wide.
+
+---
+
 ## 2026-08-29 — Alert charts show the episode, not a fixed window
 
 The alert detail chart had three separate problems, all found by reading it on a

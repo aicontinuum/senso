@@ -34,6 +34,8 @@ type SensorRow = {
   status: string;
   battery_level: number | null;
   gateway_id: string;
+  /** Null until a technician marks the sensor installed. */
+  commissioned_at: string | null;
 };
 
 interface Props {
@@ -461,10 +463,20 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
                       {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
                     </td>
                     <td className="py-2.5 pr-8">
-                      <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-ok-text' : 'text-muted-foreground'}`}>
-                        <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-ok-500' : 'bg-offline-500'}`} />
-                        {s.status === 'online' ? 'Online' : 'Offline'}
-                      </span>
+                      {/* Not commissioned outranks online/offline: the sensor may
+                          be reporting perfectly and still not be monitoring
+                          anything the customer owns. */}
+                      {s.commissioned_at === null ? (
+                        <span className="flex items-center gap-1.5 text-warn-text">
+                          <span className="inline-block h-2 w-2 rounded-full bg-warn-500" />
+                          Not in service
+                        </span>
+                      ) : (
+                        <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-ok-text' : 'text-muted-foreground'}`}>
+                          <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-ok-500' : 'bg-offline-500'}`} />
+                          {s.status === 'online' ? 'Online' : 'Offline'}
+                        </span>
+                      )}
                     </td>
                     <td className="py-2.5 text-muted-foreground">
                       {s.battery_level != null ? `${s.battery_level}%` : '—'}

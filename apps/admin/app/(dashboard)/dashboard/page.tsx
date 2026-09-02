@@ -7,7 +7,7 @@ type GatewayWithSensors = {
   is_online: boolean;
   last_seen_at: string | null;
   decommissioned_at: string | null;
-  sensors?: { id: string; status: string; decommissioned_at: string | null }[];
+  sensors?: { id: string; status: string; decommissioned_at: string | null; commissioned_at: string | null }[];
 };
 
 // Retired devices keep their readings for the compliance record, but must not be
@@ -27,7 +27,7 @@ export default async function AdminDashboardPage() {
 
   const { data: customers } = await admin
     .from('customers')
-    .select('id, name, email, gateways (id, is_online, last_seen_at, decommissioned_at, sensors (id, status, decommissioned_at))')
+    .select('id, name, email, gateways (id, is_online, last_seen_at, decommissioned_at, sensors (id, status, decommissioned_at, commissioned_at))')
     .order('name');
 
   // Collect all sensor IDs to look up alert configs
@@ -79,13 +79,19 @@ export default async function AdminDashboardPage() {
 
   let sensorsOnline = 0;
   let sensorsOffline = 0;
+  // A sensor registered but never marked as installed is a customer with no
+  // monitoring and no record — the quiet half of a botched install. It belongs on
+  // this page rather than waiting to be noticed.
+  let sensorsPending = 0;
 
   const rows = (customers ?? []).map(customer => {
     const gateways = activeGateways(customer.gateways);
     const sensors = gateways.flatMap(activeSensors);
 
     for (const s of sensors) {
-      if (isSensorOnline(s.status, freshReadingBySensor.get(s.id))) sensorsOnline++; else sensorsOffline++;
+      if (s.commissioned_at === null) sensorsPending++;
+      else if (isSensorOnline(s.status, freshReadingBySensor.get(s.id))) sensorsOnline++;
+      else sensorsOffline++;
     }
 
     const alertCount = sensors.reduce((sum, s) => sum + (alertsBySensorId.get(s.id) ?? 0), 0);
@@ -103,10 +109,13 @@ export default async function AdminDashboardPage() {
         </div>
         <div className="px-6 py-5">
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
-          <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline}</p>
+          <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline + sensorsPending}</p>
           <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
             <p><span className="font-medium text-ok-text">{sensorsOnline}</span> online</p>
             <p><span className="font-medium text-alert-text">{sensorsOffline}</span> offline</p>
+            {sensorsPending > 0 && (
+              <p><span className="font-medium text-warn-text">{sensorsPending}</span> awaiting commissioning</p>
+            )}
           </div>
         </div>
         <div className="px-6 py-5">

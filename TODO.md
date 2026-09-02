@@ -12,7 +12,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ### 🟠 High
 
-- [ ] **UPDATE policies are row-scoped but not column-scoped.** Confirmed 2026-08-28. `customers_update_own_record` lets a customer edit *any column of their own row* — including `billing_status`, `email`, `name` — i.e. self-service billing/identity tampering from devtools. `customers_update_own_sensors` is the same shape and now also exposes **`decommissioned_at`**: a customer can silently retire their own sensor, which stops ingest storing its readings and hides it from their dashboard, putting a hole in a compliance record with no audit trail. They can also rewrite `hardware_id`. Fix by restricting writable columns — column-level `GRANT UPDATE (col, ...)`, or route these edits through a `SECURITY DEFINER` function and drop the direct UPDATE policy. While there, change both policies from `TO public` to `TO authenticated`: not currently exploitable (for an anonymous request `auth.uid()` is NULL, so the qual never matches), but it misstates the intent. Verified safe otherwise — `with_check` is present on the `alert_configs` INSERT policy, and the `null` with_checks on the UPDATE policies are fine because PostgreSQL falls back to the USING expression for new rows.
+- [ ] **UPDATE policies are row-scoped but not column-scoped.** Confirmed 2026-08-28. **Half closed 2026-09-02:** `sensors` is now column-scoped — `20260902_sensor_commissioning.sql` revokes table-wide UPDATE from `anon`/`authenticated` and grants only `UPDATE (name)`, which was a prerequisite for `commissioned_at` (without it a customer could set it forward and erase their own record). Verified against a real PostgreSQL 16: the rename still succeeds, while writes to `commissioned_at`, `decommissioned_at` and `hardware_id` are refused. **`customers` is still wide open** — the billing/identity half below is unchanged. `customers_update_own_record` lets a customer edit *any column of their own row* — including `billing_status`, `email`, `name` — i.e. self-service billing/identity tampering from devtools. `customers_update_own_sensors` is the same shape and now also exposes **`decommissioned_at`**: a customer can silently retire their own sensor, which stops ingest storing its readings and hides it from their dashboard, putting a hole in a compliance record with no audit trail. They can also rewrite `hardware_id`. Fix by restricting writable columns — column-level `GRANT UPDATE (col, ...)`, or route these edits through a `SECURITY DEFINER` function and drop the direct UPDATE policy. While there, change both policies from `TO public` to `TO authenticated`: not currently exploitable (for an anonymous request `auth.uid()` is NULL, so the qual never matches), but it misstates the intent. Verified safe otherwise — `with_check` is present on the `alert_configs` INSERT policy, and the `null` with_checks on the UPDATE policies are fine because PostgreSQL falls back to the USING expression for new rows.
 
 - [ ] **Duplicate RLS policies.** `alert_configs` carries three SELECT policies (`customers_read_own_alert_configs`, `customers_select_own_alert_configs`, `alert_configs_select_own`) and `readings` carries two (`customers_select_own_readings`, `readings_select_own`). Permissive policies are OR'd so this is not currently a hole — but it is a trap: tightening one and missing its twins leaves the loosest one in force. Prune to one policy per table per command.
 
@@ -101,6 +101,26 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 - [ ] **No `.env` documentation drift check.** `.env.example` now exists for both apps
   (added 2026-08-29). Keep them updated when a variable is added — a missing one is
   invisible until something fails in production, which is how the Resend key was missed.
+
+## Commissioning — added 2026-09-02
+
+- [ ] **Gateways have the commissioning gap that sensors no longer do.** A gateway
+  registered and assigned to a customer but still on the bench will be swept as
+  `gateway_offline` and emailed about, and once it is at site its pre-install
+  window is not marked anywhere. The column and the sweep filter are nearly
+  identical to the sensor change; the UI is not, which is why it was left out
+  rather than bundled. Until it is done, register a gateway close to the time it
+  is installed.
+
+- [ ] **Nothing chases a sensor left uncommissioned.** The admin dashboard counts
+  them under "awaiting commissioning", which is passive. A sensor stuck there is
+  a customer paying for monitoring they are not getting — worth an alert to us,
+  not just a number on a page someone has to visit.
+
+- [ ] **`sensor_commissioning_events` has no UI.** The audit trail is written and
+  is queryable in SQL, but nothing displays it. Fine while the fleet is small;
+  the point of an audit trail is that someone can read it without a database
+  client.
 
 ## Code health — added 2026-08-29
 

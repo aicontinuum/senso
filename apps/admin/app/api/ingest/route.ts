@@ -104,7 +104,7 @@ export async function POST(request: Request) {
   //    retrying won't fix it; the warning is the signal.
   const { data: sensor } = await admin
     .from('sensors')
-    .select('id, gateway_id')
+    .select('id, gateway_id, commissioned_at')
     .eq('hardware_id', devEui)
     .is('decommissioned_at', null)
     .maybeSingle();
@@ -170,6 +170,17 @@ export async function POST(request: Request) {
 
   // 7. Threshold evaluation — unchanged in behaviour from the previous ingest,
   //    now linked to the reading that triggered it.
+  //
+  //    Skipped entirely until the sensor has been commissioned. Before that it is
+  //    on a bench or in a van, so its readings are real measurements of the wrong
+  //    place: alerting on them would email the customer about a fridge failure
+  //    that is actually a desk in an air-conditioned office, and open an alert
+  //    that lands in their record. The reading itself is still stored above —
+  //    the install bench test depends on watching it arrive.
+  if (sensor.commissioned_at === null) {
+    return NextResponse.json({ accepted: 1, devEui, temperature, notInService: true });
+  }
+
   const { data: configs } = await admin
     .from('alert_configs')
     .select('id, type, threshold')

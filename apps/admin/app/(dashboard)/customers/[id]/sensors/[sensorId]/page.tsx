@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isSensorOnline } from '@senso/status';
 import { SensorSettingsClient } from './SensorSettingsClient';
+import { CommissioningPanel } from './CommissioningPanel';
 
 export default async function SensorSettingsPage({
   params,
@@ -13,7 +14,7 @@ export default async function SensorSettingsPage({
 
   const { data: sensor } = await admin
     .from('sensors')
-    .select('id, name, status, battery_level, hardware_id, gateway_id, gateways!inner (customer_id)')
+    .select('id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (customer_id)')
     .eq('id', sensorId)
     .is('decommissioned_at', null)
     .single();
@@ -52,19 +53,26 @@ export default async function SensorSettingsPage({
       : [];
 
   return (
-    <SensorSettingsClient
-      customerId={customerId}
-      sensor={{
-        id: sensor.id,
-        name: sensor.name,
-        status: isSensorOnline(sensor.status, latestReading?.recorded_at) ? 'online' : 'offline',
-        gatewayId: sensor.gateway_id,
-        hardwareId: sensor.hardware_id ?? '',
-        minTemp: belowMin?.threshold ?? 2,
-        maxTemp: aboveMax?.threshold ?? 8,
-        emailRecipients,
-      }}
-      gateways={(gateways ?? []).map(g => ({ id: g.id, name: g.name ?? g.id }))}
-    />
+    <div className="space-y-6">
+      <SensorSettingsClient
+        customerId={customerId}
+        sensor={{
+          id: sensor.id,
+          name: sensor.name,
+          status: isSensorOnline(sensor.status, latestReading?.recorded_at) ? 'online' : 'offline',
+          gatewayId: sensor.gateway_id,
+          hardwareId: sensor.hardware_id ?? '',
+          minTemp: belowMin?.threshold ?? 2,
+          maxTemp: aboveMax?.threshold ?? 8,
+          emailRecipients,
+        }}
+        gateways={(gateways ?? []).map(g => ({ id: g.id, name: g.name ?? g.id }))}
+      />
+      <CommissioningPanel
+        customerId={customerId}
+        sensorId={sensor.id}
+        commissionedAt={sensor.commissioned_at}
+      />
+    </div>
   );
 }

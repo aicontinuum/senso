@@ -18,7 +18,7 @@ export default async function DashboardPage() {
 
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("id, name, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at)")
+    .select("id, name, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at)")
     .eq("customer_id", customer.id)
     .is("decommissioned_at", null);
 
@@ -27,7 +27,13 @@ export default async function DashboardPage() {
   const allSensors = (gateways ?? []).flatMap(
     (g) => (g.sensors ?? [])
       .filter((s: { decommissioned_at: string | null }) => s.decommissioned_at === null)
-      .map((s: { id: string; name: string; status: string; battery_level: number | null }) => ({
+      .map((s: {
+        id: string;
+        name: string;
+        status: string;
+        battery_level: number | null;
+        commissioned_at: string | null;
+      }) => ({
         ...s,
         gatewayId: g.id,
       })),
@@ -72,8 +78,13 @@ export default async function DashboardPage() {
   const sensorOnlineById = new Map(
     allSensors.map((s) => [s.id, isSensorOnline(s.status, lastReadingBySensor.get(s.id)?.recorded_at)]),
   );
-  const onlineCount = allSensors.filter((s) => sensorOnlineById.get(s.id)).length;
-  const offlineCount = allSensors.length - onlineCount;
+  // The headline counts describe live monitoring, so a sensor that has not been
+  // commissioned belongs in neither tally — counting one as "offline" would read
+  // as a fault on a device that is working exactly as expected.
+  const inServiceSensors = allSensors.filter((s) => s.commissioned_at !== null);
+  const pendingCount = allSensors.length - inServiceSensors.length;
+  const onlineCount = inServiceSensors.filter((s) => sensorOnlineById.get(s.id)).length;
+  const offlineCount = inServiceSensors.length - onlineCount;
   const hasGateway = (gateways ?? []).length > 0;
   const gatewayOnline = (gateways ?? []).some((g) => isGatewayOnline(g.is_online, g.last_seen_at));
 
@@ -103,6 +114,7 @@ export default async function DashboardPage() {
       name: s.name,
       status: sensorOnlineById.get(s.id) ? 'online' : 'offline',
       batteryLevel: s.battery_level ?? undefined,
+      commissionedAt: s.commissioned_at,
       lastReading: lr ? { id: lr.id, sensorId: s.id, temperature: lr.temperature, recordedAt: lr.recorded_at } : undefined,
     };
   });
@@ -140,6 +152,9 @@ export default async function DashboardPage() {
             <span className="text-sm font-medium">
               <span className="text-ok-text">{onlineCount} online</span>
               {offlineCount > 0 && <> · <span className="text-offline-text">{offlineCount} offline</span></>}
+              {pendingCount > 0 && (
+                <> · <span className="text-offline-text">{pendingCount} not in service</span></>
+              )}
             </span>
           )}
         </SummaryItem>

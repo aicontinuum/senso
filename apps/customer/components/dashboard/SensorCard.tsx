@@ -23,22 +23,28 @@ export function SensorCard({
   hasActiveAlert,
   timezone,
 }: SensorCardProps) {
+  // Undefined rather than null means the caller did not load the column at all,
+  // which must not silently read as "not in service" and blank a working card.
+  const inService = sensor.commissionedAt !== null;
   const isOffline = sensor.status === "offline";
   const temp = sensor.lastReading?.temperature;
+  // A reading from a sensor that is not installed yet is a real measurement of
+  // the wrong place, so it is neither in range nor out of it.
   const outOfRange =
+    inService &&
     !isOffline &&
     temp !== undefined &&
     alertConfig !== undefined &&
     isOutOfRange(temp, alertConfig.minTemp, alertConfig.maxTemp);
 
-  const state = sensorState({ isOffline, outOfRange, hasOpenAlert: hasActiveAlert });
+  const state = sensorState({ inService, isOffline, outOfRange, hasOpenAlert: hasActiveAlert });
 
   return (
     <Link
       href={`/sensors/${sensor.id}`}
       className={cn(
         "block rounded-lg border bg-card p-5 shadow-sm transition-colors hover:bg-accent/40",
-        isOffline && "opacity-70",
+        (isOffline || !inService) && "opacity-70",
         state === "breaching" && "border-alert-border",
         state === "alert-open" && "border-warn-border",
       )}
@@ -54,7 +60,7 @@ export function SensorCard({
         <span
           className={cn(
             "text-4xl font-bold tabular-nums",
-            isOffline && "text-muted-foreground",
+            (isOffline || !inService) && "text-muted-foreground",
             outOfRange && "text-alert-text",
           )}
         >
@@ -64,7 +70,11 @@ export function SensorCard({
 
       {/* Range status label */}
       <div className="mb-4 text-center">
-        {isOffline ? (
+        {!inService ? (
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Awaiting installation
+          </span>
+        ) : isOffline ? (
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Offline
           </span>
@@ -81,7 +91,7 @@ export function SensorCard({
 
       {/* Footer */}
       <div className="space-y-1 border-t pt-3 text-xs text-muted-foreground">
-        {alertConfig && (
+        {alertConfig && inService && (
           <div className="flex justify-between">
             <span>Threshold</span>
             <span className="font-medium text-foreground">

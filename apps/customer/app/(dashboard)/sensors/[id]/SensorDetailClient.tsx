@@ -54,8 +54,14 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
   const [saveError, setSaveError] = useState('');
 
   const temp = sensor.lastReading?.temperature;
+  // Undefined means the caller did not load the column; only an explicit null
+  // means the sensor has not been commissioned.
+  const inService = sensor.commissionedAt !== null;
   const isOffline = sensor.status === "offline";
+  // Not yet installed, so the reading is a real measurement of somewhere that is
+  // not the customer's fridge — neither in range nor out of it.
   const outOfRange =
+    inService &&
     !isOffline &&
     temp !== undefined &&
     isOutOfRange(temp, Number(minTemp), Number(maxTemp));
@@ -173,10 +179,25 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
       <div className="mt-4 mb-6 flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">{name}</h1>
         <SensorStatusBadge
-          state={sensorState({ isOffline, outOfRange, hasOpenAlert })}
+          state={sensorState({ inService, isOffline, outOfRange, hasOpenAlert })}
           className="shrink-0"
         />
       </div>
+
+      {/* Says plainly what "not in service" means for the record, rather than
+          leaving a grey badge to be interpreted. The reading stays on screen
+          below because the install bench test depends on seeing it arrive. */}
+      {!inService && (
+        <section className="mb-4 rounded-lg border border-hairline bg-sunken p-4">
+          <p className="text-sm font-semibold">Not in service yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This sensor is registered but has not been marked as installed, so its
+            readings are not part of your monitoring record: they raise no alerts
+            and do not appear in reports. Your Senso technician completes this
+            during installation.
+          </p>
+        </section>
+      )}
 
       {/* Current reading */}
       <section className="mb-4 rounded-lg border bg-card p-5">
@@ -187,7 +208,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           <span
             className={cn(
               "text-4xl font-bold tabular-nums",
-              isOffline && "text-muted-foreground",
+              (isOffline || !inService) && "text-muted-foreground",
               outOfRange && "text-alert-text",
             )}
           >
@@ -196,14 +217,20 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           <p
             className={cn(
               "mt-1 text-xs font-medium uppercase tracking-wide",
-              isOffline
+              isOffline || !inService
                 ? "text-muted-foreground"
                 : outOfRange
                   ? "font-semibold text-alert-text"
                   : "text-ok-text",
             )}
           >
-            {isOffline ? "Offline" : outOfRange ? "Out of range" : "In range"}
+            {!inService
+              ? "Awaiting installation"
+              : isOffline
+                ? "Offline"
+                : outOfRange
+                  ? "Out of range"
+                  : "In range"}
           </p>
         </div>
       </section>

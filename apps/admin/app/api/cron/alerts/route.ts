@@ -97,10 +97,15 @@ async function sweepForSilence(
     }
   }
 
+  // Commissioned only. A sensor that has been registered but not yet installed is
+  // silent by design — it may not even be powered on — and raising it as offline
+  // would email the customer that a fridge they do not have yet has stopped
+  // reporting.
   const { data: sensors } = await admin
     .from('sensors')
     .select('id, gateway_id')
-    .is('decommissioned_at', null);
+    .is('decommissioned_at', null)
+    .not('commissioned_at', 'is', null);
 
   const sensorIds = (sensors ?? []).map((s) => s.id);
 

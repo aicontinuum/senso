@@ -38,6 +38,13 @@ export interface Sensor {
   status: DeviceStatus;
   lastReading?: Reading;
   batteryLevel?: number; // 0–100
+  /**
+   * When the sensor was installed at the site and entered the customer's
+   * compliance record. Null means not in service: readings are stored, but they
+   * raise no alerts and never appear in a report. See
+   * `supabase/migrations/20260902_sensor_commissioning.sql`.
+   */
+  commissionedAt?: string | null;
 }
 
 export interface AlertConfig {
