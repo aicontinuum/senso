@@ -128,13 +128,14 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Commissioning — added 2026-09-02
 
-- [ ] **Gateways have the commissioning gap that sensors no longer do.** A gateway
-  registered and assigned to a customer but still on the bench will be swept as
-  `gateway_offline` and emailed about, and once it is at site its pre-install
-  window is not marked anywhere. The column and the sweep filter are nearly
-  identical to the sensor change; the UI is not, which is why it was left out
-  rather than bundled. Until it is done, register a gateway close to the time it
-  is installed.
+- [x] ~~**Gateways have the commissioning gap that sensors no longer do.**~~
+  **NOT AN ISSUE 2026-09-02 — closed deliberately, do not re-raise.** The half
+  that mattered went away when customers stopped being emailed about gateways: a
+  bench gateway can no longer send anyone a "Gateway1 is offline" message about a
+  box they have not received. What remains is a bench gateway counting towards
+  the admin dashboard's "Sites dark" tile until it is installed — a wrong number
+  on our own screen, which we can read past. Register a gateway near the time it
+  is installed and even that goes away.
 
 - [ ] **Nothing chases a sensor left uncommissioned.** The admin dashboard counts
   them under "awaiting commissioning", which is passive. A sensor stuck there is
