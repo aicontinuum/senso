@@ -83,10 +83,17 @@ export default async function AdminDashboardPage() {
   // monitoring and no record — the quiet half of a botched install. It belongs on
   // this page rather than waiting to be noticed.
   let sensorsPending = 0;
+  // Customers are no longer emailed when a gateway goes quiet — that signal is
+  // derived from their own readings, and a dark site is our problem to fix, not
+  // theirs to be woken about. This is where it surfaces instead.
+  let sitesDark = 0;
 
   const rows = (customers ?? []).map(customer => {
     const gateways = activeGateways(customer.gateways);
     const sensors = gateways.flatMap(activeSensors);
+    for (const g of gateways) {
+      if (!isGatewayOnline(g.is_online, g.last_seen_at)) sitesDark += 1;
+    }
 
     for (const s of sensors) {
       if (s.commissioned_at === null) sensorsPending++;
@@ -102,10 +109,19 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
 
-      <div className="grid grid-cols-3 divide-x rounded-lg border bg-card text-card-foreground shadow-sm">
+      <div className="grid grid-cols-4 divide-x rounded-lg border bg-card text-card-foreground shadow-sm">
         <div className="px-6 py-5">
           <p className="text-sm font-medium text-muted-foreground">Customers</p>
           <p className="mt-1 text-3xl font-bold">{(customers ?? []).length}</p>
+        </div>
+        <div className="px-6 py-5">
+          <p className="text-sm font-medium text-muted-foreground">Sites dark</p>
+          <p className={`mt-1 text-3xl font-bold ${sitesDark > 0 ? 'text-alert-text' : ''}`}>
+            {sitesDark}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {sitesDark > 0 ? 'no readings arriving' : 'all gateways reporting'}
+          </p>
         </div>
         <div className="px-6 py-5">
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
@@ -151,8 +167,11 @@ export default async function AdminDashboardPage() {
                     {gateways.length > 0 ? gateways.map(g => {
                       const online = isGatewayOnline(g.is_online, g.last_seen_at);
                       return (
-                        <span key={g.id} className="flex items-center gap-1.5 text-sm">
-                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-ok-500' : 'bg-offline-500'}`} />
+                        <span
+                          key={g.id}
+                          className={`flex items-center gap-1.5 text-sm ${online ? '' : 'font-medium text-alert-text'}`}
+                        >
+                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-ok-500' : 'bg-alert-500'}`} />
                           {online ? 'Online' : 'Offline'}
                         </span>
                       );

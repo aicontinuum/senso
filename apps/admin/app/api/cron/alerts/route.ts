@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cronSecretOk } from '@/lib/cron-auth';
-import { SENSOR_STALE_MS, GATEWAY_STALE_MS } from '@senso/status';
+import { SENSOR_STALE_MS } from '@senso/status';
 import { formatDevEui } from '@/lib/deveui-format';
 import { sendEmail, emailConfigured } from '@/lib/email/send';
 import {
@@ -38,11 +38,13 @@ const MAX_ALERTS_PER_RUN = 100;
 
 type ClaimedAlert = {
   id: string;
-  kind: 'threshold' | 'sensor_offline' | 'gateway_offline';
+  // Only these two can be claimed. `gateway_offline` still exists in the enum
+  // for history, but nothing raises it and the open ones were closed by
+  // 20260902_retire_gateway_alerts.sql, so none can reach the sender.
+  kind: 'threshold' | 'sensor_offline';
   alert_config_id: string | null;
   reading_id: string | null;
   sensor_id: string | null;
-  gateway_id: string | null;
   triggered_at: string;
   notify_count: number;
 };
@@ -62,40 +64,29 @@ export async function GET(request: Request) {
 }
 
 // ── 1. Raise and clear offline alerts ───────────────────────────────────────
+//
+// Sensors only. Gateways are deliberately not alerted on: `gateways.last_seen_at`
+// is stamped by /api/ingest on every reading, so "gateway offline" was never an
+// independent signal — it meant "no readings from this site", which is exactly
+// what this sweep already measures, arriving twice by two routes.
+//
+// It also put our infrastructure into the customer's inbox. They bought fridge
+// monitoring; "Gateway1 is offline" is a Senso problem in Senso's vocabulary. A
+// dark site now shows on the admin dashboard instead, where it is ours to fix.
+//
+// The rollup this replaced existed so a dead gateway did not send ten emails.
+// That is already handled elsewhere: the sender groups one email per customer
+// listing everything open, so a dark site sends one email naming each silent
+// sensor — which is more useful than one naming a box the customer never sees.
+//
+// `alert_kind` keeps its `gateway_offline` value: past rows are history and are
+// protected by RESTRICT. Nothing raises it any more.
 
 async function sweepForSilence(
   admin: ReturnType<typeof createAdminClient>,
   now: number,
 ) {
   const sensorCutoff = new Date(now - SENSOR_STALE_MS).toISOString();
-  const gatewayCutoff = new Date(now - GATEWAY_STALE_MS).toISOString();
-
-  // Gateways first: if one is down, every sensor behind it is silent as a
-  // consequence, not as ten separate faults.
-  const { data: gateways } = await admin
-    .from('gateways')
-    .select('id, customer_id, last_seen_at')
-    .is('decommissioned_at', null);
-
-  const offlineGatewayIds = new Set<string>();
-  for (const gateway of gateways ?? []) {
-    const stale = !gateway.last_seen_at || gateway.last_seen_at < gatewayCutoff;
-    if (stale) {
-      offlineGatewayIds.add(gateway.id);
-      await openAlert(admin, {
-        kind: 'gateway_offline',
-        gateway_id: gateway.id,
-        triggered_at: gateway.last_seen_at ?? new Date(now).toISOString(),
-      });
-    } else {
-      await admin
-        .from('alert_logs')
-        .update({ is_resolved: true })
-        .eq('gateway_id', gateway.id)
-        .eq('kind', 'gateway_offline')
-        .eq('is_resolved', false);
-    }
-  }
 
   // Commissioned only. A sensor that has been registered but not yet installed is
   // silent by design — it may not even be powered on — and raising it as offline
@@ -103,7 +94,7 @@ async function sweepForSilence(
   // reporting.
   const { data: sensors } = await admin
     .from('sensors')
-    .select('id, gateway_id')
+    .select('id')
     .is('decommissioned_at', null)
     .not('commissioned_at', 'is', null);
 
@@ -127,12 +118,6 @@ async function sweepForSilence(
   for (const sensor of sensors ?? []) {
     const stale = !reportingRecently.has(sensor.id);
 
-    if (stale && offlineGatewayIds.has(sensor.gateway_id)) {
-      // Suppressed rather than raised: the gateway alert already says this site
-      // is dark, and one email beats ten saying the same thing.
-      continue;
-    }
-
     if (stale) {
       sensorsOffline += 1;
       await openAlert(admin, {
@@ -150,7 +135,7 @@ async function sweepForSilence(
     }
   }
 
-  return { gatewaysOffline: offlineGatewayIds.size, sensorsOffline };
+  return { sensorsOffline };
 }
 
 /**
@@ -164,14 +149,13 @@ async function sweepForSilence(
 async function openAlert(
   admin: ReturnType<typeof createAdminClient>,
   alert: {
-    kind: 'sensor_offline' | 'gateway_offline';
-    sensor_id?: string;
-    gateway_id?: string;
+    kind: 'sensor_offline';
+    sensor_id: string;
     triggered_at: string;
   },
 ) {
-  const column = alert.kind === 'gateway_offline' ? 'gateway_id' : 'sensor_id';
-  const value = alert.gateway_id ?? alert.sensor_id;
+  const column = 'sensor_id';
+  const value = alert.sensor_id;
   if (!value) return;
 
   const { data: existing } = await admin
@@ -221,8 +205,9 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>) {
 
   const context = await loadContext(admin, alerts);
 
-  // One email per customer, listing everything open for them. A gateway going
-  // down otherwise means ten separate emails at three in the morning.
+  // One email per customer, listing everything open for them. This is what makes
+  // gateway rollup unnecessary: a dark site raises one alert per silent sensor
+  // and they arrive as a single email naming each of them.
   const byCustomer = new Map<string, ClaimedAlert[]>();
   for (const alert of alerts) {
     const customerId = context.customerIdByAlert.get(alert.id);
@@ -300,17 +285,13 @@ async function loadContext(
   const configIds = alerts.map((a) => a.alert_config_id).filter(Boolean) as string[];
   const readingIds = alerts.map((a) => a.reading_id).filter(Boolean) as string[];
   const directSensorIds = alerts.map((a) => a.sensor_id).filter(Boolean) as string[];
-  const gatewayIds = alerts.map((a) => a.gateway_id).filter(Boolean) as string[];
 
-  const [configsRes, readingsRes, gatewaysRes] = await Promise.all([
+  const [configsRes, readingsRes] = await Promise.all([
     configIds.length
       ? admin.from('alert_configs').select('id, sensor_id, type, threshold').in('id', configIds)
       : Promise.resolve({ data: [] }),
     readingIds.length
       ? admin.from('readings').select('id, temperature').in('id', readingIds)
-      : Promise.resolve({ data: [] }),
-    gatewayIds.length
-      ? admin.from('gateways').select('id, name, customer_id').in('id', gatewayIds)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -321,11 +302,6 @@ async function loadContext(
   const readings = new Map(
     ((readingsRes.data ?? []) as { id: string; temperature: number }[]).map((r) => [r.id, r]),
   );
-  const gateways = new Map(
-    ((gatewaysRes.data ?? []) as { id: string; name: string | null; customer_id: string }[])
-      .map((g) => [g.id, g]),
-  );
-
   const sensorIds = [
     ...new Set([...directSensorIds, ...[...configs.values()].map((c) => c.sensor_id)]),
   ];
@@ -343,12 +319,7 @@ async function loadContext(
     }[]).map((s) => [s.id, s]),
   );
 
-  const customerIds = [
-    ...new Set([
-      ...[...sensors.values()].map((s) => s.gateways.customer_id),
-      ...[...gateways.values()].map((g) => g.customer_id),
-    ]),
-  ];
+  const customerIds = [...new Set([...sensors.values()].map((s) => s.gateways.customer_id))];
 
   const { data: customerRows } = customerIds.length
     ? await admin.from('customers').select('id, name, timezone, alert_recipients').in('id', customerIds)
@@ -395,14 +366,6 @@ async function loadContext(
   const rangeByAlert = new Map<string, string | null>();
 
   for (const alert of alerts) {
-    if (alert.kind === 'gateway_offline' && alert.gateway_id) {
-      const gateway = gateways.get(alert.gateway_id);
-      if (!gateway) continue;
-      customerIdByAlert.set(alert.id, gateway.customer_id);
-      subjectByAlert.set(alert.id, gateway.name ?? 'Gateway');
-      continue;
-    }
-
     const sensorId =
       alert.sensor_id ??
       (alert.alert_config_id ? configs.get(alert.alert_config_id)?.sensor_id : undefined);

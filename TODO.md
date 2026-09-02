@@ -102,6 +102,30 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   (added 2026-08-29). Keep them updated when a variable is added — a missing one is
   invisible until something fails in production, which is how the Resend key was missed.
 
+## Alerting bugs — added 2026-09-02 (both affect `sensor_offline`)
+
+- [ ] **Who receives an offline alert depends on what else fired.** Recipients
+  are built per customer from `customers.alert_recipients`, then per-sensor
+  recipients are merged in **only for alerts that carry an `alert_config_id`**.
+  Offline alerts do not carry one, so an offline alert alone in a run reaches
+  only the account-level list — but batched with a threshold alert for the same
+  customer it also reaches that sensor's list. Same alert, different recipients.
+  Worse: a customer with per-sensor recipients and an empty account-level list
+  may be emailed by **nobody**, and `sendDueAlerts` counts that as sent, so the
+  schedule is consumed silently. Fix by resolving recipients per customer up
+  front from the account list plus every sensor they own, independent of batch
+  composition. In `apps/admin/app/api/cron/alerts/route.ts`, `loadContext()`.
+
+- [ ] **The reminder schedule compresses on offline alerts.** `triggered_at` is
+  back-dated — to when contact was lost — which is right for display and wrong
+  as the schedule anchor. `claim_due_alerts` reminds when
+  `notify_count = 1 and triggered_at < now() - interval '30 minutes'`, and an
+  offline alert is already 35 minutes old when created, so the first reminder is
+  due on the very next run: a second email about five minutes after the first
+  rather than thirty. Fix by anchoring reminders on `last_notified_at` instead,
+  which also makes the rule read as what it means. Needs a small migration to
+  `claim_due_alerts`.
+
 ## Commissioning — added 2026-09-02
 
 - [ ] **Gateways have the commissioning gap that sensors no longer do.** A gateway

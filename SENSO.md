@@ -195,9 +195,11 @@ design system does not cover print geometry.
   (admin) on Vercel, DNS at Cloudflare, with Supabase's Site URL and redirect allowlist
   pointed at them.
 - **Email alerting is live** — Resend, sending from `sensoqa.com`. Threshold breaches and
-  silence (a sensor or a gateway that has stopped reporting) both raise alerts; each is
-  emailed immediately, again after 30 minutes, again after 2 hours, then goes quiet until
-  it resolves. No all-clear email, no quiet hours.
+  sensor silence both raise alerts; each is emailed immediately, again after 30 minutes,
+  again after 2 hours, then goes quiet until it resolves. No all-clear email, no quiet
+  hours. **Customers are not emailed about gateways** — `gateways.last_seen_at` is derived
+  from readings, so it says nothing a silent sensor does not, and a dark site is ours to
+  fix: it shows on the admin dashboard instead.
 - **The alert scheduler runs from the ChirpStack VPS**, not Vercel Cron, which on the
   Hobby plan will not run more often than daily. `network-server/README.md` has the
   crontab. This makes the VPS load-bearing for alerting as well as ingest: if it goes

@@ -59,3 +59,8 @@ export const REPORT_ALERT_LOOKBACK = 500;
 // lines. The full text lives on the alert page; a long note wrapping over five
 // lines on a hundred consecutive rows would bury the readings it explains.
 export const COMMENT_PDF_MAX_LINES = 2;
+
+// How many readings to show before an offline gap. Enough to see the shape a
+// fridge was in just before its sensor went quiet, which is the first thing
+// anyone asks about a silent sensor.
+export const OFFLINE_ALERT_LAST_READINGS = 8;

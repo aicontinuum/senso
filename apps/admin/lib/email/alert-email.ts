@@ -3,13 +3,17 @@
 // Read on a phone, mid-service, by a manager who needs one thing: what is wrong
 // and which fridge. Everything here serves that; detail lives behind the link.
 
-export type AlertKind = "threshold" | "sensor_offline" | "gateway_offline";
+// Gateways are deliberately absent. "Gateway offline" was derived from readings
+// rather than measured, so it said nothing a silent sensor does not — and it put
+// our infrastructure into the customer's inbox. A dark site now shows on the
+// admin dashboard instead.
+export type AlertKind = "threshold" | "sensor_offline";
 
 export interface AlertLine {
   kind: AlertKind;
-  /** Sensor name, or the gateway's name for a site-wide outage. */
+  /** Sensor name. */
   subject: string;
-  /** DevEUI, formatted. Absent for gateway alerts. */
+  /** DevEUI, formatted. */
   deviceId?: string | null;
   /** The reading that breached, already formatted with its unit. */
   reading?: string | null;
@@ -53,16 +57,11 @@ function headline(alert: AlertLine): string {
       return `${alert.subject} is out of range`;
     case "sensor_offline":
       return `${alert.subject} has stopped reporting`;
-    case "gateway_offline":
-      return `${alert.subject} is offline — all sensors on this gateway`;
   }
 }
 
 export function alertEmailSubject(alerts: AlertLine[], customerName: string): string {
   if (alerts.length === 0) return `Senso alert — ${customerName}`;
-
-  const gateway = alerts.find((a) => a.kind === "gateway_offline");
-  if (gateway) return `Senso: ${gateway.subject} is offline — ${customerName}`;
 
   if (alerts.length === 1) {
     const [only] = alerts;

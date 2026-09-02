@@ -13,6 +13,8 @@ import {
 } from "@/lib/constants";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 import { AlertComment } from "@/components/alerts/AlertComment";
+import { OfflineAlertDetail } from "@/components/alerts/OfflineAlertDetail";
+import { OFFLINE_ALERT_LAST_READINGS } from "@/lib/constants";
 
 export default async function AlertDetailPage({
   params,
@@ -26,30 +28,91 @@ export default async function AlertDetailPage({
 
   const { data: alertLog } = await supabase
     .from("alert_logs")
-    .select("id, alert_config_id, triggered_at, is_resolved")
+    .select("id, kind, alert_config_id, sensor_id, triggered_at, is_resolved")
     .eq("id", id)
     .single();
 
   if (!alertLog) notFound();
 
-  // Get alert config to resolve sensor_id and thresholds
-  const { data: alertConfig } = await supabase
-    .from("alert_configs")
-    .select("id, sensor_id, type, threshold")
-    .eq("id", alertLog.alert_config_id)
-    .single();
+  // The two kinds reach their sensor by different columns: a threshold alert
+  // through its alert_config, an offline alert directly.
+  const { data: alertConfig } = alertLog.alert_config_id
+    ? await supabase
+        .from("alert_configs")
+        .select("id, sensor_id, type, threshold")
+        .eq("id", alertLog.alert_config_id)
+        .single()
+    : { data: null };
 
-  if (!alertConfig) notFound();
+  const sensorId = alertConfig?.sensor_id ?? alertLog.sensor_id;
+  if (!sensorId) notFound();
 
   // Verify ownership: sensor must belong to a gateway owned by this customer
   const { data: sensor } = await supabase
     .from("sensors")
     .select("id, name, gateway_id, gateways!inner (customer_id)")
-    .eq("id", alertConfig.sensor_id)
+    .eq("id", sensorId)
     .is("decommissioned_at", null)
     .single();
 
   if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customer.id) notFound();
+
+  // Shared by both kinds: the supervisor's note on this incident. An offline
+  // sensor is exactly the sort of thing worth annotating — "battery replaced".
+  const { data: comment } = await supabase
+    .from("alert_comments")
+    .select("body, created_at, updated_at")
+    .eq("alert_log_id", id)
+    .maybeSingle();
+
+  const commentSection = (
+    <AlertComment
+      alertId={id}
+      initialBody={comment?.body ?? null}
+      createdAt={comment?.created_at ?? null}
+      updatedAt={comment?.updated_at ?? null}
+      timezone={customer.timezone}
+    />
+  );
+
+  const backLink = (
+    <Link
+      href="/alerts"
+      className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+    >
+      ← Alerts
+    </Link>
+  );
+
+  if (alertLog.kind === "sensor_offline") {
+    // The readings that did arrive before the silence, newest first from the
+    // database and reversed for display so the last one sits at the bottom.
+    const { data: before } = await supabase
+      .from("readings")
+      .select("id, temperature, recorded_at")
+      .eq("sensor_id", sensorId)
+      .lte("recorded_at", alertLog.triggered_at)
+      .order("recorded_at", { ascending: false })
+      .limit(OFFLINE_ALERT_LAST_READINGS);
+
+    return (
+      <div>
+        {backLink}
+        <OfflineAlertDetail
+          sensorName={sensor.name}
+          since={alertLog.triggered_at}
+          isResolved={alertLog.is_resolved}
+          lastReadings={(before ?? [])
+            .map((r) => ({ id: r.id, temperature: r.temperature, recordedAt: r.recorded_at }))
+            .reverse()}
+          timezone={customer.timezone}
+        />
+        {commentSection}
+      </div>
+    );
+  }
+
+  if (!alertConfig) notFound();
 
   // Both min and max thresholds for the chart, resolved to the versions that were
   // in force when the alert fired rather than to today's values — otherwise a
@@ -117,14 +180,6 @@ export default async function AlertDetailPage({
   );
   const triggeringTemp = nearestToTrigger?.temperature;
 
-  // The supervisor's note on this incident. Read through the user's session, so
-  // RLS decides whether it is theirs to see.
-  const { data: comment } = await supabase
-    .from("alert_comments")
-    .select("body, created_at, updated_at")
-    .eq("alert_log_id", id)
-    .maybeSingle();
-
   // Short "DD/MM, HH:MM" chart labels rendered in the customer's timezone
   const chartLabelFmt = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -140,12 +195,7 @@ export default async function AlertDetailPage({
 
   return (
     <div>
-      <Link
-        href="/alerts"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← Alerts
-      </Link>
+      {backLink}
 
       <div className="mb-6 mt-4">
         <h1 className="text-2xl font-bold">{sensor.name}</h1>
@@ -185,13 +235,7 @@ export default async function AlertDetailPage({
         </div>
       )}
 
-      <AlertComment
-        alertId={id}
-        initialBody={comment?.body ?? null}
-        createdAt={comment?.created_at ?? null}
-        updatedAt={comment?.updated_at ?? null}
-        timezone={customer.timezone}
-      />
+      {commentSection}
     </div>
   );
 }

@@ -4,6 +4,84 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-02 — Stop alerting customers about gateways; show offline sensors in the app
+
+Three changes to the same problem: the customer was being told about the wrong
+things, and not shown the right ones.
+
+### Gateway alerts are gone
+
+`gateways.last_seen_at` is stamped by `/api/ingest` on every reading, so
+"gateway offline" was never an independent health signal — it meant *no readings
+from this site in 35 minutes*, which is exactly what the sensor sweep already
+measures. The same fact arrived twice by two routes, and with one sensor per
+gateway it was literally the same event fired twice.
+
+It also put our infrastructure into the customer's inbox. They bought fridge
+monitoring; "Gateway1 is offline" is a Senso problem in Senso's vocabulary.
+
+**The rollup it provided turned out to be unnecessary.** It existed so a dead
+gateway did not send ten emails — but the sender already groups one email per
+customer listing everything open. A dark site now sends one email naming each
+silent sensor, which is more useful than one naming a box the customer never
+sees. So the suppression logic went too, and `sweepForSilence()` is now just
+"which sensors have gone quiet".
+
+`alert_kind` keeps its `gateway_offline` value: past rows are history and
+protected by `RESTRICT` like every other history row. Nothing raises it.
+`20260902_retire_gateway_alerts.sql` closes the ones already open — they used to
+be resolved by the same loop that raised them, so without it they would have sat
+as "Active" forever and held a partial-unique-index slot against a gateway that
+can never alert again.
+
+### A dark site now shows on admin
+
+Not deleted, moved. The dashboard gains a **Sites dark** tile, and an offline
+gateway in the customer table went from the grey `offline` tone to the alert
+tone — a dead site and a retired one were rendering the same shade.
+
+Deliberately not emailing ourselves either: that belongs with the standing
+"nothing watches the VPS" item, as one ops-alerting mechanism rather than two.
+
+### Offline sensors are visible to customers at last
+
+The find that reframed this whole change: the Alerts page filters on
+`alert_config_id`, and **both** offline kinds have that as null. So a customer
+could receive an email saying a sensor had stopped reporting, open the app to
+look into it, and find nothing — the alert existed only in their inbox.
+
+- The list now runs two queries, because the kinds reach a sensor by different
+  columns, and merges them with a **Type** column: *Out of range* / *No
+  readings*.
+- `/alerts/[id]` branches on kind. An offline alert resolves its sensor through
+  `sensor_id` instead of the config, and shows **the last readings before the
+  gap** rather than a chart of nothing — the shape a fridge was in just before
+  its sensor went quiet is the first thing anyone asks.
+- Both kinds carry the Comments section. An offline incident is exactly what a
+  supervisor wants to annotate: *battery replaced*.
+
+Reports are untouched. The Comment column maps a reading to an alert by which
+bound it broke, and an offline alert has no bound and no breaching readings, so
+its note correctly never appears — there is nothing to annotate.
+
+### Still open
+
+Both of the pinned alerting bugs survive this and now bite `sensor_offline`
+alone, which after this change is the only kind with no `alert_config_id`:
+
+- **Recipients depend on batch composition.** Per-sensor recipients are merged in
+  only for alerts that have a config, so an offline alert gets account-level
+  recipients — unless some other alert for the same customer happens to be
+  claimed in the same five-minute run. A customer with per-sensor recipients and
+  an empty account list may be emailed by nobody, and the code counts that as
+  sent.
+- **The reminder schedule compresses.** `triggered_at` is back-dated to when
+  contact was lost and is also the schedule anchor, so the "+30 min" reminder is
+  already due when the alert is created. The second email arrives about five
+  minutes after the first.
+
+---
+
 ## 2026-09-02 — Comments: letting a supervisor explain an incident
 
 A report showing 18 °C for two hours is a failing fridge. The same report
