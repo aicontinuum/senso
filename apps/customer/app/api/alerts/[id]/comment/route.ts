@@ -43,17 +43,30 @@ export async function PUT(
 
   const supabase = await createClient();
 
-  // Upsert on the unique alert_log_id: "add" and "edit" are the same action from
-  // the supervisor's point of view, and treating them as one removes the race
-  // where two people both add a first comment.
+  // Deliberately not an upsert. PostgREST compiles one into
+  // `on conflict do update set alert_log_id = …, body = …`, and PostgreSQL
+  // checks UPDATE privilege on *every* column named there whether or not the
+  // conflict path is taken. The grants give this role UPDATE on `body` only —
+  // on purpose, so a client cannot move a note onto a different incident — so
+  // the upsert was refused even when inserting a first comment.
+  //
+  // Reading first and then writing costs one extra round trip and keeps the
+  // column scope. The unique constraint on alert_log_id still settles a race
+  // between two supervisors: the loser gets a 23505 and retries as an edit.
   //
   // author_id, created_at and updated_at are all set by the database — the
   // column grants do not let a client touch them.
-  const { data, error } = await supabase
+  const { data: existing } = await supabase
     .from('alert_comments')
-    .upsert({ alert_log_id: alertLogId, body: text }, { onConflict: 'alert_log_id' })
-    .select('body, created_at, updated_at')
+    .select('id')
+    .eq('alert_log_id', alertLogId)
     .maybeSingle();
+
+  const write = existing
+    ? supabase.from('alert_comments').update({ body: text }).eq('alert_log_id', alertLogId)
+    : supabase.from('alert_comments').insert({ alert_log_id: alertLogId, body: text });
+
+  const { data, error } = await write.select('body, created_at, updated_at').maybeSingle();
 
   if (error) {
     console.error('Alert comment save failed', { alertLogId, error });

@@ -77,6 +77,27 @@ evaluated as the **caller**, so it needs the caller's own SELECT grants on
 `alert_logs` and `alert_configs`. Production has them (customers read the alerts
 page); a fixture without them fails in a way that looks like a broken policy.
 
+### The bug the tests missed
+
+Every comment save failed in production with "Could not save the comment."
+
+`supabase.upsert()` compiles to `on conflict do update set alert_log_id = …,
+body = …`, and PostgreSQL checks UPDATE privilege on **every column named in
+that clause** whether or not the conflict path is taken. The grants give this
+role UPDATE on `body` alone — deliberately, so a client cannot move a note onto
+a different incident — so the statement was refused even when inserting a first
+comment, on a table with no rows in it.
+
+The tests exercised INSERT and UPDATE separately and both passed. Neither is the
+statement the app sends. **Testing the policies is not the same as testing the
+query**, and the gap between them is exactly where a column-scoped grant will
+bite: the privilege model and the client library disagree about what one write
+is.
+
+Now a read followed by an insert or an update. One extra round trip, column
+scope intact. The unique constraint still settles two supervisors racing to add
+a first note — the loser gets a 23505 and retries as an edit.
+
 ---
 
 ## 2026-09-02 — Sensors are not in the record until someone says they are installed
