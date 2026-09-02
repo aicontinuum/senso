@@ -104,7 +104,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Alerting bugs — added 2026-09-02 (both affect `sensor_offline`)
 
-- [ ] **Who receives an offline alert depends on what else fired.** Recipients
+- [x] ~~**Who receives an offline alert depends on what else fired.**~~ **FIXED 2026-09-02** by collapsing the two recipient lists into one (`customers.alert_recipients`). With a single list resolved per customer, batch composition cannot change who is emailed, and there is no longer any way to have addresses on sensors but none on the account. Original finding below. Recipients
   are built per customer from `customers.alert_recipients`, then per-sensor
   recipients are merged in **only for alerts that carry an `alert_config_id`**.
   Offline alerts do not carry one, so an offline alert alone in a run reaches
@@ -116,7 +116,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   front from the account list plus every sensor they own, independent of batch
   composition. In `apps/admin/app/api/cron/alerts/route.ts`, `loadContext()`.
 
-- [ ] **The reminder schedule compresses on offline alerts.** `triggered_at` is
+- [x] ~~**The reminder schedule compresses on offline alerts.**~~ **ACCEPTED 2026-09-02 — not a bug worth fixing.** Nothing is missed or duplicated in substance; the second email simply lands about five minutes after the first instead of thirty. Left as-is deliberately. Original finding below, so nobody re-raises it: `triggered_at` is
   back-dated — to when contact was lost — which is right for display and wrong
   as the schedule anchor. `claim_due_alerts` reminds when
   `notify_count = 1 and triggered_at < now() - interval '30 minutes'`, and an
