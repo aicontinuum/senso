@@ -41,3 +41,21 @@ export const ALERT_EPISODE_MAX_POINTS = 120;
 // trimmed away. Without it a sensor reporting frequently could spend the whole
 // limit on the six hours before the alert and reach the breach with nothing left.
 export const ALERT_EPISODE_FETCH_SLACK = 64;
+
+// ── Incident comments ───────────────────────────────────────────────────────
+// A supervisor's note explaining one alert — "cleaning the fridge, doors open".
+// Long enough for a sentence or two of context, short enough to sit in a report
+// table cell without swamping the reading it explains. Enforced here, in the API
+// and by a check constraint on the column.
+export const ALERT_COMMENT_MAX_LENGTH = 500;
+
+// How many past alerts a report loads to resolve its Comment column. An episode
+// spanning the start of the period is explained by a trigger that falls outside
+// it, so the query cannot be bounded by the period — it is bounded by count
+// instead. 500 is every alert a real customer has ever had, several times over.
+export const REPORT_ALERT_LOOKBACK = 500;
+
+// A note repeats on every reading of its incident, so the PDF caps it at two
+// lines. The full text lives on the alert page; a long note wrapping over five
+// lines on a hundred consecutive rows would bury the readings it explains.
+export const COMMENT_PDF_MAX_LINES = 2;

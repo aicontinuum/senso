@@ -4,6 +4,81 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-02 — Comments: letting a supervisor explain an incident
+
+A report showing 18 °C for two hours is a failing fridge. The same report
+annotated *"cleaning the fridge, doors open"* is a well-run kitchen. There was
+nowhere to say which, so every excursion read as the first kind.
+
+`alert_comments` holds one note per alert, written on the alert page and
+repeated against every out-of-range reading of that incident in a report.
+
+### Decisions worth knowing
+
+- **This is the safe half of the service-window idea**, and probably replaces
+  it. A comment explains a breach; it does not suppress the alert or exclude a
+  reading. Nothing here can hide anything — the readings, the breach and the
+  alert all stand exactly as recorded.
+- **No revision history.** Considered and dropped: auditors here trust the
+  restaurant, and the machinery was not worth it. `updated_at` still moves, so
+  the page can show "edited", but previous text is not kept.
+- **Reports are generated live, never stored.** So a PDF printed before a
+  comment was written keeps what it had, and regenerating picks up the current
+  text. That is already how the Range column behaves — there is no snapshot to
+  go stale.
+- **One note per alert**, enforced by a unique constraint on `alert_log_id`. It
+  makes "add" and "edit" one upsert instead of a race between two supervisors
+  both adding a first comment.
+- **Which alert a reading belongs to is derived, not stored.** `alert_logs`
+  records when an alert opened but not when it closed. It does not need to: an
+  episode is a contiguous run of breaching readings after a trigger, so a
+  breaching reading takes the most recent note *of the same bound* at or before
+  it. Two consecutive episodes resolve correctly because the second trigger is
+  nearer, and in-range readings match nothing — there is no incident to explain.
+- **`author_id` defaults to `auth.uid()`** rather than being sent by the client,
+  and the column grants let a customer write only `alert_log_id` and `body`.
+  Without that, a client could attribute a note to another user or back-date
+  `updated_at` so an edit did not show as one.
+- **No delete policy.** A note explaining an incident is part of that incident's
+  record; removing it would leave the breach standing with its explanation gone.
+  Editing to correct a mistake is enough.
+- **A failed comment load does not block the report.** Readings, limits and
+  verdicts must be right or the report must not exist — that refusal already
+  exists. A missing note only costs context, and refusing to produce a
+  compliance record because an explanatory comment would not load gets the
+  priority backwards.
+
+### Comments are not in the CSV
+
+Deliberate. The CSV is a data extract for filtering and pivoting, and repeating
+a sentence of free text across every row of a 118-reading episode makes it worse
+at that job. It is also the one place customer-typed text could carry a
+spreadsheet formula — `TODO.md` still carries the unfixed CSV escaping item, and
+keeping comments out means this change does not make it any more exploitable.
+
+The PDF is the compliance document and carries them, capped at two lines per row
+with the full text on the alert page.
+
+### Verified
+
+Against a real PostgreSQL 16: a supervisor can add and edit a note; a second
+note on the same alert is rejected; an empty one and one over 500 characters are
+rejected; forging `author_id` on insert, back-dating `updated_at` to hide an
+edit, reassigning authorship, and deleting the note are all **refused at the
+database**. `created_at` does not move on an edit.
+
+Plus 20 cases on the mapping: the trigger boundary, a reading before the
+trigger, in-range readings, two consecutive episodes, min and max notes not
+crossing over, an alert with no note not falling back to an older one, and
+unparseable timestamps yielding nothing rather than a wrong answer.
+
+One thing found while writing the tests: a policy's `exists (…)` subquery is
+evaluated as the **caller**, so it needs the caller's own SELECT grants on
+`alert_logs` and `alert_configs`. Production has them (customers read the alerts
+page); a fixture without them fails in a way that looks like a broken policy.
+
+---
+
 ## 2026-09-02 — Sensors are not in the record until someone says they are installed
 
 ### The problem

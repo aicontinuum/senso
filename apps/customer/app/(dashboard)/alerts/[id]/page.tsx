@@ -12,6 +12,7 @@ import {
   ALERT_EPISODE_CONTEXT_READINGS,
 } from "@/lib/constants";
 import { TemperatureChart } from "@/components/alerts/TemperatureChart";
+import { AlertComment } from "@/components/alerts/AlertComment";
 
 export default async function AlertDetailPage({
   params,
@@ -116,6 +117,14 @@ export default async function AlertDetailPage({
   );
   const triggeringTemp = nearestToTrigger?.temperature;
 
+  // The supervisor's note on this incident. Read through the user's session, so
+  // RLS decides whether it is theirs to see.
+  const { data: comment } = await supabase
+    .from("alert_comments")
+    .select("body, created_at, updated_at")
+    .eq("alert_log_id", id)
+    .maybeSingle();
+
   // Short "DD/MM, HH:MM" chart labels rendered in the customer's timezone
   const chartLabelFmt = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -175,6 +184,14 @@ export default async function AlertDetailPage({
           No readings recorded around this alert.
         </div>
       )}
+
+      <AlertComment
+        alertId={id}
+        initialBody={comment?.body ?? null}
+        createdAt={comment?.created_at ?? null}
+        updatedAt={comment?.updated_at ?? null}
+        timezone={customer.timezone}
+      />
     </div>
   );
 }

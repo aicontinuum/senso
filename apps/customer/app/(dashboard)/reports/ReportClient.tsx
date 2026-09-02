@@ -17,6 +17,8 @@ import {
 import { timezoneLabel } from "@/lib/timezones";
 import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
+import { commentForReading, type AlertNote } from "@/lib/alert-comments";
+import { REPORT_ALERT_LOOKBACK, COMMENT_PDF_MAX_LINES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { STATUS_TEXT_RGB, NEUTRAL_RGB } from "@/lib/status-colors";
@@ -62,6 +64,8 @@ type ReportSensor = {
   sensor: SensorShape;
   history: ThresholdVersion[];
   readings: ReadingShape[];
+  /** Supervisor notes on this sensor's alerts, for the Comment column. */
+  notes: AlertNote[];
 };
 
 // A retired sensor's readings simply stop partway through the period. Saying so on
@@ -90,9 +94,13 @@ async function buildReportPDF(
   // applied to that row, so a threshold change mid-period is visible per reading
   // rather than hidden behind a single header value.
   const col1 = margin;
-  const col2 = margin + 58;
-  const col3 = margin + 95;
-  const col4 = margin + 140;
+  const col2 = margin + 40;
+  const col3 = margin + 68;
+  const col4 = margin + 100;
+  const col5 = margin + 133;
+  // Whatever is left after the four fixed columns. Comments are free text, so
+  // this is the one column that has to wrap rather than be sized to its content.
+  const commentWidth = contentWidth - (col5 - margin);
 
   const periodLabel = `${formatDateTimeLong(now - rangeMs, timezone)} – ${formatDateTimeLong(now, timezone)}`;
 
@@ -104,6 +112,7 @@ async function buildReportPDF(
     doc.text("Temperature", col2, y);
     doc.text("Range", col3, y);
     doc.text("Status", col4, y);
+    doc.text("Comment", col5, y);
     doc.setTextColor(...NEUTRAL_RGB.primary);
     const lineY = y + 3;
     doc.setDrawColor(...NEUTRAL_RGB.rule);
@@ -112,7 +121,7 @@ async function buildReportPDF(
   };
 
   let isFirst = true;
-  for (const { sensor, history, readings } of sensors) {
+  for (const { sensor, history, readings, notes } of sensors) {
     if (!isFirst) doc.addPage();
     isFirst = false;
     let y = margin;
@@ -211,8 +220,20 @@ async function buildReportPDF(
         ...(!known ? STATUS_TEXT_RGB.offline : out ? STATUS_TEXT_RGB.alert : STATUS_TEXT_RGB.ok),
       );
       doc.text(known ? (out ? "Out of range" : "OK") : "No limit set", col4, y);
+      doc.setTextColor(...NEUTRAL_RGB.secondary);
+      // A note repeats on every reading of its incident, so it is capped at two
+      // lines: the full text is on the alert page, and a long note wrapping over
+      // five lines on a hundred consecutive rows would bury the readings it is
+      // there to explain.
+      const note = commentForReading(notes, r.temperature, applied, r.recordedAt);
+      let rowHeight = 4.5;
+      if (note) {
+        const lines = doc.splitTextToSize(note, commentWidth).slice(0, COMMENT_PDF_MAX_LINES);
+        lines.forEach((line: string, i: number) => doc.text(line, col5, y + i * 3.6));
+        rowHeight = Math.max(rowHeight, lines.length * 3.6 + 1);
+      }
       doc.setTextColor(...NEUTRAL_RGB.primary);
-      y += 4.5;
+      y += rowHeight;
     }
   }
 
@@ -236,6 +257,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   const [generating, setGenerating] = useState(false);
   const [readingsBySensor, setReadingsBySensor] = useState<Map<string, ReadingShape[]>>(new Map());
   const [historyBySensor, setHistoryBySensor] = useState<Map<string, ThresholdVersion[]>>(new Map());
+  const [notesBySensor, setNotesBySensor] = useState<Map<string, AlertNote[]>>(new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -270,7 +292,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
     // The full threshold history is loaded, not just the versions overlapping the
     // period: a version that opened long before the period is the one in force at
     // its start, so filtering by the period would drop exactly the row needed.
-    const [readingsRes, configsRes] = await Promise.all([
+    const [readingsRes, configsRes, notesRes] = await Promise.all([
       supabase
         .from("readings")
         .select("id, sensor_id, temperature, recorded_at")
@@ -281,12 +303,29 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
         .from("alert_configs")
         .select("sensor_id, type, alert_threshold_history (threshold, effective_from, effective_to)")
         .in("sensor_id", ids),
+      // Alerts carry the supervisor's note. `!inner` on alert_configs both scopes
+      // this to the selected sensors and drops the offline kinds, which have no
+      // config and nothing to say about a reading.
+      supabase
+        .from("alert_logs")
+        .select("triggered_at, alert_configs!inner (sensor_id, type), alert_comments (body)")
+        .in("alert_configs.sensor_id", ids)
+        .order("triggered_at", { ascending: false })
+        .limit(REPORT_ALERT_LOOKBACK),
     ]);
 
     // A report is a compliance record, so a failed query must not quietly become
     // a plausible-looking document. Without this, an unreadable threshold history
     // renders as "No limit set" on every row — indistinguishable from a sensor
     // that genuinely had no limits.
+    // Deliberately not part of the refusal below. A reading, its limits and its
+    // verdict must be right or the report must not exist; a missing note only
+    // costs context, and refusing to produce a compliance record because an
+    // explanatory comment would not load gets the priority backwards.
+    if (notesRes.error) {
+      console.error("Alert comments load failed", notesRes.error);
+    }
+
     if (readingsRes.error || configsRes.error) {
       console.error("Report data load failed", readingsRes.error, configsRes.error);
       setLoadError("Could not load the report data. Nothing has been generated — please try again.");
@@ -335,7 +374,32 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       ]);
     }
 
+    type AlertRow = {
+      triggered_at: string;
+      alert_configs: { sensor_id: string; type: "min" | "max" } | null;
+      alert_comments: { body: string }[] | { body: string } | null;
+    };
+    const notesById = new Map<string, AlertNote[]>();
+    for (const row of (notesRes.data ?? []) as unknown as AlertRow[]) {
+      const config = row.alert_configs;
+      if (!config) continue;
+      // PostgREST returns an embedded one-to-one as an object or a single-element
+      // array depending on how it infers the relationship; accept both rather
+      // than depending on which.
+      const embedded = Array.isArray(row.alert_comments)
+        ? row.alert_comments[0]
+        : row.alert_comments;
+      const list = notesById.get(config.sensor_id) ?? [];
+      list.push({
+        type: config.type,
+        triggeredAt: row.triggered_at,
+        comment: embedded?.body ?? null,
+      });
+      notesById.set(config.sensor_id, list);
+    }
+
     setLoadError(null);
+    setNotesBySensor(notesById);
     setReadingsBySensor(byId);
     setHistoryBySensor(historyById);
     setGenerated(true);
@@ -356,6 +420,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       sensor: s,
       history: historyBySensor.get(s.id) ?? [],
       readings: inServiceReadings(s.commissionedAt, readingsBySensor.get(s.id) ?? []),
+      notes: notesBySensor.get(s.id) ?? [],
     }));
 
   async function handlePrint() {
@@ -387,6 +452,11 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       `"${tzNote}"`,
       "",
     ];
+    // Comments are deliberately not exported here. The CSV is a data extract for
+    // filtering and pivoting, and repeating a sentence of free text across every
+    // row of an episode makes it worse at that job — while also being the one
+    // place customer-typed text could carry a spreadsheet formula. The PDF is
+    // the compliance document, and it carries them.
     for (const { sensor, history, readings } of reportSensors) {
       lines.push(`"${sensor.name}"`);
       const csvDeviceId = formatDevEui(sensor.hardwareId);
@@ -557,7 +627,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
             </div>
           </div>
 
-          {reportSensors.map(({ sensor, history, readings }, i) => (
+          {reportSensors.map(({ sensor, history, readings, notes }, i) => (
             <div key={sensor.id} className={`mb-10 ${i > 0 ? "break-before-page" : ""}`}>
               <div className="mb-3">
                 <h2 className="text-2xl font-bold">{sensor.name}</h2>
@@ -599,7 +669,8 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
                         <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Date / Time</th>
                         <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Temperature</th>
                         <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Range</th>
-                        <th className="text-left py-2 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-2 pr-6 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-2 font-medium text-muted-foreground">Comment</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -607,18 +678,21 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
                         const applied = rangeAt(history, r.recordedAt);
                         const known = hasRange(applied);
                         const out = isOutOfRangeAt(r.temperature, applied);
+                        const note = commentForReading(notes, r.temperature, applied, r.recordedAt);
                         return (
                           <tr key={r.id} className="border-b border-border/50">
                             <td className="py-1.5 pr-6 text-muted-foreground">{formatReadingTime(r.recordedAt, timezone)}</td>
                             <td className="py-1.5 pr-6 font-mono">{formatTemp(r.temperature)}</td>
                             <td className="py-1.5 pr-6 font-mono text-muted-foreground">{formatRange(applied)}</td>
                             <td
-                              className={`py-1.5 font-medium ${
+                              className={`py-1.5 pr-6 font-medium ${
                                 !known ? "text-muted-foreground" : out ? "text-alert-text" : "text-ok-text"
                               }`}
                             >
                               {known ? (out ? "✗ Out of range" : "✓ OK") : "No limit set"}
                             </td>
+                            {/* React escapes this; the text is customer-typed. */}
+                            <td className="py-1.5 text-muted-foreground">{note}</td>
                           </tr>
                         );
                       })}
