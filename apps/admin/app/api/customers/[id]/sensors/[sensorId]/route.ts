@@ -31,7 +31,7 @@ export async function PATCH(
   const sensor = await verifyOwnership(customerId, sensorId);
   if (!sensor) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });
 
-  const { name, gatewayId, minTemp, maxTemp, emailRecipients } = await request.json();
+  const { name, gatewayId, minTemp, maxTemp } = await request.json();
 
   if (!name?.trim()) return NextResponse.json({ error: 'Sensor name is required' }, { status: 400 });
   if (minTemp == null || maxTemp == null) return NextResponse.json({ error: 'Thresholds are required' }, { status: 400 });
@@ -52,25 +52,24 @@ export async function PATCH(
 
   if (sensorError) return NextResponse.json({ error: sensorError.message }, { status: 400 });
 
-  // Upsert min and max alert_configs
-  const recipients = Array.isArray(emailRecipients) ? emailRecipients : null;
+  // Upsert min and max alert_configs. Recipients are account-wide and live on
+  // `customers.alert_recipients`, edited on the customer page — the per-sensor
+  // list that used to be written here could only add people to the account list,
+  // never route to them, and one email covers every alert open for a customer.
   const thresholds = [
     { type: 'min', threshold: Number(minTemp) },
     { type: 'max', threshold: Number(maxTemp) },
   ];
 
   for (const row of thresholds) {
-    const { data: existing } = await admin.from('alert_configs').select('id, email_recipients').eq('sensor_id', sensorId).eq('type', row.type).single();
+    const { data: existing } = await admin.from('alert_configs').select('id').eq('sensor_id', sensorId).eq('type', row.type).single();
     if (existing) {
-      const updateFields: Record<string, unknown> = { threshold: row.threshold };
-      if (recipients !== null) updateFields.email_recipients = recipients;
-      await admin.from('alert_configs').update(updateFields).eq('id', existing.id);
+      await admin.from('alert_configs').update({ threshold: row.threshold }).eq('id', existing.id);
     } else {
       const { error: insertError } = await admin.from('alert_configs').insert({
         sensor_id: sensorId,
         type: row.type,
         threshold: row.threshold,
-        email_recipients: recipients ?? [],
       });
       if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 });
     }

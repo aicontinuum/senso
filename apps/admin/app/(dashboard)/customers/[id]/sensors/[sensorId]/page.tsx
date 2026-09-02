@@ -41,17 +41,11 @@ export default async function SensorSettingsPage({
 
   const { data: alertConfigs } = await admin
     .from('alert_configs')
-    .select('type, threshold, email_recipients')
+    .select('type, threshold')
     .eq('sensor_id', sensorId);
 
   const belowMin = alertConfigs?.find(c => c.type === 'min');
   const aboveMax = alertConfigs?.find(c => c.type === 'max');
-  const emailRecipients = Array.isArray(belowMin?.email_recipients)
-    ? (belowMin!.email_recipients as string[])
-    : Array.isArray(aboveMax?.email_recipients)
-      ? (aboveMax!.email_recipients as string[])
-      : [];
-
   return (
     <div className="space-y-6">
       <SensorSettingsClient
@@ -64,7 +58,6 @@ export default async function SensorSettingsPage({
           hardwareId: sensor.hardware_id ?? '',
           minTemp: belowMin?.threshold ?? 2,
           maxTemp: aboveMax?.threshold ?? 8,
-          emailRecipients,
         }}
         gateways={(gateways ?? []).map(g => ({ id: g.id, name: g.name ?? g.id }))}
       />

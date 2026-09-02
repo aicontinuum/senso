@@ -331,32 +331,30 @@ async function loadContext(
     }[]).map((c) => [c.id, c]),
   );
 
-  // Per-sensor recipients sit on the alert config; account-wide ones on the
-  // customer. The send list is the union, de-duplicated.
+  // One list per customer: `customers.alert_recipients`.
+  //
+  // There used to be a second, per-sensor list unioned into this one. It promised
+  // per-fridge routing it could not deliver — a union can only add people, never
+  // narrow, and one email covers every alert open for a customer, so anyone added
+  // to one sensor received the others anyway.
+  //
+  // It also made recipients depend on timing. Per-sensor lists were loaded only
+  // for alerts carrying an alert_config_id, so an offline alert (which has none)
+  // reached the account list alone — unless a threshold alert for the same
+  // customer happened to be claimed in the same five-minute run, which pulled
+  // that sensor's list in too. Same alert, different recipients, decided by what
+  // else broke at that moment. Worst case, a customer with addresses only on
+  // sensors and none on the account was emailed by nobody, and the send counted
+  // as done.
+  //
+  // A single list resolved per customer cannot vary with batch composition, so
+  // collapsing the two *is* the fix, not a step towards it.
   const recipientsByCustomer = new Map<string, string[]>();
   for (const [id, customer] of customers) {
     const accountWide = Array.isArray(customer.alert_recipients)
       ? (customer.alert_recipients as string[])
       : [];
     recipientsByCustomer.set(id, [...new Set(accountWide.map((e) => e.toLowerCase()))]);
-  }
-
-  const { data: configRecipientRows } = configIds.length
-    ? await admin.from('alert_configs').select('id, sensor_id, email_recipients').in('id', configIds)
-    : { data: [] };
-
-  for (const row of (configRecipientRows ?? []) as {
-    id: string; sensor_id: string; email_recipients: unknown;
-  }[]) {
-    const sensor = sensors.get(row.sensor_id);
-    if (!sensor) continue;
-    const customerId = sensor.gateways.customer_id;
-    const perSensor = Array.isArray(row.email_recipients) ? (row.email_recipients as string[]) : [];
-    const merged = new Set([
-      ...(recipientsByCustomer.get(customerId) ?? []),
-      ...perSensor.map((e) => e.toLowerCase()),
-    ]);
-    recipientsByCustomer.set(customerId, [...merged]);
   }
 
   const customerIdByAlert = new Map<string, string>();

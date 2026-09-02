@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
 
 interface SensorData {
   id: string;
@@ -14,7 +13,6 @@ interface SensorData {
   hardwareId: string;
   minTemp: number;
   maxTemp: number;
-  emailRecipients: string[];
 }
 
 interface GatewayOption {
@@ -59,7 +57,6 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
     gatewayId: sensor.gatewayId,
     minTemp: String(sensor.minTemp),
     maxTemp: String(sensor.maxTemp),
-    emailRecipients: sensor.emailRecipients,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -71,8 +68,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
     form.name !== sensor.name ||
     form.gatewayId !== sensor.gatewayId ||
     Number(form.minTemp) !== sensor.minTemp ||
-    Number(form.maxTemp) !== sensor.maxTemp ||
-    JSON.stringify(form.emailRecipients) !== JSON.stringify(sensor.emailRecipients);
+    Number(form.maxTemp) !== sensor.maxTemp;
 
   function cancel() {
     setForm({
@@ -80,7 +76,6 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
       gatewayId: sensor.gatewayId,
       minTemp: String(sensor.minTemp),
       maxTemp: String(sensor.maxTemp),
-      emailRecipients: sensor.emailRecipients,
     });
     setError('');
     setSaved(false);
@@ -103,7 +98,7 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
       const res = await fetch(`/api/customers/${customerId}/sensors/${sensor.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, gatewayId: form.gatewayId, minTemp: min, maxTemp: max, emailRecipients: form.emailRecipients }),
+        body: JSON.stringify({ name: form.name, gatewayId: form.gatewayId, minTemp: min, maxTemp: max }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'Failed to save'); return; }
@@ -193,21 +188,14 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
             <span className="font-mono text-sm text-muted-foreground">{sensor.hardwareId || '—'}</span>
           </Row>
 
+          {/* Recipients are account-wide and edited on the customer page. The
+              per-sensor list that used to live here promised per-fridge routing
+              it could not deliver: the two lists were unioned, so it could only
+              add people, and one email covers every alert open for a customer. */}
           <Row label="Alert Recipients">
-            {editing ? (
-              <EmailRecipientsEditor
-                emails={form.emailRecipients}
-                onChange={emailRecipients => setForm(f => ({ ...f, emailRecipients }))}
-              />
-            ) : (
-              <div className="space-y-0.5">
-                {sensor.emailRecipients.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">None set.</span>
-                ) : (
-                  sensor.emailRecipients.map(e => <p key={e} className="text-sm">{e}</p>)
-                )}
-              </div>
-            )}
+            <span className="text-sm text-muted-foreground">
+              Account-wide — set on the customer page.
+            </span>
           </Row>
         </dl>
 

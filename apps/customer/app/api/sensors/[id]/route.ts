@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
-import { validateRecipients, RECIPIENTS_MESSAGES } from '@/lib/recipients';
 import {
   validateSensorName,
   normaliseSensorName,
@@ -37,7 +36,7 @@ export async function PATCH(
 
   if (!gateway) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });
 
-  const { name, minTemp, maxTemp, emailRecipients } = await request.json();
+  const { name, minTemp, maxTemp } = await request.json();
 
   if (minTemp == null || maxTemp == null) return NextResponse.json({ error: 'Thresholds are required' }, { status: 400 });
   if (Number(minTemp) >= Number(maxTemp)) return NextResponse.json({ error: 'Min must be less than max' }, { status: 400 });
@@ -71,14 +70,11 @@ export async function PATCH(
     }
   }
 
-  const recipientsResult = validateRecipients(emailRecipients ?? []);
-  if (!recipientsResult.ok) {
-    return NextResponse.json(
-      { error: RECIPIENTS_MESSAGES[recipientsResult.error] },
-      { status: 400 },
-    );
-  }
-  const recipients = recipientsResult.value;
+  // Recipients are account-wide and live on `customers.alert_recipients`, edited
+  // in Settings (customer) or on the customer page (admin). The per-sensor list
+  // that used to be written here is gone: the two were unioned, so it could only
+  // ever add people rather than route to them, and one email covers every alert
+  // open for a customer — anyone added to one sensor received the others anyway.
   const thresholds = [
     { type: 'min', threshold: Number(minTemp) },
     { type: 'max', threshold: Number(maxTemp) },
@@ -95,7 +91,7 @@ export async function PATCH(
     if (existing) {
       const { error } = await supabase
         .from('alert_configs')
-        .update({ threshold: row.threshold, email_recipients: recipients })
+        .update({ threshold: row.threshold })
         .eq('id', existing.id);
       if (error) {
         console.error('Threshold update failed', { sensorId, type: row.type, error });
@@ -104,7 +100,7 @@ export async function PATCH(
     } else {
       const { error } = await supabase
         .from('alert_configs')
-        .insert({ sensor_id: sensorId, type: row.type, threshold: row.threshold, email_recipients: recipients });
+        .insert({ sensor_id: sensorId, type: row.type, threshold: row.threshold });
       if (error) {
         console.error('Threshold insert failed', { sensorId, type: row.type, error });
         return NextResponse.json({ error: 'Could not save the thresholds.' }, { status: 400 });

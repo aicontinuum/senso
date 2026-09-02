@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, Plus, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
@@ -46,9 +46,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
   const [nameError, setNameError] = useState("");
   const [minTemp, setMinTemp] = useState(String(config.minTemp));
   const [maxTemp, setMaxTemp] = useState(String(config.maxTemp));
-  const [emails, setEmails] = useState<string[]>(config.emailRecipients);
-  const [newEmail, setNewEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -86,9 +83,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
     setNameError("");
     setMinTemp(String(config.minTemp));
     setMaxTemp(String(config.maxTemp));
-    setEmails(config.emailRecipients);
-    setNewEmail("");
-    setEmailError("");
     setSaveError("");
     setEditing(false);
   }
@@ -114,7 +108,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           name: normaliseSensorName(name),
           minTemp: min,
           maxTemp: max,
-          emailRecipients: emails,
         }),
       });
       let data: { error?: string } = {};
@@ -130,29 +123,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
     } finally {
       setSaving(false);
     }
-  }
-
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
-
-  function addEmail() {
-    const e = newEmail.trim().toLowerCase();
-    if (!EMAIL_RE.test(e)) {
-      setEmailError("Enter a valid email address (e.g. name@example.com)");
-      return;
-    }
-    if (emails.includes(e)) {
-      setEmailError("This email is already in the list");
-      return;
-    }
-    if (accountRecipients.includes(e)) {
-      setEmailError(
-        "This email already receives alerts via account-wide settings",
-      );
-      return;
-    }
-    setEmails((prev) => [...prev, e]);
-    setNewEmail("");
-    setEmailError("");
   }
 
   // Three segments, one lit per tier — so the level reads at a glance from the
@@ -357,11 +327,16 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             )}
           </div>
 
-          {/* Account-wide recipients (read-only) */}
+          {/* Recipients are account-wide and edited in Settings. There used to be a
+              second, per-sensor list here; it promised per-fridge routing it could
+              not deliver — the two lists were unioned, so it could only ever add
+              people, and one email covers every alert open for a customer, so
+              anyone added to one sensor received the others anyway. One list, one
+              place to change it. */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-medium text-muted-foreground">
-                Account-wide Recipients
+                Alert Recipients
               </p>
               <Link
                 href="/settings"
@@ -371,69 +346,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               </Link>
             </div>
             {accountRecipients.length === 0 ? (
-              <p className="text-sm text-muted-foreground">None set</p>
+              <p className="text-sm text-muted-foreground">
+                None set — nobody will be emailed about this sensor.
+              </p>
             ) : (
               <div className="space-y-1">
                 {accountRecipients.map((email) => (
-                  <p key={email} className="text-sm font-medium">
-                    {email}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Per-sensor email recipients */}
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">
-              Alert Recipients
-            </p>
-            {editing ? (
-              <div className="space-y-1.5">
-                {emails.map((email) => (
-                  <div
-                    key={email}
-                    className="flex items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-                  >
-                    <span className="truncate">{email}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setEmails((prev) => prev.filter((e) => e !== email))
-                      }
-                      className="size-7 shrink-0"
-                      aria-label={`Remove ${email}`}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-                <div className="space-y-1">
-                  <div className="flex gap-2">
-                    <Input
-                      aria-label="Add alert recipient"
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => {
-                        setNewEmail(e.target.value);
-                        setEmailError("");
-                      }}
-                      onKeyDown={(e) => e.key === "Enter" && addEmail()}
-                      placeholder="name@example.com"
-                      error={emailError || undefined}
-                      wrapperClassName="min-w-0 flex-1"
-                    />
-                    <Button variant="secondary" onClick={addEmail} className="shrink-0">
-                      <Plus className="h-3.5 w-3.5" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {emails.map((email) => (
                   <p key={email} className="text-sm font-medium">
                     {email}
                   </p>

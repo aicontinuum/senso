@@ -573,7 +573,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
 
       <Section title="Alert Recipients">
         <p className="mb-4 text-sm text-muted-foreground">
-          These emails receive alerts from every sensor on this account. Per-sensor recipients are additive — both lists are notified.
+          These emails receive alerts from every sensor on this account. This is the only recipient list — the customer edits the same one in their Settings.
         </p>
         <EmailRecipientsEditor emails={acctEmails} onChange={saveAcctEmails} />
         {savingAcctEmails && <p className="mt-2 text-xs text-muted-foreground">Saving…</p>}
