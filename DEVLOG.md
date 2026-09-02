@@ -61,10 +61,24 @@ report until a technician marks the sensor installed.
   dashboard raises a different question.
 - **`not-in-service` outranks `offline`** in `sensorState()`. A sensor still in
   its box is not offline in any sense worth showing as a fault.
-- **Un-commissioning demands a reason.** It removes readings from a report the
-  customer may already have produced, so it is never a silent clear: both
-  directions write to `sensor_commissioning_events` with the admin who acted, and
-  the reverse direction refuses without a stated reason.
+- **Commissioning is one-way, and the UI offers no reverse.** It shipped with a
+  "Take out of service" button and that was wrong. Two verbs for leaving service
+  is one too many: **Unlink** already retires a sensor that really was in service
+  and keeps its history in reports tagged "Retired". Un-commissioning means
+  something else — *it was never in service, withdraw the record* — which is a
+  correction for a mis-commission, not a lifecycle step, and rare enough that it
+  does not belong on a button beside a rename.
+
+  Removing it also removed two defects it had: a round trip lost the original
+  commissioning date (re-commissioning stamps *now*, and the audit row recorded
+  no previous value), and ingest's early return for an out-of-service sensor sits
+  above the branch that resolves alerts, so an alert open at that moment would
+  have stayed open indefinitely.
+
+  The lifecycle is now **register → commission → retire**. A genuine
+  mis-commission is an office-side SQL correction; `sensor_commissioning_events`
+  still accepts an `uncommissioned` action, with its reason, so that correction
+  can be recorded when it happens.
 - **Ingest returns `notInService: true`** rather than pretending nothing
   happened, so a bench sensor's suppressed alerting is visible in the logs.
 
@@ -90,7 +104,8 @@ Applied to a real PostgreSQL 16 against a fixture of the live schema:
   is **refused** — permission denied, at the database, not in application code.
 - The ordering constraint rejects a sensor retired before it was installed.
 - The audit table rejects an un-commissioning with no reason, and a
-  commissioning with no timestamp.
+  commissioning with no timestamp. (Both still enforced — the office-side
+  correction writes through the same table.)
 - A sensor with commissioning history cannot be hard-deleted.
 
 Plus 18 cases against the real modules covering the boundary reading (`>=`, not

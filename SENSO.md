@@ -221,8 +221,10 @@ design system does not cover print geometry.
   `sensors.commissioned_at` is stamped by a technician at install (`ONBOARDING.md`
   §6). Before it, readings are stored but raise no alerts and appear in no report,
   so a bench test at office temperature can never land in a customer's record as a
-  fridge failure. Reversible, admin-only, and every change is logged to
-  `sensor_commissioning_events` with a reason. **Gateways do not have this yet.**
+  fridge failure. Admin-only and one-way — the lifecycle is **register →
+  commission → retire**, where retiring is the existing Unlink and keeps the
+  sensor's history in reports. Logged to `sensor_commissioning_events`.
+  **Gateways do not have this yet.**
 - Pre-launch tasks (security hardening, retention, RLS verification, etc.) live in
   `TODO.md`; the running build log is `DEVLOG.md`.
 

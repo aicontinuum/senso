@@ -46,6 +46,10 @@ export async function POST(
     return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
   }
 
+  // `commissioned_at` is deliberately left unset: a newly linked sensor is not in
+  // service until a technician marks it installed at the site. Giving it a
+  // default here would put every bench reading straight into the customer's
+  // compliance record, which is the whole thing commissioning exists to stop.
   const { data: sensor, error: insertError } = await admin
     .from('sensors')
     .insert({

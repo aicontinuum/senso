@@ -122,6 +122,17 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   the point of an audit trail is that someone can read it without a database
   client.
 
+- [ ] **No office-side procedure for a mis-commission.** Commissioning is one-way
+  in the UI by design, so a sensor commissioned by mistake is corrected with SQL:
+  clear `sensors.commissioned_at`, and write the matching `uncommissioned` row to
+  `sensor_commissioning_events` with a reason so the correction is on record.
+  Two things that need doing by hand and would be easy to forget: **resolve any
+  open `alert_logs` for that sensor** (ingest's early return for an
+  out-of-service sensor sits above the branch that resolves them, so one left
+  open stays open), and **note the previous `commissioned_at`** before clearing
+  it, since nothing else records it. Worth writing up as a runbook entry, or
+  wrapping in a `SECURITY DEFINER` function that does all three correctly.
+
 ## Code health — added 2026-08-29
 
 - [ ] **`deveui.ts` is duplicated byte-for-byte** between `apps/customer/lib/deveui.ts` and
