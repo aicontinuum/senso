@@ -102,6 +102,36 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   (added 2026-08-29). Keep them updated when a variable is added — a missing one is
   invisible until something fails in production, which is how the Resend key was missed.
 
+## Pre-deployment — added 2026-09-06
+
+- [ ] **No unique constraint on a device's identifier.** `sensors.hardware_id` and
+  `gateways.mac_address` can each hold two live rows for the same physical device.
+  Ingest looks a sensor up by DevEUI filtered to `decommissioned_at is null` with
+  `maybeSingle()`, so two live rows make that call error — and the code reads the
+  error as "unknown device", **silently drops the readings**, and logs
+  `unregistered or retired DevEUI`. Completely misleading, and the exact shape of
+  moving a device between customer accounts if the old row is not retired first.
+  Fix with partial unique indexes:
+
+  ```sql
+  create unique index if not exists sensors_hardware_id_active
+    on sensors (hardware_id) where decommissioned_at is null;
+  create unique index if not exists gateways_mac_address_active
+    on gateways (mac_address) where decommissioned_at is null;
+  ```
+
+  Deferred 2026-09-06 by choice. Until then the discipline is: **retire the old
+  row before registering the device under a new account.**
+
+- [ ] **`/api/heartbeat` is dead weight and fail-open.** It is the old Pi kit's
+  liveness pulse; the LoRaWAN chain never calls it, and `/api/ingest` stamps
+  `gateways.last_seen_at` itself. It authenticates with `gatewaySecretOk`, which
+  allows the request when the gateway row has no secret — so anyone knowing a
+  gateway EUI can stamp it "alive" and hide a dark site from the admin dashboard.
+  It cannot inject readings or silence a customer alert. Delete the route and
+  `lib/gateway-auth.ts` rather than fixing them; that closes the "device auth is
+  fail-open" Critical item above, which no longer applies to the live path.
+
 ## Alerting bugs — added 2026-09-02 (both affect `sensor_offline`)
 
 - [x] ~~**Who receives an offline alert depends on what else fired.**~~ **FIXED 2026-09-02** by collapsing the two recipient lists into one (`customers.alert_recipients`). With a single list resolved per customer, batch composition cannot change who is emailed, and there is no longer any way to have addresses on sensors but none on the account. Original finding below. Recipients
