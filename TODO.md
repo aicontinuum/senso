@@ -79,7 +79,23 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Alerting & operations — added 2026-08-29
 
-- [ ] **The VPS is now load-bearing for alerting, and nothing watches it.** The alert cron
+- [ ] **The VPS is now load-bearing for alerting, and nothing watches it.**
+  **Design settled 2026-09-07, deferred by choice — build it before the second
+  customer.** Two layers, not exclusive:
+
+  1. *Daily backstop, mostly code.* The alerts route stamps a `last_run_at` on
+     each run; a once-daily Vercel cron reads it and emails if the gap exceeds
+     ~30 minutes. Needs one small table and one env var for the destination
+     address (`OPS_ALERT_EMAIL`) — both settable from a phone. Vercel's Hobby
+     plan caps cron at once per day, which is why detection is up to 24h behind;
+     that is still infinitely better than never.
+  2. *External monitor, ~15 minutes at a computer.* A free dead-man's-switch
+     (Healthchecks.io, UptimeRobot) that the crontab line pings on success and
+     which emails when the pings stop. Detects within minutes.
+
+  Build both: the monitor does the real work, the daily check keeps working if
+  the monitor lapses.
+ The alert cron
   runs from the ChirpStack VPS crontab (`network-server/README.md`). If the VPS is down,
   or the crontab entry is removed, or `CRON_SECRET` drifts out of sync with Vercel,
   breaches are still recorded but **no one is told, and nothing anywhere says so**. This is
