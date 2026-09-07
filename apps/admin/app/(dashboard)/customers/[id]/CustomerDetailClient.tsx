@@ -412,25 +412,28 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
         )}
 
         <div className="space-y-2">
-          <div className="flex gap-2">
+          {/* Stacks on a phone. Side by side these three come to 465px, so on a
+              390px screen the button sat 112px off the right edge and could not
+              be tapped at all — and this form is used standing in a kitchen. */}
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               value={euiInput}
               onChange={e => { setEuiInput(e.target.value); setLinkError(''); }}
               onKeyDown={e => e.key === 'Enter' && linkGateway()}
               placeholder="Gateway EUI (e.g. 2cf7f11081400088)"
-              className={`flex-1 max-w-xs rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring ${linkError ? 'border-alert-border focus:ring-alert-500' : 'border-border'}`}
+              className={`w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-auto sm:flex-1 sm:max-w-xs ${linkError ? 'border-alert-border focus:ring-alert-500' : 'border-border'}`}
             />
             <input
               value={gwName}
               onChange={e => setGwName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && linkGateway()}
               placeholder="Name"
-              className="w-36 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-36"
             />
             <button
               onClick={linkGateway}
               disabled={linking || !euiInput.trim() || !gwName.trim()}
-              className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {linking ? 'Linking…' : 'Link Gateway'}
             </button>
