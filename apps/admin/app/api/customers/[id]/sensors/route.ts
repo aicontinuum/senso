@@ -62,9 +62,15 @@ export async function POST(
     .single();
 
   if (insertError) {
+    // The partial unique index counts live rows only, so this means the device
+    // is registered *and in service* somewhere — which is the answer someone
+    // moving a sensor between customers needs, not a bare refusal.
     if (insertError.code === '23505') {
       return NextResponse.json(
-        { error: 'This DevEUI is already registered to another sensor' },
+        {
+          error:
+            'This DevEUI is already registered to an active sensor. If you are moving the device, remove it from its current customer first.',
+        },
         { status: 409 },
       );
     }

@@ -59,9 +59,13 @@ export async function POST(
     .single();
 
   if (insertError) {
+    // Live rows only — see the sensors route.
     if (insertError.code === '23505') {
       return NextResponse.json(
-        { error: 'This Gateway EUI is already registered to another gateway' },
+        {
+          error:
+            'This Gateway EUI is already registered to an active gateway. If you are moving it, remove it from its current customer first.',
+        },
         { status: 409 },
       );
     }

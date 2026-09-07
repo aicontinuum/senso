@@ -104,7 +104,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Pre-deployment — added 2026-09-06
 
-- [ ] **No unique constraint on a device's identifier.** `sensors.hardware_id` and
+- [x] ~~**No unique constraint on a device's identifier.**~~ **FIXED 2026-09-07** — `20260907_one_live_row_per_device.sql` adds partial unique indexes on `sensors.hardware_id` and `gateways.mac_address` scoped to live rows, and drops any plain unique constraint on those columns first (a plain one counts retired rows and would refuse the legitimate re-registration). Both admin create routes now say what to do about it. Verified against a real PostgreSQL 16 in both starting states. Original finding below. `sensors.hardware_id` and
   `gateways.mac_address` can each hold two live rows for the same physical device.
   Ingest looks a sensor up by DevEUI filtered to `decommissioned_at is null` with
   `maybeSingle()`, so two live rows make that call error — and the code reads the
