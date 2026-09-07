@@ -501,7 +501,9 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-medium mb-2">Time range</p>
-            <div className="flex gap-2">
+            {/* Wraps, or the four buttons total 427px and push the whole page
+                sideways on any phone — measured at 390px and 360px. */}
+            <div className="flex flex-wrap gap-2">
               {RANGES.map((r) => (
                 <Button
                   key={r.value}
