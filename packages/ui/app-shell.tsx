@@ -8,8 +8,8 @@ import type { NavItem } from "./nav";
 interface AppShellProps {
   children: React.ReactNode;
   appName: string;
-  /** Rendered after the wordmark, e.g. "ADMIN", so the two sites read apart at a glance. */
-  logoSuffix?: string;
+  /** Override the brand artwork; admin uses a lockup carrying an ADMIN badge. */
+  logoSrc?: string;
   navItems: NavItem[];
   /** Right-hand header slot. */
   headerRight?: React.ReactNode;
@@ -17,7 +17,7 @@ interface AppShellProps {
   onLogout: () => void;
 }
 
-export function AppShell({ children, appName, logoSuffix, navItems, headerRight, onLogout }: AppShellProps) {
+export function AppShell({ children, appName, logoSrc, navItems, headerRight, onLogout }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -40,7 +40,7 @@ export function AppShell({ children, appName, logoSuffix, navItems, headerRight,
         <Header
           onMenuClick={() => setMobileOpen((v) => !v)}
           appName={appName}
-          logoSuffix={logoSuffix}
+          logoSrc={logoSrc}
           right={headerRight}
         />
         <main className="flex-1 overflow-auto p-4 sm:p-6 print:overflow-visible print:p-0">

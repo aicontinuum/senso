@@ -6,13 +6,13 @@ import { Logo } from "./logo";
 interface HeaderProps {
   onMenuClick: () => void;
   appName: string;
-  /** Rendered after the wordmark, e.g. "ADMIN". */
-  logoSuffix?: string;
+  /** Override the brand artwork; admin uses its own lockup. */
+  logoSrc?: string;
   /** Right-hand slot: the customer's name on one app, a role label on the other. */
   right?: React.ReactNode;
 }
 
-export function Header({ onMenuClick, appName, logoSuffix, right }: HeaderProps) {
+export function Header({ onMenuClick, appName, logoSrc, right }: HeaderProps) {
   return (
     // Three tracks rather than flex with justify-between, so the brand is centred
     // on the bar itself and not on whatever space the side content leaves over.
@@ -29,7 +29,7 @@ export function Header({ onMenuClick, appName, logoSuffix, right }: HeaderProps)
       </div>
 
       <div className="flex justify-center">
-        <Logo appName={appName} suffix={logoSuffix} />
+        <Logo appName={appName} src={logoSrc} />
       </div>
 
       <div className="flex min-w-0 justify-end">

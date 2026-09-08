@@ -11,12 +11,16 @@ import { cn } from "./cn";
 // apps use different ones.
 export function Logo({
   appName,
-  suffix,
+  src = "/logo-wide.svg",
   className,
 }: {
   appName: string;
-  /** Set on the admin app so the two sites are not mistaken for each other. */
-  suffix?: string;
+  /**
+   * Artwork path. Admin overrides it with its own lockup, which carries an
+   * ADMIN badge so the two sites cannot be mistaken for each other — the
+   * destructive actions all live on that one.
+   */
+  src?: string;
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
@@ -30,28 +34,14 @@ export function Logo({
   }
 
   return (
-    <span className="flex items-center gap-2">
-      {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset,
-          no optimisation or layout measurement needed, and <img> keeps the onError
-          fallback simple. */}
-      <img
-        src="/logo-wide.svg"
-        alt={appName}
-        onError={() => setFailed(true)}
-        className={cn("h-7 w-auto shrink-0", className)}
-      />
-      {/* Set as markup rather than baked into a second SVG: the wordmark is
-          outlined paths, so a <text> node inside it could not use the loaded
-          brand font — an SVG referenced by <img> cannot reach external fonts and
-          would fall back to whatever the device has. As a chip it renders in
-          Poppins like every other heading, stays crisp at any size, and takes
-          its colours from the theme's inverted surface rather than a baked-in
-          black. */}
-      {suffix && (
-        <span className="shrink-0 rounded-chip bg-inverse px-2.5 py-1 font-display text-md font-bold uppercase leading-none tracking-wide text-text-inverse">
-          {suffix}
-        </span>
-      )}
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element -- static brand asset,
+    // no optimisation or layout measurement needed, and <img> keeps the onError
+    // fallback simple.
+    <img
+      src={src}
+      alt={appName}
+      onError={() => setFailed(true)}
+      className={cn("h-7 w-auto shrink-0", className)}
+    />
   );
 }
