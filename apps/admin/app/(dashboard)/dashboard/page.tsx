@@ -109,12 +109,12 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
 
-      <div className="grid grid-cols-4 divide-x rounded-lg border bg-card text-card-foreground shadow-sm">
-        <div className="px-6 py-5">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border text-card-foreground shadow-sm sm:grid-cols-4">
+        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-sm font-medium text-muted-foreground">Customers</p>
           <p className="mt-1 text-3xl font-bold">{(customers ?? []).length}</p>
         </div>
-        <div className="px-6 py-5">
+        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-sm font-medium text-muted-foreground">Sites dark</p>
           <p className={`mt-1 text-3xl font-bold ${sitesDark > 0 ? 'text-alert-text' : ''}`}>
             {sitesDark}
@@ -123,7 +123,7 @@ export default async function AdminDashboardPage() {
             {sitesDark > 0 ? 'no readings arriving' : 'all gateways reporting'}
           </p>
         </div>
-        <div className="px-6 py-5">
+        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
           <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline + sensorsPending}</p>
           <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
@@ -134,16 +134,16 @@ export default async function AdminDashboardPage() {
             )}
           </div>
         </div>
-        <div className="px-6 py-5">
+        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-sm font-medium text-muted-foreground">Alerts (past 24h)</p>
           <p className={`mt-1 text-3xl font-bold ${totalAlerts > 0 ? 'text-alert-text' : ''}`}>{totalAlerts}</p>
           <p className="mt-2 text-sm text-muted-foreground">across all customers</p>
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card shadow-sm">
-        <div className="border-b px-6 py-4"><h2 className="font-semibold">Customers</h2></div>
-        <div className="overflow-x-auto">
+      <div>
+        <h2 className="mb-3 text-lg font-semibold tracking-tight">Customers</h2>
+        <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
