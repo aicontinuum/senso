@@ -48,7 +48,7 @@ export function Logo({
           its colours from the theme's inverted surface rather than a baked-in
           black. */}
       {suffix && (
-        <span className="shrink-0 rounded-chip bg-inverse px-2 py-1 font-display text-sm font-bold uppercase leading-none tracking-wide text-text-inverse">
+        <span className="shrink-0 rounded-chip bg-inverse px-2.5 py-1 font-display text-md font-bold uppercase leading-none tracking-wide text-text-inverse">
           {suffix}
         </span>
       )}
