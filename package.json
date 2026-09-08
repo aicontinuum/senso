@@ -7,8 +7,7 @@
   ],
   "scripts": {
     "dev:customer": "npm run dev --workspace=apps/customer",
-    "dev:admin": "npm run dev --workspace=apps/admin",
-    "simulate": "node scripts/simulate.mjs"
+    "dev:admin": "npm run dev --workspace=apps/admin"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

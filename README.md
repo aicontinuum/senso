@@ -34,7 +34,7 @@ Two separate Next.js apps, deliberately sharing no session or auth context:
 | `apps/customer` | Restaurant staff — readings, alerts, reports | app.sensoqa.com |
 | `apps/admin` | Senso staff — customers, devices, billing, **and the API routes** | admin.sensoqa.com |
 
-`/api/ingest`, `/api/heartbeat` and `/api/cron/*` all live in the admin app.
+`/api/ingest` and `/api/cron/*` both live in the admin app.
 
 ## Repository map
 
@@ -48,9 +48,11 @@ packages/status      Freshness and battery rules used by both sites
 packages/mock-data   Pre-Supabase fixtures; still referenced in places
 supabase/migrations  SQL, applied by hand — see below
 network-server/      ChirpStack VPS as-built, including the alert crontab
-gateway/             The retired Pi/ESP32 kit. Test bench only, not in the product path.
-scripts/simulate.mjs Fake readings for local work
 ```
+
+The Raspberry Pi/ESP32 prototype kit that preceded LoRaWAN was removed on
+2026-09-08, together with its `/api/heartbeat` endpoint and the reading
+simulator that spoke its format. `DEVLOG.md` and `MIGRATION.md` keep the history.
 
 ## Running it
 

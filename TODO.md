@@ -8,7 +8,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 - [x] ~~**Verify + fix RLS on every table (tenant isolation).**~~ **VERIFIED 2026-08-28 — the isolation risk is closed.** `pg_class.relrowsecurity` is `true` on all six public tables (`customers`, `gateways`, `sensors`, `readings`, `alert_configs`, `alert_logs`), and each has a SELECT policy resolving ownership back through `auth.uid()`. The earlier claim that `alert_logs` had a GRANT with no policy was wrong — `alert_logs_select_own` exists and is correctly scoped. No cross-customer read path remains. Residual items split out below (column scope on UPDATE, duplicate policies).
 
-- [ ] **Device auth is fail-open.** `apps/admin/lib/gateway-auth.ts` returns authorized whenever `gateways.secret` is null/absent, so any gateway without a provisioned secret accepts unauthenticated writes — inject fake readings, send `offline:true` to flip sensors offline and silence alarms, or forge/suppress `alert_logs` — knowing only the public EUI. Flip to **fail-closed** (reject when no secret) and confirm every gateway row has a secret before go-live.
+- [x] ~~**Device auth is fail-open.**~~ **CLOSED 2026-09-08 — the Pi kit was removed.** `gateway-auth.ts`, `/api/heartbeat`, the `gateway/` directory and the `gateways.secret` column (`20260908_drop_gateway_secret.sql`) are gone; the only live write path is `/api/ingest`, which fails closed on `CHIRPSTACK_INGEST_SECRET`. Original finding: `apps/admin/lib/gateway-auth.ts` returns authorized whenever `gateways.secret` is null/absent, so any gateway without a provisioned secret accepts unauthenticated writes — inject fake readings, send `offline:true` to flip sensors offline and silence alarms, or forge/suppress `alert_logs` — knowing only the public EUI. Flip to **fail-closed** (reject when no secret) and confirm every gateway row has a secret before go-live.
 
 ### 🟠 High
 
@@ -16,33 +16,33 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 - [ ] **Duplicate RLS policies.** `alert_configs` carries three SELECT policies (`customers_read_own_alert_configs`, `customers_select_own_alert_configs`, `alert_configs_select_own`) and `readings` carries two (`customers_select_own_readings`, `readings_select_own`). Permissive policies are OR'd so this is not currently a hole — but it is a trap: tightening one and missing its twins leaves the loosest one in force. Prune to one policy per table per command.
 
-- [ ] **No rate limiting anywhere** — login, `/api/ingest`, `/api/heartbeat`, `/api/cron/alerts`, and all admin/customer APIs. Enables gateway enumeration, ingest flooding, and credential brute-force. Add per-IP + per-gateway throttling. `/api/cron/alerts` is bearer-token-only and world-reachable, so an attacker who guesses the token can burn the reminder schedule; throttling it is cheap because the legitimate caller runs once every five minutes.
-- [ ] **Unbounded `readings[]` in `/api/ingest`** — no length cap; each element runs several sequential service-role queries. One POST with 100k entries = DoS + unbounded inserts (no auth needed given fail-open). Cap array length and validate.
-- [ ] **LAN packet injection into the forwarder** — `senso_forwarder.py` binds `0.0.0.0:1700` with no source check and trusts the raw payload (no LoRaWAN MIC). Anyone on the customer LAN can spoof `PUSH_DATA` for any `hardware_id`/temperature; the Pi then forwards it *authenticated* (it holds the secret) into the compliance record. Bind `127.0.0.1` (lora_pkt_fwd is local).
-- [ ] **`/etc/senso/gateway.env` not `chmod 600` on all paths** — created `install -m 644` (world-readable); `chmod 600` only runs on the auto-generate branch, so a hand-set secret stays 644. Any local user reads the gateway secret. Always `chmod 600`.
-- [ ] **Forwarder runs as root with a network-facing parser + zero systemd hardening** — a parser bug on the unauthenticated UDP surface = root RCE on-premises. Run as an unprivileged `senso` user; add `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `RestrictAddressFamilies=AF_INET AF_INET6`.
+- [ ] **No rate limiting anywhere** — login, `/api/ingest`, `/api/cron/*`, and all admin/customer APIs. Enables ingest flooding and credential brute-force. Add per-IP throttling. `/api/cron/alerts` is bearer-token-only and world-reachable, so an attacker who guesses the token can burn the reminder schedule; throttling it is cheap because the legitimate caller runs once every five minutes.
+- [x] ~~**Unbounded `readings[]` in `/api/ingest`**~~ **MOOT 2026-09-08** — ingest now takes one ChirpStack uplink per POST; there is no array. Original finding: no length cap; each element runs several sequential service-role queries. One POST with 100k entries = DoS + unbounded inserts (no auth needed given fail-open). Cap array length and validate.
+- [x] ~~**LAN packet injection into the forwarder**~~ **REMOVED 2026-09-08 with the Pi kit.** Original finding: `senso_forwarder.py` binds `0.0.0.0:1700` with no source check and trusts the raw payload (no LoRaWAN MIC). Anyone on the customer LAN can spoof `PUSH_DATA` for any `hardware_id`/temperature; the Pi then forwards it *authenticated* (it holds the secret) into the compliance record. Bind `127.0.0.1` (lora_pkt_fwd is local).
+- [x] ~~**`/etc/senso/gateway.env` not `chmod 600` on all paths**~~ **REMOVED 2026-09-08 with the Pi kit.** Original finding: created `install -m 644` (world-readable); `chmod 600` only runs on the auto-generate branch, so a hand-set secret stays 644. Any local user reads the gateway secret. Always `chmod 600`.
+- [x] ~~**Forwarder runs as root with a network-facing parser + zero systemd hardening**~~ **REMOVED 2026-09-08 with the Pi kit.** Original finding: a parser bug on the unauthenticated UDP surface = root RCE on-premises. Run as an unprivileged `senso` user; add `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `PrivateTmp`, `RestrictAddressFamilies=AF_INET AF_INET6`.
 - [ ] **`customers` UPDATE policy too broad** — own-row only, but a customer can `update({billing_status, email, name})` directly from the browser (self-service billing/identity tampering). Restrict to `contact_name`/`phone`/`alert_recipients`/`timezone` via column grants or a SECURITY DEFINER function. (This is part of the RLS Critical item.)
 
 ### 🟡 Medium
 
 - [ ] **Ingest input validation** — `temperature` (type/range) and `recorded_at` (bounded timestamp) unvalidated. Since `recorded_at` is the upsert conflict key, a future timestamp can silently drop a later real reading as a "duplicate." Reject non-numeric temps and out-of-window dates.
-- [ ] **Gateway enumeration** — ingest/heartbeat return `404` for unknown gateway vs `401` for bad secret; spraying EUIs reveals real gateways. Return a uniform response for both.
+- [x] ~~**Gateway enumeration**~~ **CLOSED 2026-09-08** — `/api/heartbeat` is deleted, and `/api/ingest` already answers an unknown device with the same `200` it gives any other ignored uplink, after the shared secret has been checked. Original finding: ingest/heartbeat return `404` for unknown gateway vs `401` for bad secret; spraying EUIs reveals real gateways.
 - [ ] **Threshold validation on `/api/sensors/[id]`** — `NaN >= NaN` is false, so a non-numeric min/max passes and writes `null` thresholds (disables alerting); no bounds check. Validate numeric + sane range + min<max server-side.
 - [ ] **Server-side email-recipient validation** — `/api/account` (`alertRecipients`) and `/api/sensors/[id]` (`emailRecipients`) accept arbitrary arrays, no per-item email regex or length cap (client checks don't count). These become email send-targets. Validate + cap.
 - [ ] **Customer-create password/email not validated server-side** — `/api/customers` forwards `password` to `createUser` with no strength check (password-change enforces ≥8) and no server email regex. Add both.
-- [ ] **Unbounded `queue.db` growth on the Pi** — no cap/eviction; a LAN flood or multi-week outage fills the SD card and wedges the gateway. Add a max-rows cap / retention.
-- [ ] **Heartbeat secret on curl argv** — `heartbeat.sh` passes `-H "Authorization: Bearer $SECRET"`, visible in `ps`/`/proc` each minute. Use `-H @file` / `--config` / stdin. (Forwarder is fine — sends via `requests`.)
-- [ ] **`net-watchdog` reboot loop is LAN-triggerable** — reboots after 15 min of failed pings to a single fixed host; blocking those pings forces perpetual reboots (also a false-positive on networks that block 1.1.1.1). Use multiple/local targets and make reboot more conservative.
+- [x] ~~**Unbounded `queue.db` growth on the Pi**~~ **REMOVED 2026-09-08 with the Pi kit.** Original finding: no cap/eviction; a LAN flood or multi-week outage fills the SD card and wedges the gateway. Add a max-rows cap / retention.
+- [x] ~~**Heartbeat secret on curl argv**~~ **REMOVED 2026-09-08 with the Pi kit.** The same pattern still exists on the VPS: the alert crontab in `network-server/README.md` passes `CRON_SECRET` on the curl command line. Original finding: `heartbeat.sh` passes `-H "Authorization: Bearer $SECRET"`, visible in `ps`/`/proc` each minute. Use `-H @file` / `--config` / stdin. (Forwarder is fine — sends via `requests`.)
+- [x] ~~**`net-watchdog` reboot loop is LAN-triggerable**~~ **REMOVED 2026-09-08 with the Pi kit.** Original finding: reboots after 15 min of failed pings to a single fixed host; blocking those pings forces perpetual reboots (also a false-positive on networks that block 1.1.1.1). Use multiple/local targets and make reboot more conservative.
 - [ ] **CSV formula injection + broken quoting** — `reports/ReportClient.tsx` export doesn't double embedded `"` and has no neutralizing prefix for `= + - @`. Vector is admin-set names (lower likelihood), but escape quotes and prefix risky cells.
-- [ ] **Root `.gitignore` misses a stray `gateway.env`** — patterns are exact names, not a `.env*` glob; a copied real `gateway.env` (with a live secret) could be committed. Add `*.env` / `.env*` at root and `gateway/`.
+- [x] ~~**Root `.gitignore` misses a stray `gateway.env`**~~ **FIXED 2026-09-08** — root `.gitignore` now ignores `.env`, `.env.*` and `*.env` everywhere, with `.env.example` opted back in. Original finding: patterns are exact names, not a `.env*` glob; a copied real `gateway.env` (with a live secret) could be committed. Add `*.env` / `.env*` at root and `gateway/`.
 
 ### 🟢 Low / hardening
 
 - [ ] **Raw Supabase `error.message` returned to clients** (admin + customer routes) — leaks schema/constraint details. Return generic messages; log details server-side.
 - [ ] **Unhandled `request.json()`** in `/api/ingest`, `/api/account`, `/api/sensors/[id]` → 500 on malformed body. Wrap → 400 (heartbeat already does).
-- [ ] **Secret printed to stdout during `setup.sh`** (and briefly in `sed` argv) — leaks into provisioning/CI logs. Have the user read it from the env file instead.
+- [x] ~~**Secret printed to stdout during `setup.sh`**~~ **REMOVED 2026-09-08 with the Pi kit.** Original finding: (and briefly in `sed` argv) leaks into provisioning/CI logs. Have the user read it from the env file instead.
 - [ ] **No security headers** — add HSTS/CSP/X-Frame-Options via `next.config.ts` / `vercel.json`.
-- [ ] **Docs disclose the security model** (open ingest, no rate limiting, RLS gaps, prod host) — fine while private; scrub/relocate if the repo ever goes public.
+- [ ] **Docs disclose the security model** (no rate limiting, RLS gaps, and `network-server/README.md` carries the VPS public IP, hostname and SSH details) — fine while private; scrub/relocate if the repo ever goes public.
 - [ ] **Delete dead `apps/customer/lib/supabase.ts`** — unused anon client not wired to SSR cookies; remove to prevent future misuse.
 - [ ] **`contactName`/`phone` unbounded** on `/api/account` — add length caps.
 
@@ -139,7 +139,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   Deferred 2026-09-06 by choice. Until then the discipline is: **retire the old
   row before registering the device under a new account.**
 
-- [ ] **`/api/heartbeat` is dead weight and fail-open.** It is the old Pi kit's
+- [x] ~~**`/api/heartbeat` is dead weight and fail-open.**~~ **DONE 2026-09-08** — route, `lib/gateway-auth.ts`, the `gateway/` kit and `scripts/simulate.mjs` deleted; `gateways.secret` dropped by `20260908_drop_gateway_secret.sql` (apply it). Original finding: It is the old Pi kit's
   liveness pulse; the LoRaWAN chain never calls it, and `/api/ingest` stamps
   `gateways.last_seen_at` itself. It authenticates with `gatewaySecretOk`, which
   allows the request when the gateway row has no secret — so anyone knowing a
