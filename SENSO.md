@@ -227,8 +227,19 @@ design system does not cover print geometry.
   commission → retire**, where retiring is the existing Unlink and keeps the
   sensor's history in reports. Logged to `sensor_commissioning_events`.
   **Gateways do not have this yet.**
+- **A watchdog covers the alert scheduler.** The sender stamps `job_heartbeats` on
+  every completed run and a daily Vercel cron emails `OPS_ALERT_EMAIL` if that
+  stamp goes stale — because the scheduler lives on the VPS, and until this
+  existed it could stop with nothing anywhere saying so.
+- **The admin site carries its own ADMIN lockup**, so the two sites cannot be
+  mistaken for each other at a glance. The destructive actions all live on that
+  one.
+- **One live registration per physical device**, enforced by partial unique
+  indexes scoped to non-retired rows — so a device can move between customers
+  after being retired, but never be registered twice at once.
 - Pre-launch tasks (security hardening, retention, RLS verification, etc.) live in
-  `TODO.md`; the running build log is `DEVLOG.md`.
+  `TODO.md`; the running build log is `DEVLOG.md`; `README.md` is the orientation
+  for someone arriving cold.
 
 ### Data integrity — the rule that must not be broken
 
