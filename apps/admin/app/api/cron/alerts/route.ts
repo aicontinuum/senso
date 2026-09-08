@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cronSecretOk } from '@/lib/cron-auth';
+import { ALERTS_JOB_KEY } from '@/lib/constants';
 import { SENSOR_STALE_MS } from '@senso/status';
 import { formatDevEui } from '@/lib/deveui-format';
 import { sendEmail, emailConfigured } from '@/lib/email/send';
@@ -59,8 +60,29 @@ export async function GET(request: Request) {
 
   const swept = await sweepForSilence(admin, now);
   const sent = await sendDueAlerts(admin);
+  const result = { ...swept, ...sent };
 
-  return NextResponse.json({ ...swept, ...sent });
+  // Stamped last, and only on the way out, so it means "a run completed" rather
+  // than "a run started". A run that throws never reaches this line, which is
+  // what lets the watchdog tell a stopped scheduler from a broken one — both
+  // leave the stamp stale.
+  //
+  // Deliberately stamped even when there was nothing to do: an idle sweep is
+  // still proof the scheduler is alive, and that is the whole signal.
+  const { error: heartbeatError } = await admin
+    .from('job_heartbeats')
+    .upsert(
+      { job: ALERTS_JOB_KEY, last_run_at: new Date().toISOString(), detail: result },
+      { onConflict: 'job' },
+    );
+
+  // Logged, not fatal. Failing the run because the bookkeeping failed would turn
+  // a monitoring problem into an alerting outage, which is backwards.
+  if (heartbeatError) {
+    console.error('[alerts] heartbeat write failed', heartbeatError);
+  }
+
+  return NextResponse.json(result);
 }
 
 // ── 1. Raise and clear offline alerts ───────────────────────────────────────

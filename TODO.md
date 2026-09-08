@@ -79,7 +79,7 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Alerting & operations — added 2026-08-29
 
-- [ ] **The VPS is now load-bearing for alerting, and nothing watches it.**
+- [ ] **The VPS is now load-bearing for alerting, and nothing watches it.** **Layer 1 BUILT 2026-09-08** — `job_heartbeats` plus `/api/cron/health` on a daily Vercel cron; the alert sender stamps a row on each completed run and the check emails `OPS_ALERT_EMAIL` when that stamp goes stale for 30 minutes. **Layer 2 still open:** the external dead-man's-switch, which is what brings detection down from up-to-24-hours to minutes.
   **Design settled 2026-09-07, deferred by choice — build it before the second
   customer.** Two layers, not exclusive:
 
