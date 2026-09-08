@@ -50,6 +50,13 @@ export const FORMATS: { label: string; value: ReportFormat }[] = [
 
 export const DEFAULT_FORMAT: ReportFormat = "pdf";
 
+// Which of the page's two views is showing lives in the URL, not in state, so
+// that the sidebar's Reports link and the browser's back button both return to
+// the settings — the two things people try first when they want out of a
+// generated report. The report data itself stays in memory; only the view moves.
+export const VIEW_PARAM = "view";
+export const REPORT_VIEW = "report";
+
 // A retired sensor's readings simply stop partway through the period. Saying so on
 // the report explains the gap to an inspector, rather than leaving it to look like
 // the sensor failed or data was lost.

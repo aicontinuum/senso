@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { Download, Mail, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Mail, Printer, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { rangeOption, type RangeValue, type ReportFormat } from "./report-model";
 
@@ -17,8 +17,8 @@ interface ReportActionBarProps {
   range: RangeValue;
   format: ReportFormat;
   sensorCount: number;
-  /** Reopen the settings card to change the selection. */
-  onChange: () => void;
+  /** Return to the settings card, keeping the report in memory. */
+  onBack: () => void;
   onPrint: () => void;
   onDownload: () => void;
   /** Web Share, where the browser has it. */
@@ -28,14 +28,15 @@ interface ReportActionBarProps {
 }
 
 // Once a report exists it is the focus. The settings collapse to this one line:
-// what was generated and how to change it on the left, what to do with it on
-// the right. The chosen format's download is the primary action; Print and
-// Share are secondary.
+// the way back and what was generated on the left, what to do with it on the
+// right. The chosen format's download is the primary action; Print and Share
+// are secondary. Back is a real button, not a link in the caption — it is the
+// first thing most people want after reading a report.
 export function ReportActionBar({
   range,
   format,
   sensorCount,
-  onChange,
+  onBack,
   onPrint,
   onDownload,
   onShare,
@@ -48,11 +49,14 @@ export function ReportActionBar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" size="sm" onClick={onBack}>
+          <ArrowLeft className="size-4" />
+          Back to settings
+        </Button>
+        <span className="text-sm text-muted-foreground">
           {rangeOption(range).label} · {sensorCount} sensor{sensorCount !== 1 ? "s" : ""}
         </span>
-        <Button variant="ghost" size="sm" onClick={onChange}>Change</Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
