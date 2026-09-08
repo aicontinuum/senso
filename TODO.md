@@ -210,9 +210,14 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   `apps/admin/lib/deveui-format.ts`. Now that `packages/` exists, move it to a shared
   package — this is exactly the drift that made the app shell worth extracting.
 
-- [ ] **`apps/admin/vercel.json` is an empty `{}`** left behind when the cron block was
-  removed. Harmless, but it reads as configuration that isn't there. Decide whether Vercel
-  needs the file at all before deleting it.
+- [x] ~~**`apps/admin/vercel.json` is an empty `{}`**~~ **MOOT 2026-09-08** — it now
+  carries the daily `/api/cron/health` schedule, so it is real configuration again.
+
+- [ ] **The admin ADMIN lockup is a PNG, so its black is baked in.** It will not
+  invert if dark mode is ever switched on, and the customer app's wordmark is an
+  SVG that would. On the day dark mode is enabled, this needs an SVG or a second
+  file. `apps/admin/public/logo-wide-admin.png`, pointed at by `logoSrc` in the
+  admin `ShellClient`.
 
 - [ ] **The admin app's inner pages are themed but still hand-rolled markup** — customer
   detail, devices, billing. They pick up the design system's colours and type through the

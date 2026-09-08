@@ -4,6 +4,132 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-08 — Getting to MVP: a watchdog, and the phone
+
+Preparing to put three sensors and a gateway into a real restaurant. The work
+divided into "things that would have stopped the install" and "things that would
+have hurt later".
+
+### Watching the thing that watches the fridges
+
+The alert sender runs every five minutes from a crontab on the ChirpStack VPS,
+and **nothing checked it**. If the VPS rebooted badly, the crontab was wiped, or
+`CRON_SECRET` drifted, breaches were still recorded but no email went out and
+nothing anywhere said so. You would find out by opening a fridge.
+
+`job_heartbeats` plus `/api/cron/health`: the sender stamps a row on every
+completed run, and a daily Vercel cron reads that stamp and emails
+`OPS_ALERT_EMAIL` when it is more than 30 minutes old.
+
+- **The checker runs on Vercel, not the VPS.** A watchdog on the machine it is
+  watching tells you nothing when that machine is what died.
+- **The stamp is written last, and only on the way out**, so it means "a run
+  completed", not "a run started". A run that throws leaves it stale — which is
+  what makes a broken sender indistinguishable from a stopped one, and that is
+  the right answer for both.
+- **It is stamped even when there was nothing to do.** An idle sweep is still
+  proof of life, and that is the entire signal.
+- **A failed stamp logs rather than failing the run.** Turning a monitoring
+  problem into an alerting outage would be exactly backwards.
+- **Thirty minutes is six missed runs**, so a slow run or a single blip cannot
+  trip it.
+- **Daily is the Hobby plan's floor** — the same limit that pushed the sender
+  onto the VPS in the first place — so detection is up to 24 hours behind. The
+  external dead-man's-switch that brings that down to minutes is still open in
+  `TODO.md`; this is the backstop that keeps working if that lapses.
+
+Verified against a real PostgreSQL 16, then confirmed live: the stamp appeared
+within five minutes of deploy with an age of five seconds.
+
+### The device-swap trap — found by testing, not by reading
+
+Moving the sensor and gateway from the founder's own account to the restaurant's
+looked like a two-minute job. It would have failed, and the reason was not the
+one expected.
+
+`sensors.hardware_id` and `gateways.mac_address` each had a **plain unique
+constraint** (`sensors_hardware_id_key`, `gateways_mac_address_key`). Retiring a
+device is a soft delete, so the old row keeps the identifier — meaning
+"retire from one customer, register under another" was refused outright with
+*already registered*. Standing in a kitchen is a bad place to learn that.
+
+The opposite hazard sat next to it: with **no** constraint, two live rows can
+hold the same DevEUI, and `/api/ingest` looks a sensor up among live rows with
+`maybeSingle()`. Two rows make that call error, the code reads the error as "no
+sensor", and the reading is **silently dropped** while the log says
+`unregistered or retired DevEUI` — which is not what happened.
+
+`20260907_one_live_row_per_device.sql` replaces both with partial unique indexes
+scoped to `decommissioned_at is null`: registration is blocked only while another
+*live* row holds the identifier. The migration drops whichever plain form is
+present first, handling both a bare index and one owned by a constraint — an
+index created by `add constraint` cannot be dropped directly, which the first
+version of the migration got wrong and a real-PostgreSQL test caught.
+
+Block 1 is read-only and reports what exists plus any duplicates, because the
+index cannot be created over them.
+
+### Phones
+
+Both sites are used on a phone during an install, and both had layout bugs that
+only appear there. Diagnosed by measuring in Chromium at 390px and 360px rather
+than by eye.
+
+- **Reports slid sideways.** The four time-range buttons total 427px in a 390px
+  screen with no wrapping. `flex-wrap`, and the 53px of drift goes to zero.
+  Two suspects were cleared by the same measurement: the readings table already
+  scrolls inside its own container, and `w-fit` on the sensor picker caps at the
+  available width rather than growing to its content.
+- **The Link Gateway button could not be tapped.** Its row came to 465px, so the
+  button's right edge landed at 502px — 112px past the screen. Stacks below `sm`
+  now. This is the form used standing in a kitchen, so it was the worst one to
+  have.
+- **The admin dashboard was cut off**, because adding the "Sites dark" tile had
+  made the stat row `grid-cols-4`. Two columns below `sm`. Separators moved from
+  `divide-x` to a 1px gap over a tinted background: `divide-x` draws a left
+  border on every item after the first, which is right in one row and wrong the
+  moment the grid wraps.
+
+### Telling the two sites apart
+
+Both apps shipped the same wordmark, so `admin.sensoqa.com` and
+`app.sensoqa.com` looked identical at the top — easy to act on the wrong one,
+and admin is where the destructive actions live. Admin now serves its own
+lockup with an ADMIN badge, supplied as artwork.
+
+Built first from markup, then replaced with the real file. The reasoning for
+markup was that the wordmark is outlined paths, so a `<text>` node inside it
+could not use the brand font — an SVG referenced by `<img>` cannot reach
+external fonts. That argument did not survive the artwork actually arriving: at
+1151×126 against a 28px display height it is a ~4.5× asset, sharp on a 3× screen,
+and 13KB. `Logo` takes a `src` now, so the apps differ by which file they point
+at rather than by assembled parts.
+
+The header's right-hand "Admin" label went with it — the wider lockup squeezed it
+to "Ad…", and it was saying what the logo now says.
+
+**Known trade:** the black is baked into the PNG, so it will not invert if dark
+mode is ever switched on. Light-only today; worth remembering on that day.
+
+### Also
+
+- The customer "Add Device" page said *"Sensor and gateway setup coming soon"*,
+  implying self-service was on its way. It is not — a sensor has to be
+  registered on the network and physically mounted — so it now points at us.
+- The admin dashboard's Customers card carried its own heading directly above a
+  table whose first column is "Customer". The heading moved onto the page.
+
+### Left open, deliberately
+
+- **No backups.** Supabase's free tier has none — no daily, no point-in-time.
+  For a product whose entire value is the record, this is the largest remaining
+  risk and the only unrecoverable one. Pro is $25/month.
+- **The fast half of the watchdog**, i.e. the external dead-man's-switch.
+- **Gateway commissioning**, closed as not-an-issue: the half that mattered went
+  away when customers stopped being emailed about gateways.
+
+---
+
 ## 2026-09-02 — Stop alerting customers about gateways; show offline sensors in the app
 
 Three changes to the same problem: the customer was being told about the wrong
