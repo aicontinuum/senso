@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatTemp, formatReadingTime, formatDateTimeLong } from "@/lib/temperature";
 import {
@@ -22,6 +23,8 @@ import { ReportPreview } from "./ReportPreview";
 import {
   DEFAULT_FORMAT,
   DEFAULT_RANGE,
+  REPORT_VIEW,
+  VIEW_PARAM,
   rangeOption,
   reportFileName,
   retiredNote,
@@ -66,9 +69,24 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   );
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
-  // Once a report exists the settings collapse behind a "Change" link; this
-  // reopens them without discarding the report until a setting actually changes.
-  const [editing, setEditing] = useState(false);
+
+  // The view is read from the URL (see VIEW_PARAM). A generated report is shown
+  // only while the URL says so; leaving by any route — the back button here,
+  // the sidebar link, the browser's back — lands on the settings with the
+  // report still in memory, so a tweak and regenerate stays quick.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const reportView = searchParams.get(VIEW_PARAM) === REPORT_VIEW;
+  const showReport = generated && reportView;
+
+  function openReportView() {
+    router.push(`${pathname}?${VIEW_PARAM}=${REPORT_VIEW}`);
+  }
+
+  function backToSettings() {
+    router.push(pathname);
+  }
   const [readingsBySensor, setReadingsBySensor] = useState<Map<string, ReadingShape[]>>(new Map());
   const [historyBySensor, setHistoryBySensor] = useState<Map<string, ThresholdVersion[]>>(new Map());
   const [notesBySensor, setNotesBySensor] = useState<Map<string, AlertNote[]>>(new Map());
@@ -220,8 +238,8 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
     setReadingsBySensor(byId);
     setHistoryBySensor(historyById);
     setGenerated(true);
-    setEditing(false);
     setGenerating(false);
+    openReportView();
   }
 
   const now = Date.now();
@@ -309,14 +327,12 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
     doc.save(reportFileName("pdf", now));
   }
 
-  const showSettings = !generated || editing;
-
   return (
     <div>
       <div className="print:hidden mb-6 space-y-4">
         <h1 className="text-2xl font-bold">Reports</h1>
 
-        {showSettings ? (
+        {!showReport ? (
           <ReportSettingsCard
             range={range}
             onRangeChange={changeRange}
@@ -335,7 +351,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
             range={range}
             format={format}
             sensorCount={reportSensors.length}
-            onChange={() => setEditing(true)}
+            onBack={backToSettings}
             onPrint={handlePrint}
             onDownload={format === "pdf" ? downloadPDF : downloadCSV}
             onShare={handleShare}
@@ -350,7 +366,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
         </p>
       )}
 
-      {generated && (
+      {showReport && (
         <ReportPreview
           sensors={reportSensors}
           customerName={customerName}
