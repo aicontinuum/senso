@@ -34,6 +34,7 @@ export function ShellClient({ children }: { children: React.ReactNode }) {
   return (
     <AppShell
       appName={APP_NAME}
+      logoSuffix="ADMIN"
       navItems={navItems}
       headerRight="Admin"
       onLogout={handleLogout}
