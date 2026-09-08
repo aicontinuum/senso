@@ -57,8 +57,10 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   // A sensor that was never commissioned has no reportable history at all — only
   // readings taken before it was installed — so it cannot be selected. Retired
   // sensors are the opposite: still selectable, because their history is real,
-  // but kept out of the default selection and "Select all" so a routine report
-  // looks exactly as it did before any sensor was retired.
+  // but kept out of the default selection so a routine report looks exactly as
+  // it did before any sensor was retired. "Select all" does what it says and
+  // takes them too: an account whose sensors have all been replaced would
+  // otherwise have a checkbox that selects nothing.
   const reportableSensors = sensors.filter((s) => s.commissionedAt !== null);
   const activeSensors = reportableSensors.filter((s) => s.decommissionedAt === null);
 
@@ -93,11 +95,11 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const allSelected =
-    activeSensors.length > 0 && activeSensors.every((s) => selectedIds.has(s.id));
+    reportableSensors.length > 0 && reportableSensors.every((s) => selectedIds.has(s.id));
   const rangeMs = rangeOption(range).ms;
 
   function toggleAll() {
-    setSelectedIds(allSelected ? new Set() : new Set(activeSensors.map((s) => s.id)));
+    setSelectedIds(allSelected ? new Set() : new Set(reportableSensors.map((s) => s.id)));
     setGenerated(false);
   }
 
