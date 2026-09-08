@@ -40,14 +40,16 @@ export function Logo({
         onError={() => setFailed(true)}
         className={cn("h-7 w-auto shrink-0", className)}
       />
-      {/* Set as text rather than baked into a second SVG: the wordmark is outlined
-          paths, so a <text> node inside it could not use the loaded brand font —
-          an SVG referenced by <img> cannot reach external fonts and would fall
-          back to whatever the device has. Here it renders in Poppins like every
-          other heading, stays crisp at any size, and follows the theme. */}
+      {/* Set as markup rather than baked into a second SVG: the wordmark is
+          outlined paths, so a <text> node inside it could not use the loaded
+          brand font — an SVG referenced by <img> cannot reach external fonts and
+          would fall back to whatever the device has. As a chip it renders in
+          Poppins like every other heading, stays crisp at any size, and takes
+          its colours from the theme's inverted surface rather than a baked-in
+          black. */}
       {suffix && (
-        <span className="shrink-0 font-display text-lg font-bold tracking-tight text-foreground">
-          / {suffix}
+        <span className="shrink-0 rounded-chip bg-inverse px-2 py-1 font-display text-sm font-bold uppercase leading-none tracking-wide text-text-inverse">
+          {suffix}
         </span>
       )}
     </span>
