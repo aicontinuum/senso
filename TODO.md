@@ -186,6 +186,22 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   which also makes the rule read as what it means. Needs a small migration to
   `claim_due_alerts`.
 
+## Alerting — added 2026-09-09
+
+- [ ] **A retired sensor's open *threshold* alert also strands.** The sweep now
+  closes stranded `sensor_offline` alerts, but threshold alerts are resolved by
+  `/api/ingest` when a reading comes back in range — and a retired sensor gets no
+  readings, because ingest filters on `decommissioned_at is null`. So a breach
+  that was open at the moment of retirement stays Active on the customer's alerts
+  page forever, against a device that no longer exists.
+
+  Not folded into the offline fix because it needs a different join: threshold
+  alerts carry `alert_config_id`, not `sensor_id`, so reaching the sensor means
+  going through `alert_configs`. Worth a moment's thought too on whether
+  auto-resolving reads as "the fridge recovered" — `is_resolved` means the
+  incident is closed, which for a retired sensor it genuinely is, but the wording
+  on the alerts page should be checked before flipping them.
+
 ## Commissioning — added 2026-09-02
 
 - [x] ~~**Gateways have the commissioning gap that sensors no longer do.**~~

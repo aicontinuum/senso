@@ -110,31 +110,86 @@ async function sweepForSilence(
 ) {
   const sensorCutoff = new Date(now - SENSOR_STALE_MS).toISOString();
 
-  // Commissioned only. A sensor that has been registered but not yet installed is
-  // silent by design — it may not even be powered on — and raising it as offline
-  // would email the customer that a fridge they do not have yet has stopped
-  // reporting.
-  const { data: sensors } = await admin
+  // Every sensor, split here rather than in two queries, so the two halves are
+  // exact complements by construction and no sensor can fall between them.
+  //
+  // Swept: in service. Commissioned, because a sensor registered but not yet
+  // installed is silent by design — it may not even be powered on — and raising
+  // it would email the customer that a fridge they do not have yet has stopped
+  // reporting. Not retired, for the obvious reason.
+  const { data: allSensors, error: sensorsError } = await admin
     .from('sensors')
-    .select('id')
-    .is('decommissioned_at', null)
-    .not('commissioned_at', 'is', null);
+    .select('id, commissioned_at, decommissioned_at');
 
-  const sensorIds = (sensors ?? []).map((s) => s.id);
+  if (sensorsError) {
+    console.error('[alerts] could not read sensors; skipping the sweep', sensorsError);
+    return { sensorsOffline: 0, strandedAlertsClosed: 0, sweepSkipped: 'sensors_unreadable' };
+  }
 
-  // Which sensors have reported recently. Asking it this way round avoids
-  // per-sensor queries and PostgREST's embedded ordering, which is easy to get
-  // subtly wrong and would fail open — a sweep that finds nothing stale looks
-  // exactly like a healthy fleet.
-  const { data: fresh } = sensorIds.length
+  const inService = (s: { commissioned_at: string | null; decommissioned_at: string | null }) =>
+    s.decommissioned_at === null && s.commissioned_at !== null;
+
+  const sensors = (allSensors ?? []).filter(inService);
+  const sensorIds = sensors.map((s) => s.id);
+
+  // Close offline alerts belonging to sensors that are no longer swept.
+  //
+  // The resolve branch below only ever sees sensors in the list above, so one
+  // that leaves it — retired, or taken out of service — strands whatever alert
+  // was open at that moment. It stays Active on the customer's alerts page
+  // forever, and holds a slot in the partial unique index against a sensor that
+  // can never alert again. The same shape as the gateway alerts retired in
+  // 20260902_retire_gateway_alerts.sql; this is its sibling, and doing it here
+  // rather than at the moment of retirement also clears any already stranded.
+  const strandedIds = (allSensors ?? []).filter((s) => !inService(s)).map((s) => s.id);
+  let strandedAlertsClosed = 0;
+  if (strandedIds.length > 0) {
+    const { data: closed, error } = await admin
+      .from('alert_logs')
+      .update({ is_resolved: true })
+      .in('sensor_id', strandedIds)
+      .eq('kind', 'sensor_offline')
+      .eq('is_resolved', false)
+      .select('id');
+    if (error) {
+      console.error('[alerts] could not close stranded offline alerts', error);
+    } else {
+      strandedAlertsClosed = (closed ?? []).length;
+    }
+  }
+
+  // Which sensors have reported recently. Asked this way round rather than per
+  // sensor, which keeps it to one query however large the fleet gets.
+  //
+  // **Its error must be checked.** Silence here is inferred from absence: a
+  // sensor is stale because no row came back for it. So a failed query is
+  // indistinguishable from a fleet that has gone completely quiet, and treating
+  // the two the same raises a false offline alert against *every* commissioned
+  // sensor at once. That is exactly what happened on 2026-09-09 — a handful of
+  // emails hours apart, each a brand new alert, while the sensor in question was
+  // reporting every fifteen minutes without missing one.
+  //
+  // So when this cannot be answered, nothing is raised. A missed detection is
+  // recoverable — the next run five minutes later catches it. Crying wolf at the
+  // whole fleet is how people learn to ignore the emails, and then a real fridge
+  // failure goes unread.
+  const freshResult = sensorIds.length
     ? await admin
         .from('readings')
         .select('sensor_id')
         .in('sensor_id', sensorIds)
         .gte('recorded_at', sensorCutoff)
-    : { data: [] };
+    : { data: [], error: null };
 
-  const reportingRecently = new Set((fresh ?? []).map((r) => r.sensor_id as string));
+  if (freshResult.error) {
+    console.error(
+      '[alerts] could not read recent readings; raising no offline alerts this run',
+      freshResult.error,
+    );
+    return { sensorsOffline: 0, strandedAlertsClosed, sweepSkipped: 'freshness_unreadable' };
+  }
+
+  const reportingRecently = new Set((freshResult.data ?? []).map((r) => r.sensor_id as string));
 
   let sensorsOffline = 0;
   for (const sensor of sensors ?? []) {
@@ -157,7 +212,7 @@ async function sweepForSilence(
     }
   }
 
-  return { sensorsOffline };
+  return { sensorsOffline, strandedAlertsClosed };
 }
 
 /**

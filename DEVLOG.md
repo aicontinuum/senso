@@ -4,6 +4,62 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-10 — False offline alerts: inferring silence from a failed query
+
+Four emails over ten hours saying `sensor 1 has stopped reporting`, while the
+sensor was reporting **every fifteen minutes to within 50 milliseconds**, without
+missing one.
+
+### Reading it from the timestamps
+
+Each email's "Since" was exactly 35 minutes before the email itself — 21:55/22:30,
+00:25/01:00, 03:25/04:00. That timestamp is stamped when an alert is *created*,
+so if these had been reminders on one alert it would have been frozen at the
+original value. It moved, so each was a **new** alert — which means the previous
+one had resolved, which means readings were arriving.
+
+The initial theory was that the sensor was reporting every three hours, matching
+the gaps between emails. The readings said otherwise: a flat 14:59.8 between every
+pair, for ten hours. So the sensor was never the problem.
+
+### The cause
+
+```js
+const { data: fresh } = await admin.from('readings')…   // error discarded
+const reportingRecently = new Set((fresh ?? []).map(…));
+```
+
+Staleness is inferred from **absence**: a sensor is silent because no row came
+back for it. So a failed query is indistinguishable from a fleet that has gone
+completely quiet — and with the error dropped, `data` is null, the set is empty,
+and *every commissioned sensor* is raised offline at once. The next run succeeds
+and they all resolve. Hours later it happens again.
+
+The comment sitting above that line had the risk backwards. It warned about
+failing open — "a sweep that finds nothing stale looks exactly like a healthy
+fleet" — when the actual failure is the opposite and worse.
+
+### The fix, and the principle
+
+When freshness cannot be established, **raise nothing**. A missed detection is
+recoverable: the next run is five minutes later. A false alarm across the whole
+fleet is not — it is how people learn to ignore the emails, and then a real
+fridge failure goes unread. Same treatment for the sensors query above it.
+
+Both now log loudly and return a `sweepSkipped` reason, which lands in
+`job_heartbeats.detail` — so the next occurrence is visible rather than silent,
+and the underlying cause (a transient failure against Supabase) can be seen
+rather than guessed at.
+
+The other three discarded errors in this route were checked and left: each fails
+in the safe direction, delaying an email rather than sending a wrong one.
+
+**The general shape, worth remembering:** anywhere a conclusion is drawn from
+*not finding* something, a failed lookup and a true negative are the same value.
+Those are the places the error has to be checked.
+
+---
+
 ## 2026-09-08 — Getting to MVP: a watchdog, and the phone
 
 Preparing to put three sensors and a gateway into a real restaurant. The work
