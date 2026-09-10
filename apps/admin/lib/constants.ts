@@ -17,6 +17,12 @@ export const ALERTS_HEARTBEAT_MAX_AGE_MS = 30 * 60 * 1000;
 /** Key the alert sender stamps in `job_heartbeats`. */
 export const ALERTS_JOB_KEY = 'alerts';
 
+// ── Ingest ──────────────────────────────────────────────────────────────────
+// How old a reading's own timestamp may be before ingest refuses it. Six hours
+// is enough for ChirpStack to retry through an outage and not enough to rewrite
+// history: the record is append-only and the past is not for re-filing.
+export const MAX_READING_AGE_MS = 6 * 60 * 60 * 1000;
+
 // ── Platform watchdog ───────────────────────────────────────────────────────
 // How stale each stamp in `platform_status` may be before the admin card turns.
 // The VPS pulses every minute, so ten minutes is ten misses — unambiguous, and

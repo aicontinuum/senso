@@ -57,9 +57,11 @@ database can open or close an alert.
 | `job_runs` | One row per job per run (`sweep`, `sender`, `watchdog`), with skip reasons and errors. Pruned after 90 days by pg_cron. | **Live** (phase 2). |
 | `alert_notifications` | One row per customer email attempt: alert ids, recipients, Resend id or error. Compliance answer to "when were you told". | **Live** (phase 2). |
 | Platform watchdog | pg_cron every 5 min → pg_net → `POST /api/platform/watchdog` (secret in Vault). Emails `OPS_ALERT_EMAIL` once per level change: down, late, recovered. Never a customer. | **Live** (phase 2b). Email path not yet exercised — see runbook test. |
-| Ingest as a writer | Keeps auth and validation; adds a 6-hour lower bound on `time` and dedup on `deduplicationId`; drops threshold logic. | Phase 4 |
-| Threshold alerts in the trigger | Opened/closed in the same transaction as the reading, only for the sensor's newest reading and only when commissioned. | Phase 4 (decision open: trigger vs. keep in ingest) |
-| `sweep_offline_sensors()` | One SQL statement on `sensors` only: open where `last_reading_at` is past the window, close where it is fresh or the sensor left service. Guarded: raises nothing while the platform is down. No readings scan, no row limit, no network. | Phase 3 (shadow), phase 4 (cut over) |
+| Ingest as a writer | Keeps auth and validation; 6-hour lower bound on `time`; dedup on `deduplicationId`; no threshold logic. | **Live** (phase 4). |
+| Threshold alerts in the trigger | Opened/closed in the same transaction as the reading, only for the sensor's newest reading, only when commissioned, only active limits. | **Live** (phase 4). Decided: the cabinet. |
+| `sweep_offline_sensors()` | pg_cron every 5 min. Four statements on `sensors` and `alert_logs`: open where the stamp is past the window, close where fresh or out of service, close stranded threshold alerts. Holds while the platform is down. No readings scan, no row limit, no network. | **Live** (phase 4). |
+| Sender hold | `/api/cron/alerts` reads `platform_status` and claims nothing while the platform is down. | **Live** (phase 4). |
+| Fixture tests | `supabase/tests/alerting-v2/`: live-schema fixture + 33 asserting cases against PostgreSQL 16. | **Live**. Re-run before any change to the trigger or sweep. |
 | Delivery triggered from the database | pg_cron → pg_net → sender, same claim/mark/release functions as today. Sender also holds while the platform is down. VPS alert crontab removed. | Phase 5 |
 | Read the snapshot everywhere | Customer and admin pages use `last_reading_at` instead of scanning readings. | Phase 6 |
 
@@ -67,7 +69,7 @@ database can open or close an alert.
 
 | Failure | Result | Customer | Senso |
 |---|---|---|---|
-| Supabase API flaky at 3 a.m. (the 9 Sept case) | Nothing, once phase 4 removes the network from detection | nothing | nothing to see |
+| Supabase API flaky at 3 a.m. (the 9 Sept case) | Nothing. Detection no longer crosses the network. | nothing | nothing to see |
 | **VPS dies** | Pulse stops; platform marked down at 10 min; sweep and sender hold | nothing | card red; one email within 10 min; one on recovery |
 | ChirpStack crashed, VPS up | Pulse continues with `chirpstack_ok=false`; same hold | nothing | card names the container, not the box |
 | Postgres down | Nothing runs; ChirpStack retries ingest | nothing | daily Vercel health check emails |
@@ -102,9 +104,9 @@ database can open or close an alert.
 | 1 | Snapshot columns + trigger + backfill | Live 2026-09-10 |
 | 2 | `platform_status`, ledgers, pulse route, ingest stamp, dashboard card | Live 2026-09-10 |
 | 2b | Watchdog job in pg_cron, ops email | Live 2026-09-10 (email untested) |
-| 3 | `sweep_offline_sensors()` writing to a shadow table beside the current sweep; diff nightly for a week | Next |
-| 4 | Cut over: SQL sweep → `alert_logs`; delete `sweepForSilence`; threshold logic to trigger (or not); ingest window + dedup; sender guard | — |
-| 5 | pg_net-triggered delivery; remove VPS alert crontab; drop `job_heartbeats`; health check reads `platform_status` | — |
+| 3 | Shadow week | Skipped 2026-09-10 — no real customers yet; replaced by the fixture tests and a two-day consistency query (DEVLOG) |
+| 4 | Cut over: SQL sweep → `alert_logs`; `sweepForSilence` deleted; thresholds in the trigger; ingest window + dedup; sender hold | Live 2026-09-10 |
+| 5 | pg_net-triggered delivery; remove VPS alert crontab; drop `job_heartbeats`; health check reads `platform_status` | Next |
 | 6 | Pages read `last_reading_at` | — |
 
 Each migration under `supabase/migrations/2026091*` is applied by hand, block by

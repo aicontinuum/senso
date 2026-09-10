@@ -4,6 +4,91 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-10 — Alerting v2, phase 4: the database decides
+
+After this, no alert is opened or closed outside PostgreSQL. Phase 3 (a shadow
+week) was skipped on purpose: there are no real customers yet, so the live
+system is the test bench, and the cases that a shadow week would have caught
+were run against a real PostgreSQL 16 before shipping instead.
+
+### `20260910_alerting_v2_cutover.sql`
+
+- **The trigger judges the reading.** `readings_after_insert()` now stamps the
+  sensor (as in phase 1), sets `status = 'online'`, and — only if the reading
+  was newer than the stamp and the sensor is in service — evaluates every
+  *active* `alert_configs` row: breach → `insert … on conflict do nothing`
+  against the partial unique index; in range → resolve with `resolved_at`.
+  Three things this fixes that the TypeScript version had: a backdated in-range
+  reading can no longer resolve an open breach (it never reaches the
+  evaluation), `is_active` is honoured (it was ignored), and the reading and
+  its verdict commit together or not at all.
+- **`platform_is_down()`**: the card's two direct signals, in SQL, same
+  thresholds as `constants.ts`.
+- **`sweep_offline_sensors()`**: four statements on `sensors` and `alert_logs`.
+  Holds while the platform is down. Opens where `last_reading_at` (or
+  `commissioned_at` if never heard) is past the 35-minute window, with
+  `triggered_at` = the true start of the silence rather than "now − 35 min".
+  Closes on a fresh stamp or on leaving service. Also closes a retired or
+  uncommissioned sensor's stranded *threshold* alert, which closes the
+  2026-09-09 TODO item. Writes its own `job_runs` row and platform stamp.
+  Scheduled by pg_cron at `1-59/5`, one minute off the sender.
+- **`readings.dedup_id`** with a partial unique index, from ChirpStack's
+  `deduplicationId`.
+
+The migration comment in 20260829_alert_notifications.sql said `ON CONFLICT`
+cannot infer a partial index. It can, when the `WHERE` clause matches the
+index predicate exactly — both the trigger and the sweep rely on it, and the
+fixture proves it.
+
+### Application
+
+- `/api/ingest` is a writer: the threshold block and the `status` update are
+  gone; it gains the six-hour lower bound on `time` (`MAX_READING_AGE_MS`,
+  answered with a 200 `stale_reading` because retrying cannot make it younger)
+  and passes `dedup_id`, treating a 23505 as the duplicate it is.
+- `/api/cron/alerts` is a sender: `sweepForSilence` and `openAlert` deleted,
+  ~170 lines. It reads `platform_status` first and holds while the platform is
+  down, so a threshold alert opened seconds before an outage is not the
+  customer's first news of it. The `sweep` job name in `job_runs` is now
+  written by the SQL function.
+
+### Proven against PostgreSQL 16
+
+`supabase/tests/alerting-v2/` — a fixture of the live schema (from the
+`information_schema` dump taken today) and 33 asserting cases: snapshot stamps
+and the never-backwards guard; breach open / continue / resolve / backdated
+guard; inactive limit ignored; uncommissioned stored-not-alerted; dedup
+refused; platform-down hold on stale pulse and on `chirpstack_ok = false`;
+sweep opens 36-min-silent and never-heard, not 34-min-silent, not
+uncommissioned; closes retired; closes stranded threshold; idempotent; recovery
+stamps `resolved_at`. All pass. README in that directory says how to re-run.
+
+### Order of operations on the live project
+
+1. Apply the migration, blocks 1–5. From block 5 the SQL sweep runs beside the
+   TypeScript one; both are idempotent through the unique indexes.
+2. Deploy. The TypeScript sweep is gone; ingest stops judging. Any reading that
+   arrived between the two steps was judged by the trigger *and* by ingest,
+   which agree.
+3. For two days, this is the shadow week compressed: every open offline alert
+   should have a stale stamp behind it, and every stale stamp an alert.
+   ```sql
+   select s.name, s.last_reading_at, a.id as open_alert
+     from sensors s
+     left join alert_logs a on a.sensor_id = s.id and a.kind = 'sensor_offline' and not a.is_resolved
+    where s.decommissioned_at is null and s.commissioned_at is not null
+      and ((s.last_reading_at < now() - interval '35 minutes') <> (a.id is not null));
+   ```
+   Expect zero rows.
+
+### Not done here
+
+Phase 5 (delivery triggered from the database; VPS alert crontab removed;
+`job_heartbeats` dropped; health check reads `platform_status`) and phase 6
+(pages read `last_reading_at`).
+
+---
+
 ## 2026-09-10 — Alerting v2, phases 1 and 2: facts on rows, a pulse, and ledgers
 
 Groundwork for moving alert decisions into the database (design: "Senso
