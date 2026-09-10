@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 import { StatusDot, type StatusTone } from "./status-dot";
 
 // Status chips — the shared vocabulary for whether a reading, sensor or site is

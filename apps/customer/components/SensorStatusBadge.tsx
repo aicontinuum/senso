@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@senso/ui";
 import type { SensorState } from "@/lib/alert-state";
 
 // One badge, one vocabulary, both screens. See lib/alert-state.ts for why.

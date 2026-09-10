@@ -7,6 +7,9 @@
 export { cn } from "./cn";
 export { Spinner } from "./spinner";
 export { Skeleton } from "./skeleton";
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card";
+export { Badge, badgeVariants, type BadgeProps } from "./badge";
+export { StatusDot, type StatusTone } from "./status-dot";
 export { Logo } from "./logo";
 export { Sidebar } from "./sidebar";
 export { Header } from "./header";

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 // White fill, 1px hairline, 20px radius, soft shadow. That combination is the
 // design system's signature: a card with only a shadow reads as floating, one

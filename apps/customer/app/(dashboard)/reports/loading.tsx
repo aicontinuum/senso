@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@senso/ui";
 
 // Mirrors ReportClient's settings card: time-range segments, the sensor list,
 // the format toggle and the generate action. The report body only exists after

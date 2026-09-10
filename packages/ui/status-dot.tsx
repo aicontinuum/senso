@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 // The smallest unit of state in Senso: a coloured dot.
 //
