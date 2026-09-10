@@ -3,6 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
 import { PLATFORM_STATUS_COLUMNS, type PlatformStatusRow } from '@/lib/platform-status';
 import { PlatformWatchdogCard } from '@/components/dashboard/PlatformWatchdogCard';
+import { Badge, Card } from '@senso/ui';
+
+const STAT_TILE = 'px-4 py-4 sm:px-6 sm:py-5';
+const STAT_VALUE = 'mt-1 font-display text-3xl font-bold tabular-nums';
 
 type GatewayWithSensors = {
   id: string;
@@ -122,23 +126,25 @@ export default async function AdminDashboardPage() {
 
       <PlatformWatchdogCard status={(platformStatus as PlatformStatusRow | null) ?? null} now={now} />
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border text-card-foreground shadow-sm sm:grid-cols-4">
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+      {/* One card, hairline-divided into tiles, so the four numbers read as one
+          row of the same instrument rather than four unrelated boxes. */}
+      <Card className="grid grid-cols-2 divide-hairline overflow-hidden sm:grid-cols-4 sm:divide-x [&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Customers</p>
-          <p className="mt-1 text-3xl font-bold">{(customers ?? []).length}</p>
+          <p className={STAT_VALUE}>{(customers ?? []).length}</p>
         </div>
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Sites dark</p>
-          <p className={`mt-1 text-3xl font-bold ${sitesDark > 0 ? 'text-alert-text' : ''}`}>
+          <p className={`${STAT_VALUE} ${sitesDark > 0 ? 'text-alert-text' : ''}`}>
             {sitesDark}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             {sitesDark > 0 ? 'no readings arriving' : 'all gateways reporting'}
           </p>
         </div>
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
-          <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline + sensorsPending}</p>
+          <p className={STAT_VALUE}>{sensorsOnline + sensorsOffline + sensorsPending}</p>
           {/* A count is tinted only when it is above zero: "0 offline" in alert
               red pulls the eye toward nothing, and the tile above already
               follows this rule for dark sites. */}
@@ -150,48 +156,48 @@ export default async function AdminDashboardPage() {
             )}
           </div>
         </div>
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Alerts (past 24h)</p>
-          <p className={`mt-1 text-3xl font-bold ${totalAlerts > 0 ? 'text-alert-text' : ''}`}>{totalAlerts}</p>
+          <p className={`${STAT_VALUE} ${totalAlerts > 0 ? 'text-alert-text' : ''}`}>{totalAlerts}</p>
           <p className="mt-2 text-sm text-muted-foreground">across all customers</p>
         </div>
-      </div>
+      </Card>
 
       <div>
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Customers</h2>
-        <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
+        <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-muted-foreground">
+              <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className="px-6 py-3 font-medium">Customer</th>
                 <th className="px-6 py-3 font-medium">Gateway</th>
                 <th className="px-6 py-3 font-medium">Sensors</th>
                 <th className="px-6 py-3 font-medium">Alerts (past 24h)</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-hairline">
               {rows.length === 0 && (
                 <tr><td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">No customers yet.</td></tr>
               )}
               {rows.map(({ customer, gateways, sensorCount, alertCount }) => (
-                <tr key={customer.id} className="hover:bg-muted/40 transition-colors">
+                <tr key={customer.id} className="transition-colors hover:bg-sunken">
                   <td className="px-6 py-4">
                     <Link href={`/customers/${customer.id}`} className="font-medium hover:underline">{customer.name}</Link>
                     <p className="text-xs text-muted-foreground">{customer.email}</p>
                   </td>
                   <td className="px-6 py-4">
-                    {gateways.length > 0 ? gateways.map(g => {
-                      const online = isGatewayOnline(g.is_online, g.last_seen_at);
-                      return (
-                        <span
-                          key={g.id}
-                          className={`flex items-center gap-1.5 text-sm ${online ? '' : 'font-medium text-alert-text'}`}
-                        >
-                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-ok-500' : 'bg-alert-500'}`} />
-                          {online ? 'Online' : 'Offline'}
-                        </span>
-                      );
-                    }) : <span className="text-muted-foreground">—</span>}
+                    {gateways.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {gateways.map(g => {
+                          const online = isGatewayOnline(g.is_online, g.last_seen_at);
+                          return (
+                            <Badge key={g.id} variant={online ? 'ok' : 'alert'} dot>
+                              {online ? 'Online' : 'Offline'}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
                   <td className="px-6 py-4 tabular-nums">
@@ -203,7 +209,7 @@ export default async function AdminDashboardPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       </div>
     </div>
   );

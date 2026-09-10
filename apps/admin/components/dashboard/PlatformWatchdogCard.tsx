@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react';
+import { Card, StatusDot, type StatusTone } from '@senso/ui';
 import { assessPlatform, formatCheck, type PlatformLevel, type PlatformStatusRow } from '@/lib/platform-status';
 
 // The first tile on the admin dashboard: is Senso's own infrastructure alive?
@@ -14,10 +15,10 @@ import { assessPlatform, formatCheck, type PlatformLevel, type PlatformStatusRow
 // <details> does this with no client state, and the open attribute is set at
 // render, so a page refresh always lands in the right posture for the moment.
 
-const TONE: Record<PlatformLevel, { dot: string; text: string; label: string }> = {
-  ok:   { dot: 'bg-ok-500',    text: 'text-ok-text',    label: 'Healthy' },
-  late: { dot: 'bg-warn-500',  text: 'text-warn-text',  label: 'Late' },
-  down: { dot: 'bg-alert-500', text: 'text-alert-text', label: 'Down' },
+const TONE: Record<PlatformLevel, { dot: StatusTone; text: string; label: string }> = {
+  ok:   { dot: 'ok',    text: 'text-ok-text',    label: 'Healthy' },
+  late: { dot: 'warn',  text: 'text-warn-text',  label: 'Late' },
+  down: { dot: 'alert', text: 'text-alert-text', label: 'Down' },
 };
 
 const HEALTHY_REASON = 'Every part of the platform has been heard from inside its window.';
@@ -28,14 +29,11 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
   const healthy = level === 'ok';
 
   return (
-    <details
-      open={!healthy}
-      aria-label="VPS watchdog"
-      className={`group rounded-lg border bg-card shadow-sm ${level === 'down' ? 'border-alert-500' : ''}`}
-    >
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-muted/40 sm:px-6 [&::-webkit-details-marker]:hidden">
+    <Card className={`overflow-hidden ${level === 'down' ? 'border-alert-border' : ''}`}>
+    <details open={!healthy} aria-label="VPS watchdog" className="group">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-sunken sm:px-6 [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-2.5">
-          <span className={`inline-block h-2.5 w-2.5 rounded-full ${tone.dot}`} aria-hidden />
+          <StatusDot status={tone.dot} className="size-2.5" />
           <h2 className="text-sm font-semibold tracking-tight">VPS watchdog</h2>
           <span className={`text-sm font-medium ${tone.text}`}>{tone.label}</span>
         </div>
@@ -48,7 +46,7 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
         </div>
       </summary>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t px-4 py-4 text-sm sm:grid-cols-3 sm:px-6 lg:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-hairline px-4 py-4 text-sm sm:grid-cols-3 sm:px-6 lg:grid-cols-6">
         {checks.map((check) => {
           const checkTone = TONE[check.level];
           const flagged = check.level !== 'ok';
@@ -56,7 +54,7 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
             <div key={check.label}>
               <dt className="text-xs font-medium text-muted-foreground">{check.label}</dt>
               <dd className={`mt-0.5 flex items-center gap-1.5 tabular-nums ${flagged ? `font-medium ${checkTone.text}` : ''}`}>
-                {flagged && <span className={`inline-block h-1.5 w-1.5 rounded-full ${checkTone.dot}`} aria-hidden />}
+                {flagged && <StatusDot status={checkTone.dot} />}
                 {formatCheck(check, status, now)}
               </dd>
             </div>
@@ -64,5 +62,6 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
         })}
       </dl>
     </details>
+    </Card>
   );
 }
