@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { APP_NAME } from '@/lib/constants';
-import { Button } from '@/components/ui/button';
+import { Button } from '@senso/ui';
 import { Input } from '@/components/ui/input';
 
 export default function LoginForm() {

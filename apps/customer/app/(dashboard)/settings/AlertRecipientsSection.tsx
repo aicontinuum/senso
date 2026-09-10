@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { X, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@senso/ui";
 import { Input } from "@/components/ui/input";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@senso/ui";
 import { Input } from "@/components/ui/input";
 
 export function ChangePasswordSection() {

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import type { Customer } from "@senso/types";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button } from "@senso/ui";
 import { Input } from "@/components/ui/input";
 import { Field } from "./Field";
 
