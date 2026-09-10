@@ -126,9 +126,11 @@ Two open risks worth knowing on day one:
 
 - **No database backups.** Supabase's free tier has none at all. For a product
   whose value is the record, this is the largest remaining exposure.
-- **The alert scheduler runs from the ChirpStack VPS.** A daily watchdog catches
-  it stopping; the external dead-man's-switch that would catch it within minutes
-  is not built yet.
+- **The alert scheduler still runs from the ChirpStack VPS.** If that box dies,
+  breaches are recorded but not sent. The **VPS watchdog** card at the top of the
+  admin dashboard shows this within ten minutes, and a job inside Supabase emails
+  `OPS_ALERT_EMAIL` once when it happens and once on recovery, never a customer.
+  Moving the schedule off the VPS is phase 5 of `ALERTING.md`.
 
 ## The documents
 
@@ -138,6 +140,7 @@ Two open risks worth knowing on day one:
 | `CLAUDE.md` | Working rules for anyone (or anything) writing code here |
 | `DEVLOG.md` | What was built each session, and the reasoning. Most recent first. |
 | `TODO.md` | Open work, ranked. Includes decisions deliberately closed. |
+| `ALERTING.md` | Alerting v2: how alerts are decided and delivered, what is live, what is next |
 | `MIGRATION.md` | The LoRaWAN migration, complete. Useful history. |
 | `ONBOARDING.md` | Runbook for adding a sensor or gateway, start to finish |
 | `network-server/README.md` | The VPS as built, including the alert crontab |
