@@ -44,9 +44,10 @@ app.sensoqa.com (customer dashboard)
   our backend directly; ChirpStack decrypts and decodes first. Ops details in
   `network-server/README.md`, payload contract in `network-server/UPLINK-FORMAT.md`.
 
-**Prototype stack (retired from the product path):** ESP32 + DS18B20 over raw LoRa into a
-Raspberry Pi running the `gateway/` kit. Kept as a **test bench only** — it must not point
-at the production ingest endpoint.
+**Prototype stack (removed 2026-09-08):** ESP32 + DS18B20 over raw LoRa into a Raspberry
+Pi forwarder. The kit, its `/api/heartbeat` liveness endpoint and the `gateways.secret`
+column it authenticated with are gone from the repo and the schema; `MIGRATION.md` has
+the history.
 
 ---
 
@@ -186,7 +187,7 @@ design system does not cover print geometry.
 
 - Product architecture and page structures are finalized; tech stack is locked in.
 - **The platform is live on Supabase** — auth, customer scoping (RLS), and real data. The mock-data phase is over; new work wires to real APIs (still ask before inventing endpoints).
-- **Backend / ingest exists** (in `apps/admin`): `POST /api/ingest` (readings, per-gateway secret auth, idempotent upsert), `POST /api/heartbeat` (60s liveness pulse), gateway identified by its 16-hex LoRa concentrator EUI. Duplicate-safe via a `UNIQUE(sensor_id, recorded_at)` index.
+- **Backend / ingest exists** (in `apps/admin`): `POST /api/ingest` (one ChirpStack uplink per call, authenticated by the `CHIRPSTACK_INGEST_SECRET` bearer token, idempotent upsert). Ingest also stamps the relaying gateway's `last_seen_at`, identified by its 16-hex LoRa concentrator EUI. Duplicate-safe via a `UNIQUE(sensor_id, recorded_at)` index.
 - **The LoRaWAN migration is complete** (`MIGRATION.md`, all phases). ChirpStack is
   self-hosted and live, the SenseCAP M2 gateway is online, the first Dragino LHT65N-E3
   joined and decodes correctly on EU868, and `/api/ingest` takes the ChirpStack payload.
@@ -204,10 +205,9 @@ design system does not cover print geometry.
   Hobby plan will not run more often than daily. `network-server/README.md` has the
   crontab. This makes the VPS load-bearing for alerting as well as ingest: if it goes
   down, breaches are still recorded but nobody is told.
-- **The old Pi/ESP32 pipeline is test-bench only** and must be disconnected from the
-  production ingest endpoint (`systemctl disable --now senso-forwarder.service
-  senso-heartbeat.timer`) — leaving the heartbeat running would show a dead gateway as
-  Online forever.
+- **The old Pi/ESP32 pipeline is gone.** Any Pi still running the old forwarder or
+  heartbeat timer gets a 401 from ingest and a 404 from the deleted heartbeat route;
+  it can no longer touch the record or mark a gateway online.
 - **Timestamps are timezone-aware** per customer (`customers.timezone`, default `Asia/Qatar`).
 - **Devices are retired, never deleted.** `decommissioned_at` on `sensors`/`gateways` hides
   them from every live view while their records survive; the database enforces this with
@@ -272,8 +272,8 @@ Use these terms consistently:
 
 | Term | Meaning |
 |------|---------|
-| **Sensor** | The physical temperature probe (ESP32 + DS18B20) |
-| **Gateway** | The Raspberry Pi hub at the customer site |
+| **Sensor** | The physical temperature probe (Dragino LHT65N-E3) |
+| **Gateway** | The LoRaWAN hub at the customer site (SenseCAP M2) |
 | **Reading** | A single timestamped temperature data point |
 | **Monitoring Report** | The printable compliance-style log report |
 | **Alert** | A notification triggered when temp goes out of range |

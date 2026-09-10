@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-// Shared with /api/ingest and /api/heartbeat — accepts the 16-hex LoRaWAN
+// Same identifier rules ingest matches on — accepts the 16-hex LoRaWAN
 // Gateway EUI as the primary format, with the legacy colon-MAC as a fallback.
 // This route previously carried its own MAC-only copy of this logic, which is why
 // it rejected the EUIs that ingest was already accepting.

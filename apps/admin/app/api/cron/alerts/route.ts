@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cronSecretOk } from '@/lib/cron-auth';
-import { ALERTS_JOB_KEY } from '@/lib/constants';
+import { ALERTS_JOB_KEY, JOB_SWEEP, JOB_SENDER } from '@/lib/constants';
 import { SENSOR_STALE_MS } from '@senso/status';
 import { formatDevEui } from '@/lib/deveui-format';
+import { stampPlatform } from '@/lib/platform-status';
 import { sendEmail, emailConfigured } from '@/lib/email/send';
 import {
   alertEmailSubject,
@@ -58,8 +59,12 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const now = Date.now();
 
-  const swept = await sweepForSilence(admin, now);
-  const sent = await sendDueAlerts(admin);
+  // Each half is its own job with its own row in job_runs, so a sweep that
+  // skipped and a sender that failed are two facts, not one blurred stamp. A
+  // throw in one is recorded and does not stop the other: a broken sweep must
+  // not also mean a broken sender.
+  const swept = await runJob(admin, JOB_SWEEP, () => sweepForSilence(admin, now));
+  const sent = await runJob(admin, JOB_SENDER, () => sendDueAlerts(admin));
   const result = { ...swept, ...sent };
 
   // Stamped last, and only on the way out, so it means "a run completed" rather
@@ -69,6 +74,9 @@ export async function GET(request: Request) {
   //
   // Deliberately stamped even when there was nothing to do: an idle sweep is
   // still proof the scheduler is alive, and that is the whole signal.
+  //
+  // Kept through phase 4: the daily health check still reads this row. The
+  // durable record is job_runs, written above.
   const { error: heartbeatError } = await admin
     .from('job_heartbeats')
     .upsert(
@@ -83,6 +91,49 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json(result);
+}
+
+// ── Bookkeeping ─────────────────────────────────────────────────────────────
+
+/** What a job hands back: its counts, and whether it did what it set out to. */
+type JobOutcome = Record<string, unknown> & { ok: boolean };
+
+/**
+ * Runs one job and appends the outcome to job_runs, then stamps
+ * platform_status if it went well. A job that throws is recorded as failed
+ * with the message, and the throw is swallowed so the next job still runs.
+ *
+ * The record is written after the run rather than opened before it, so one
+ * insert covers it. The cost is that a run killed by the platform's timeout
+ * leaves no row; the stale platform_status stamp is what shows that case.
+ */
+async function runJob(
+  admin: ReturnType<typeof createAdminClient>,
+  job: typeof JOB_SWEEP | typeof JOB_SENDER,
+  run: () => Promise<JobOutcome>,
+): Promise<Record<string, unknown>> {
+  const startedAt = new Date().toISOString();
+  let outcome: JobOutcome;
+  try {
+    outcome = await run();
+  } catch (error) {
+    console.error(`[alerts] ${job} threw`, error);
+    outcome = { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+
+  const { ok, ...detail } = outcome;
+  const finishedAt = new Date().toISOString();
+
+  const { error: runError } = await admin
+    .from('job_runs')
+    .insert({ job, started_at: startedAt, finished_at: finishedAt, ok, detail });
+  if (runError) console.error(`[alerts] could not record ${job} run`, runError);
+
+  if (ok) {
+    await stampPlatform(admin, job === JOB_SWEEP ? { sweep_last_ok_at: finishedAt } : { sender_last_ok_at: finishedAt });
+  }
+
+  return detail;
 }
 
 // ── 1. Raise and clear offline alerts ───────────────────────────────────────
@@ -107,7 +158,7 @@ export async function GET(request: Request) {
 async function sweepForSilence(
   admin: ReturnType<typeof createAdminClient>,
   now: number,
-) {
+): Promise<JobOutcome> {
   const sensorCutoff = new Date(now - SENSOR_STALE_MS).toISOString();
 
   // Every sensor, split here rather than in two queries, so the two halves are
@@ -123,7 +174,7 @@ async function sweepForSilence(
 
   if (sensorsError) {
     console.error('[alerts] could not read sensors; skipping the sweep', sensorsError);
-    return { sensorsOffline: 0, strandedAlertsClosed: 0, sweepSkipped: 'sensors_unreadable' };
+    return { ok: false, sensorsOffline: 0, strandedAlertsClosed: 0, sweepSkipped: 'sensors_unreadable' };
   }
 
   const inService = (s: { commissioned_at: string | null; decommissioned_at: string | null }) =>
@@ -186,7 +237,7 @@ async function sweepForSilence(
       '[alerts] could not read recent readings; raising no offline alerts this run',
       freshResult.error,
     );
-    return { sensorsOffline: 0, strandedAlertsClosed, sweepSkipped: 'freshness_unreadable' };
+    return { ok: false, sensorsOffline: 0, strandedAlertsClosed, sweepSkipped: 'freshness_unreadable' };
   }
 
   const reportingRecently = new Set((freshResult.data ?? []).map((r) => r.sensor_id as string));
@@ -212,7 +263,7 @@ async function sweepForSilence(
     }
   }
 
-  return { sensorsOffline, strandedAlertsClosed };
+  return { ok: true, sensorsOffline, strandedAlertsClosed };
 }
 
 /**
@@ -255,7 +306,7 @@ async function openAlert(
 
 // ── 2. Send what is due ─────────────────────────────────────────────────────
 
-async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>) {
+async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promise<JobOutcome> {
   // Claiming is a database function because PostgREST cannot express row
   // locking, and `for update skip locked` is what stops two overlapping runs
   // sending the same alert twice.
@@ -266,18 +317,18 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>) {
 
   if (claimError) {
     console.error('[alerts] could not claim alerts', claimError);
-    return { claimed: 0, emailed: 0, failed: 0 };
+    return { ok: false, claimed: 0, emailed: 0, failed: 0, error: 'claim_failed' };
   }
 
   const alerts = (claimed ?? []) as ClaimedAlert[];
-  if (alerts.length === 0) return { claimed: 0, emailed: 0, failed: 0 };
+  if (alerts.length === 0) return { ok: true, claimed: 0, emailed: 0, failed: 0 };
 
   // Nothing can be delivered, so release every claim rather than counting sends
-  // that never happened.
+  // that never happened. The run itself did not do its job, and says so.
   if (!emailConfigured()) {
     console.error('[alerts] email is not configured; releasing claims');
     await admin.rpc('release_alert_claims', { p_ids: alerts.map((a) => a.id) });
-    return { claimed: alerts.length, emailed: 0, failed: alerts.length };
+    return { ok: false, claimed: alerts.length, emailed: 0, failed: alerts.length, error: 'email_not_configured' };
   }
 
   const context = await loadContext(admin, alerts);
@@ -331,11 +382,28 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>) {
       html: alertEmailHtml(payload),
     });
 
+    const alertIds = customerAlerts.map((a) => a.id);
     if (result.ok) {
-      sentIds.push(...customerAlerts.map((a) => a.id));
+      sentIds.push(...alertIds);
     } else {
-      failedIds.push(...customerAlerts.map((a) => a.id));
+      failedIds.push(...alertIds);
     }
+
+    // The compliance record of the attempt: who was told, at which addresses,
+    // and whether the provider took it. Written whether or not it went, and its
+    // own failure is logged rather than allowed to undo a send that happened.
+    const attemptedAt = new Date().toISOString();
+    const { error: ledgerError } = await admin.from('alert_notifications').insert({
+      customer_id: customerId,
+      alert_ids: alertIds,
+      recipients,
+      attempted_at: attemptedAt,
+      status: result.ok ? 'sent' : 'failed',
+      provider_id: result.ok ? result.id ?? null : null,
+      error: result.ok ? null : result.error ?? null,
+    });
+    if (ledgerError) console.error('[alerts] could not record notification', ledgerError);
+    if (result.ok) await stampPlatform(admin, { last_customer_email_at: attemptedAt });
   }
 
   // Only successful sends advance the schedule. Failures release their lease so
@@ -347,7 +415,7 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>) {
     await admin.rpc('release_alert_claims', { p_ids: failedIds });
   }
 
-  return { claimed: alerts.length, emailed: sentIds.length, failed: failedIds.length };
+  return { ok: true, claimed: alerts.length, emailed: sentIds.length, failed: failedIds.length };
 }
 
 // ── Context lookup ──────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-// Shared gateway-identifier handling for the ingest and heartbeat endpoints.
+// Shared gateway-identifier handling for gateway registration.
 // Accepts the LoRa concentrator EUI (16 hex chars, no separators) as the
 // primary format, plus the legacy colon-separated network MAC.
 
