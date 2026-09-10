@@ -244,3 +244,25 @@ so the card can tell "box down" from "ChirpStack down".
 
 Verify after installing: the card on `admin.sensoqa.com/dashboard` should read
 "VPS pulse: under a minute ago" and "ChirpStack: answering" within two minutes.
+
+### The watchdog email
+
+Nothing on this box sends it. Every five minutes `pg_cron` inside Supabase calls
+`admin.sensoqa.com/api/platform/watchdog`, which reads the same stamps as the
+card and emails `OPS_ALERT_EMAIL` **only when the level changes**: once when the
+platform goes down or late, once when it recovers. Never a customer.
+
+To test it end to end, silence the pulse for a quarter of an hour:
+
+1. `crontab -e`, put a `#` in front of the pulse line, save.
+2. Wait about fifteen minutes. The card turns red at ten; the watchdog notices
+   on its next five-minute run. Exactly one email, subject
+   "Senso platform is DOWN", should arrive.
+3. Remove the `#`, save. Within ten minutes, one more email:
+   "Senso platform has recovered".
+
+If no email arrives, check in order: `OPS_ALERT_EMAIL` and the Resend variables
+are set in Vercel; `select * from cron.job_run_details order by start_time desc
+limit 5` shows the job running; `select status_code from net._http_response
+order by created desc limit 5` is 200, not 401 (a 401 means the Vault
+`cron_secret` does not match Vercel's `CRON_SECRET`).

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { cronSecretOk } from '@/lib/cron-auth';
 import { sendEmail, emailConfigured } from '@/lib/email/send';
+import { plainTextEmailHtml } from '@/lib/email/plain-text';
 import { ALERTS_HEARTBEAT_MAX_AGE_MS, ALERTS_JOB_KEY } from '@/lib/constants';
 
 // Watches the thing that watches the fridges.
@@ -95,10 +96,7 @@ export async function GET(request: Request) {
     to: [to],
     subject: 'Senso: alert sender is not running',
     text: body,
-    html: `<pre style="font:14px/1.5 ui-monospace,monospace;white-space:pre-wrap">${body
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')}</pre>`,
+    html: plainTextEmailHtml(body),
   });
 
   if (!result.ok) {

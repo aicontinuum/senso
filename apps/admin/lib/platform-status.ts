@@ -106,6 +106,21 @@ export function assessPlatform(row: PlatformStatusRow | null, now: number = Date
   return { level, checks, reason };
 }
 
+/**
+ * What to print for one check. Every stamp is a relative time except
+ * ChirpStack, which is a yes/no reported inside the pulse and has no time of
+ * its own. Shared by the dashboard card and the ops email so they never
+ * disagree about the same row.
+ */
+export function formatCheck(check: PlatformCheck, row: PlatformStatusRow | null, now: number = Date.now()): string {
+  if (check.label !== 'ChirpStack') return formatAgo(check.at, now);
+  const ok = row?.chirpstack_ok ?? null;
+  if (check.level === 'down' && ok === false) return 'not answering';
+  if (check.level === 'down') return 'unknown';
+  if (ok === null) return 'not reported';
+  return 'answering';
+}
+
 /** "40 seconds ago", "6 minutes ago", "3 hours ago", "2 days ago", or "never". */
 export function formatAgo(at: string | null, now: number = Date.now()): string {
   const age = ageMs(at, now);
