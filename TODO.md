@@ -188,6 +188,8 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Alerting — added 2026-09-09
 
+- [x] ~~**Should a dark site email the customer, or only us?**~~ **DECIDED 2026-09-10 — unchanged, customer is told.** When one restaurant's gateway loses power or internet, every sensor there goes stale together and the customer receives one email listing all of them. Kept deliberately: all sensors down at once is itself the signal that the fault is bigger than a sensor, and the customer is the only one who can plug the gateway back in. Not to be confused with the VPS rule, which is the opposite: a failure on our side reaches `OPS_ALERT_EMAIL` only, never a customer (Alerting v2 phase 2b). Do not re-raise without a customer asking for it.
+
 - [ ] **A retired sensor's open *threshold* alert also strands.** The sweep now
   closes stranded `sensor_offline` alerts, but threshold alerts are resolved by
   `/api/ingest` when a reading comes back in range — and a retired sensor gets no
