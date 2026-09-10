@@ -132,6 +132,8 @@ Customer
         │                               decommissioned_at (soft delete)
         └── Sensor[]                  · hardware_id = LoRaWAN DevEUI
               │                         decommissioned_at (soft delete)
+              │                         last_reading_at, last_reading_id,
+              │                         last_temperature  ← trigger on readings
               └── Reading[]           · temperature  ← object.TempC_DS (external probe)
                                         humidity, battery_v
                                         rssi, snr, spreading_factor
@@ -149,6 +151,17 @@ AlertConfig (per Sensor)              AlertLog
         ├── threshold                     ├── is_resolved
         ├── effective_from                └── notify_count
         └── effective_to  (null = open)      last_notified_at, notifying_at
+
+Platform (no customer)
+  PlatformStatus (one row)            · vps_last_seen_at, chirpstack_ok
+                                        last_uplink_at
+                                        sweep_last_ok_at, sender_last_ok_at
+                                        last_customer_email_at
+                                        ops_level, ops_level_since  ← watchdog memory
+  JobRun[]        (append-only)       · job: sweep | sender | watchdog
+                                        started_at, finished_at, ok, detail
+  AlertNotification[] (append-only)   · customer, alert_ids[], recipients[]
+                                        status: sent | failed, provider_id, error
 ```
 
 - **`alert_threshold_history` is the compliance record of the limits themselves.** A
@@ -204,7 +217,9 @@ design system does not cover print geometry.
 - **The alert scheduler runs from the ChirpStack VPS**, not Vercel Cron, which on the
   Hobby plan will not run more often than daily. `network-server/README.md` has the
   crontab. This makes the VPS load-bearing for alerting as well as ingest: if it goes
-  down, breaches are still recorded but nobody is told.
+  down, breaches are still recorded but not sent — and the platform says so, to us
+  only (see the watchdog below). Moving the schedule into the database is planned;
+  `ALERTING.md` is the design and the phase tracker.
 - **The old Pi/ESP32 pipeline is gone.** Any Pi still running the old forwarder or
   heartbeat timer gets a 401 from ingest and a 404 from the deleted heartbeat route;
   it can no longer touch the record or mark a gateway online.
@@ -227,10 +242,27 @@ design system does not cover print geometry.
   commission → retire**, where retiring is the existing Unlink and keeps the
   sensor's history in reports. Logged to `sensor_commissioning_events`.
   **Gateways do not have this yet.**
-- **A watchdog covers the alert scheduler.** The sender stamps `job_heartbeats` on
-  every completed run and a daily Vercel cron emails `OPS_ALERT_EMAIL` if that
-  stamp goes stale — because the scheduler lives on the VPS, and until this
-  existed it could stop with nothing anywhere saying so.
+- **The platform watches itself, and tells only us.** `platform_status` is one row of
+  last-seen stamps: the VPS pulses it every minute (and reports whether ChirpStack
+  answers), ingest stamps it on every uplink, and the alert job stamps each successful
+  sweep and send. The **VPS watchdog** card at the top of the admin dashboard reads it;
+  a `pg_cron` job inside Supabase reads it every five minutes and emails
+  `OPS_ALERT_EMAIL` once when the level changes — down, late, or recovered. Customers
+  are never in that path: an outage on our side is ours to explain, by hand. The
+  older daily Vercel check on `job_heartbeats` remains as the last layer for when
+  Supabase itself is down.
+- **A dark site is still the customer's to hear about.** One restaurant's gateway
+  losing power stales every sensor there at once and the customer gets one email
+  listing them all. Kept deliberately (2026-09-10): all sensors down together is
+  itself the signal, and only they can plug it back in.
+- **Every run and every email attempt is a row.** `job_runs` (per job, per run,
+  including skips and their reason) and `alert_notifications` (per customer email,
+  with recipients and the provider's answer) are append-only. The morning after a
+  strange night, the evidence is there.
+- **`sensors.last_reading_at` is the source of truth for freshness.** Stamped by a
+  trigger in the same transaction as the reading, never moved backwards. Nothing reads
+  it yet; from Alerting v2 phase 4 it replaces every readings scan, including the one
+  in the offline sweep that raised false alerts on 2026-09-09.
 - **The admin site carries its own ADMIN lockup**, so the two sites cannot be
   mistaken for each other at a glance. The destructive actions all live on that
   one.
