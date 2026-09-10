@@ -130,7 +130,9 @@ Two open risks worth knowing on day one:
   breaches are recorded but not sent. The **VPS watchdog** card at the top of the
   admin dashboard shows this within ten minutes, and a job inside Supabase emails
   `OPS_ALERT_EMAIL` once when it happens and once on recovery, never a customer.
-  Moving the schedule off the VPS is phase 5 of `ALERTING.md`.
+  Moving the schedule off the VPS (phase 5 of `ALERTING.md`) is deferred: the
+  sender holds during an outage anyway, so the VPS staying in that path costs
+  nothing. Detection itself no longer depends on the VPS at all.
 
 ## The documents
 

@@ -81,11 +81,22 @@ stamps `resolved_at`. All pass. README in that directory says how to re-run.
    ```
    Expect zero rows.
 
-### Not done here
+### Deferred, by decision
 
 Phase 5 (delivery triggered from the database; VPS alert crontab removed;
 `job_heartbeats` dropped; health check reads `platform_status`) and phase 6
-(pages read `last_reading_at`).
+(pages read `last_reading_at`). Decided 2026-09-10: alerting correctness is
+finished and both remaining phases are tidy-ups. One residual worth knowing: if
+pg_cron stops, the sweep and the watchdog stop together and only the dashboard
+card shows it, because the daily health check still reads `job_heartbeats`.
+Accepted for now; pointing the health check at `platform_status` is ~30 lines
+whenever it is wanted.
+
+### Applied and live, 2026-09-10
+
+All five blocks applied on the live project, each verified. The first manual run
+of `sweep_offline_sensors()` closed one stranded threshold alert on a retired
+sensor. `sweep-offline` scheduled at `1-59/5`. Merged to main and deployed.
 
 ---
 

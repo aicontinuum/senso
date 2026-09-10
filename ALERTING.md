@@ -106,8 +106,24 @@ database can open or close an alert.
 | 2b | Watchdog job in pg_cron, ops email | Live 2026-09-10 (email untested) |
 | 3 | Shadow week | Skipped 2026-09-10 — no real customers yet; replaced by the fixture tests and a two-day consistency query (DEVLOG) |
 | 4 | Cut over: SQL sweep → `alert_logs`; `sweepForSilence` deleted; thresholds in the trigger; ingest window + dedup; sender hold | Live 2026-09-10 |
-| 5 | pg_net-triggered delivery; remove VPS alert crontab; drop `job_heartbeats`; health check reads `platform_status` | Next |
-| 6 | Pages read `last_reading_at` | — |
+| 5 | pg_net-triggered delivery; remove VPS alert crontab; drop `job_heartbeats`; health check reads `platform_status` | **Deferred 2026-09-10.** The sender already holds when the VPS is down and the watchdog reports it, so the VPS staying in the sending path costs nothing. Known residual: if pg_cron itself stops, the sweep and the watchdog stop together and only the card shows it; the daily health check still reads `job_heartbeats`, which the sender keeps writing. Accepted for now. |
+| 6 | Pages read `last_reading_at` | **Deferred 2026-09-10.** Cosmetic: pages still scan readings for "last reading", but alerting no longer depends on that path. |
+
+## Where this leaves things
+
+Alerting correctness is finished. Every reading is judged as it is filed; every
+silent sensor is found by the database from its own stamp; nothing outside
+PostgreSQL opens or closes an alert; the platform reports its own outages to
+Senso only. The remaining two phases are tidy-ups and are parked.
+
+| Piece | Runs where | Triggered by |
+|---|---|---|
+| Threshold verdict | Postgres trigger | every reading insert |
+| Offline sweep | Postgres, `sweep_offline_sensors()` | pg_cron `1-59/5 * * * *` |
+| Platform watchdog | Postgres → Vercel `/api/platform/watchdog` | pg_cron `*/5`, pg_net, Vault secret |
+| Platform pulse | VPS crontab → Vercel `/api/platform/pulse` | every minute |
+| Sender | Vercel `/api/cron/alerts` | VPS crontab `*/5` |
+| Daily health check | Vercel cron `/api/cron/health` | reads `job_heartbeats` (sender) |
 
 Each migration under `supabase/migrations/2026091*` is applied by hand, block by
 block, verification query after each block — see the root README.

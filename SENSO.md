@@ -218,8 +218,11 @@ design system does not cover print geometry.
   Hobby plan will not run more often than daily. `network-server/README.md` has the
   crontab. This makes the VPS load-bearing for alerting as well as ingest: if it goes
   down, breaches are still recorded but not sent — and the platform says so, to us
-  only (see the watchdog below). Moving the schedule into the database is planned;
-  `ALERTING.md` is the design and the phase tracker.
+  only (see the watchdog below). Only *sending* depends on the VPS: threshold
+  breaches are judged by the `readings` trigger and silent sensors by
+  `sweep_offline_sensors()` on pg_cron, both inside Postgres. Moving the send
+  schedule into the database too is deferred; `ALERTING.md` is the design and the
+  phase tracker.
 - **The old Pi/ESP32 pipeline is gone.** Any Pi still running the old forwarder or
   heartbeat timer gets a 401 from ingest and a 404 from the deleted heartbeat route;
   it can no longer touch the record or mark a gateway online.
@@ -259,10 +262,17 @@ design system does not cover print geometry.
   including skips and their reason) and `alert_notifications` (per customer email,
   with recipients and the provider's answer) are append-only. The morning after a
   strange night, the evidence is there.
-- **`sensors.last_reading_at` is the source of truth for freshness.** Stamped by a
-  trigger in the same transaction as the reading, never moved backwards. Nothing reads
-  it yet; from Alerting v2 phase 4 it replaces every readings scan, including the one
-  in the offline sweep that raised false alerts on 2026-09-09.
+- **`sensors.last_reading_at` is the source of truth for freshness, and the trigger
+  that stamps it also judges the reading.** In the same transaction as the insert it
+  stamps the sensor (never backwards), then — only for the sensor's newest reading,
+  only when commissioned, only against active limits — opens or resolves the
+  threshold alert. The offline sweep reads that stamp and nothing else. Both replaced
+  the readings scan that raised false alerts on 2026-09-09. Pages still scan readings
+  for display; that is cosmetic and deferred.
+- **Ingest is a writer.** Auth, validation, a six-hour lower bound on the device
+  timestamp, ChirpStack dedup, insert. It decides nothing.
+- **Fixture tests exist.** `supabase/tests/alerting-v2/` proves the trigger and the
+  sweep against a real PostgreSQL 16. Re-run before touching either.
 - **The admin site carries its own ADMIN lockup**, so the two sites cannot be
   mistaken for each other at a glance. The destructive actions all live on that
   one.
