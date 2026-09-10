@@ -139,9 +139,12 @@ export default async function AdminDashboardPage() {
         <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
           <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline + sensorsPending}</p>
+          {/* A count is tinted only when it is above zero: "0 offline" in alert
+              red pulls the eye toward nothing, and the tile above already
+              follows this rule for dark sites. */}
           <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-            <p><span className="font-medium text-ok-text">{sensorsOnline}</span> online</p>
-            <p><span className="font-medium text-alert-text">{sensorsOffline}</span> offline</p>
+            <p><span className={`font-medium ${sensorsOnline > 0 ? 'text-ok-text' : ''}`}>{sensorsOnline}</span> online</p>
+            <p><span className={`font-medium ${sensorsOffline > 0 ? 'text-alert-text' : ''}`}>{sensorsOffline}</span> offline</p>
             {sensorsPending > 0 && (
               <p><span className="font-medium text-warn-text">{sensorsPending}</span> awaiting commissioning</p>
             )}

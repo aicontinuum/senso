@@ -6,19 +6,12 @@ export default function Loading() {
     <div className="space-y-6">
       <Skeleton className="h-8 w-36" />
 
-      <div className="rounded-lg border bg-card shadow-sm">
-        <div className="flex items-center gap-2.5 border-b px-6 py-3">
-          <Skeleton className="h-2.5 w-2.5 rounded-full" />
-          <Skeleton className="h-4 w-28" />
-        </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 sm:grid-cols-3 lg:grid-cols-6">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="space-y-1.5">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-4 w-24" />
-            </div>
-          ))}
-        </div>
+      {/* The watchdog card is collapsed to its header when healthy, which is
+          the usual case, so the placeholder is the header alone. */}
+      <div className="flex items-center gap-2.5 rounded-lg border bg-card px-6 py-3 shadow-sm">
+        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-4 w-16" />
       </div>
 
       <div className="grid grid-cols-3 divide-x rounded-lg border bg-card shadow-sm">
