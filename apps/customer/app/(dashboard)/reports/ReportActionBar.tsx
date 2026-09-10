@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { ArrowLeft, Download, Mail, Printer, Share2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@senso/ui";
 import { rangeOption, type RangeValue, type ReportFormat } from "./report-model";
 
 // The capability never changes during a page's life, so there is nothing to

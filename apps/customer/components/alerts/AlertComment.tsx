@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button } from "@senso/ui";
 import { ALERT_COMMENT_MAX_LENGTH } from "@/lib/constants";
 import { formatDateTimeLong } from "@/lib/temperature";
 

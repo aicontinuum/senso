@@ -8,7 +8,7 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
+import { Button } from "@senso/ui";
 import { Input } from "@/components/ui/input";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { sensorState } from "@/lib/alert-state";
