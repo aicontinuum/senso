@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
+import { PLATFORM_STATUS_COLUMNS, type PlatformStatusRow } from '@/lib/platform-status';
+import { PlatformWatchdogCard } from '@/components/dashboard/PlatformWatchdogCard';
 
 type GatewayWithSensors = {
   id: string;
@@ -23,12 +25,21 @@ function activeSensors(g: GatewayWithSensors) {
 
 export default async function AdminDashboardPage() {
   const admin = createAdminClient();
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const now = Date.now();
+  const since24h = new Date(now - 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: customers } = await admin
-    .from('customers')
-    .select('id, name, email, gateways (id, is_online, last_seen_at, decommissioned_at, sensors (id, status, decommissioned_at, commissioned_at))')
-    .order('name');
+  const [{ data: customers }, { data: platformStatus, error: platformError }] = await Promise.all([
+    admin
+      .from('customers')
+      .select('id, name, email, gateways (id, is_online, last_seen_at, decommissioned_at, sensors (id, status, decommissioned_at, commissioned_at))')
+      .order('name'),
+    admin.from('platform_status').select(PLATFORM_STATUS_COLUMNS).eq('id', true).maybeSingle(),
+  ]);
+
+  // An unreadable status row renders the card as "never heard from", which is
+  // the honest reading: this page cannot claim the platform is fine on a query
+  // that failed. Logged so the cause is findable.
+  if (platformError) console.error('[dashboard] could not read platform_status', platformError);
 
   // Collect all sensor IDs to look up alert configs
   const allSensorIds = (customers ?? []).flatMap(c =>
@@ -108,6 +119,8 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+
+      <PlatformWatchdogCard status={(platformStatus as PlatformStatusRow | null) ?? null} now={now} />
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border text-card-foreground shadow-sm sm:grid-cols-4">
         <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">

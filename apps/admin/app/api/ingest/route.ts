@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { integrationSecretOk } from '@/lib/ingest-auth';
+import { stampPlatform } from '@/lib/platform-status';
 
 // Ingest endpoint for ChirpStack's HTTP integration (LoRaWAN).
 //
@@ -53,6 +54,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 });
   }
 
+  const admin = createAdminClient();
+
+  // Any authenticated event from ChirpStack — join, status, ack, a reading — is
+  // proof that the road from the gateways to this database is open right now.
+  // Stamped before the event is filtered, so the platform's pulse reflects every
+  // packet that arrived and not only the ones that became readings.
+  await stampPlatform(admin, { last_uplink_at: new Date().toISOString() });
+
   // 2. ChirpStack posts every event type to the same URL, distinguished by
   //    `?event=`. Join/status/ack/txack are not readings — acknowledge and drop.
   //    200 rather than an error so ChirpStack doesn't retry a non-event forever.
@@ -94,8 +103,6 @@ export async function POST(request: Request) {
     console.warn(`[ingest] ${devEui}: temperature ${temperature} out of sane bounds`);
     return NextResponse.json({ ignored: 'implausible_temperature', devEui });
   }
-
-  const admin = createAdminClient();
 
   // 5. Reject readings from any device we don't already know. Sensors are
   //    pre-registered during onboarding, so an unknown DevEUI means a mis-scan, a

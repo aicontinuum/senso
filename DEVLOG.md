@@ -4,6 +4,61 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-10 — Alerting v2, phases 1 and 2: facts on rows, a pulse, and ledgers
+
+Groundwork for moving alert decisions into the database (design: "Senso
+Alerting v2"). Nothing about how alerts are raised changes in this session; the
+system gains the columns and records the later phases build on, and the admin
+dashboard gains a card that answers "is our own infrastructure alive" before any
+other number on the page is trusted.
+
+### Phase 1 — `20260910_sensor_snapshot.sql`
+
+`sensors.last_reading_at`, `last_reading_id`, `last_temperature`, kept by an
+after-insert trigger on `readings` in the same transaction as the insert. The
+guard `last_reading_at < new.recorded_at` means a late-arriving older reading can
+never move a sensor backwards. Backfilled from history; the verification query
+returns any sensor whose snapshot disagrees with its readings, and should return
+nothing, now and forever. Nothing reads the columns yet — that is phase 4.
+
+### Phase 2 — `20260910_platform_status_and_ledgers.sql` and code
+
+- **`platform_status`**, one row of last-seen stamps: `vps_last_seen_at` and
+  `chirpstack_ok` from a new `POST /api/platform/pulse` the VPS calls once a
+  minute; `last_uplink_at` from ingest, stamped on *every* authenticated
+  ChirpStack event before the fPort filter; `sweep_last_ok_at`,
+  `sender_last_ok_at`, `last_customer_email_at` from the alert route.
+- **`job_runs`**, appended per job per run — the sweep and the sender are now two
+  jobs with two rows, and a throw in one is recorded and does not stop the
+  other. This is the durable record the single `job_heartbeats` row could not
+  be; that row is still written until the health check moves off it in phase 5.
+- **`alert_notifications`**, one row per email attempt to a customer, with the
+  recipient list and Resend's id or error. The product can now answer "when
+  were you told".
+- **VPS watchdog card**, first tile on the admin dashboard. Status pill and the
+  six stamps as "N minutes ago". Rules in `lib/platform-status.ts`, exercised
+  against representative timestamps before shipping.
+
+### One change from the design page, worth recording
+
+The design proposed marking the platform *down* when the uplink stamp was ten
+minutes old. With one sensor reporting every fifteen minutes that would trip on
+every healthy cycle. So the uplink stamp is informational: shown, turned amber
+past the 35-minute sensor window, but never a "down" signal on its own. Down is
+decided by the two direct signals from the box itself — the pulse stopping, or
+the pulse saying ChirpStack is not answering. The pulse crontab runs a local
+health request against ChirpStack in the same line, so "box up, service down"
+is visible without inferring it from the fleet.
+
+### Not done here
+
+Phase 2b (the admin-only outage email) and everything from phase 3 on. The VPS
+alert crontab is unchanged; the pulse line is added beside it, not instead of
+it. Both migrations must be applied by hand, block by block, before deploying
+the code — the alert route and the dashboard read the new tables.
+
+---
+
 ## 2026-09-10 — False offline alerts: inferring silence from a failed query
 
 Four emails over ten hours saying `sensor 1 has stopped reporting`, while the

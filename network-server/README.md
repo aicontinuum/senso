@@ -218,5 +218,29 @@ chmod 600 /etc/senso/alerts.env
 log rather than being silently swallowed.
 
 **This makes the VPS load-bearing for alerting as well as ingest.** If it goes
-down, breaches are still recorded but nobody is told — worth covering with the
-same uptime monitor that watches ChirpStack.
+down, breaches are still recorded but nobody is told. The pulse below is how the
+admin dashboard notices; Alerting v2 phase 5 moves the schedule itself off this
+box so that only the pulse remains.
+
+## Platform pulse
+
+Once a minute the VPS tells Senso it is alive, and whether ChirpStack is
+answering. The admin dashboard's **VPS watchdog** card turns red after ten
+silent minutes. Same secret file as the alert scheduler; secret stays off the
+command line by being read from the file inside the shell.
+
+```cron
+* * * * * . /etc/senso/alerts.env && \
+  if curl -fsS --max-time 5 http://localhost:8080/ >/dev/null 2>&1; then CS=true; else CS=false; fi && \
+  curl -fsS --max-time 15 -X POST \
+    -H "Authorization: Bearer $CRON_SECRET" -H 'Content-Type: application/json' \
+    -d "{\"chirpstack_ok\":$CS}" \
+    https://admin.sensoqa.com/api/platform/pulse >/dev/null 2>&1
+```
+
+`localhost:8080` is the ChirpStack UI the Caddy proxy fronts; if it answers, the
+container is up. The pulse is sent either way, with `chirpstack_ok` saying which,
+so the card can tell "box down" from "ChirpStack down".
+
+Verify after installing: the card on `admin.sensoqa.com/dashboard` should read
+"VPS pulse: under a minute ago" and "ChirpStack: answering" within two minutes.
