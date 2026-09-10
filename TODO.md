@@ -172,6 +172,121 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   which also makes the rule read as what it means. Needs a small migration to
   `claim_due_alerts`.
 
+## Wrong email alert — added 2026-09-10
+
+**Status: partially patched. The false emails are stopped; the underlying query
+failure is not understood and offline detection is degraded while it persists.**
+
+### What happened
+
+Between 2026-09-09 15:45 and 2026-09-10 00:25 UTC, four emails went out saying
+`sensor 1 has stopped reporting` (DevEUI `a840419edb62011c`, customer "Home").
+The sensor had not stopped. It was reporting every fifteen minutes, to within
+50 milliseconds, without missing a single uplink.
+
+```
+recorded_at                      gap
+2026-09-10 04:20:32.357+00       00:14:59.8
+2026-09-10 04:05:32.557+00       00:14:59.806
+2026-09-10 03:50:32.751+00       00:14:59.819
+…flat for ten hours…
+```
+
+The alert rows tell the same story from the other side:
+
+```
+triggered_at                  is_resolved  notify_count
+2026-09-10 00:25:01.724+00    true         1
+2026-09-09 21:25:02.236+00    true         1
+2026-09-09 18:55:01.690+00    true         1
+2026-09-09 15:45:01.422+00    true         1
+```
+
+Four separate alerts, every one **resolved**, each emailed exactly **once** then
+cleared on the next sweep five minutes later. A genuinely silent sensor would
+have stayed open and reached `notify_count = 3`. Roughly one failure every
+2½–3 hours — about **4% of sweeps**.
+
+### How to recognise it from the emails alone
+
+Each email's "Since" was exactly 35 minutes — `SENSOR_STALE_MS` — before the
+email itself. That timestamp is stamped when an alert is *created*, so on a
+reminder it stays frozen at the original value. It moved every time, which means
+each email was a **new alert**, which means the previous one had resolved, which
+means readings were arriving all along.
+
+### Root cause
+
+`apps/admin/app/api/cron/alerts/route.ts`, in `sweepForSilence()`:
+
+```js
+const { data: fresh } = await admin.from('readings')…   // error discarded
+const reportingRecently = new Set((fresh ?? []).map(…));
+```
+
+Staleness is inferred from **absence** — a sensor is silent because no row came
+back for it. With the error dropped, a failed query and a fleet that has gone
+completely quiet are the same value: `data` is null, the set is empty, and every
+commissioned sensor is raised offline at once. The next run succeeds and they all
+resolve.
+
+The comment above that line had the risk backwards. It warned about failing open
+("a sweep that finds nothing stale looks exactly like a healthy fleet") when the
+real failure is the opposite and worse.
+
+### What was patched — commit `d8b7394`
+
+The freshness query's error is now checked. When it cannot be answered, the sweep
+**raises nothing** and returns a `sweepSkipped` reason, which lands in
+`job_heartbeats.detail`. Same treatment for the sensors query above it. Both log
+the underlying error.
+
+Rationale: a missed detection is recoverable — the next run is five minutes
+later. A false alarm across the whole fleet is not; it is how people learn to
+ignore the emails, and then a real fridge failure goes unread.
+
+The other three discarded errors in that route were reviewed and left alone: each
+fails in the safe direction, delaying an email rather than sending a wrong one.
+
+### What is still wrong
+
+- [ ] **Why does that query fail at all?** It is a range scan over
+  `readings_sensor_time_uniq (sensor_id, recorded_at)` — exactly the columns it
+  filters — returning only a handful of rows, so it should be sub-millisecond.
+  A 4% failure rate is unexplained. Suspects not yet ruled out: statement timeout,
+  connection-pool exhaustion on the Supabase free tier, or transient network
+  failure between Vercel and Supabase. **The next occurrence now logs the real
+  error** — check Vercel logs for the admin project and
+  `select detail from job_heartbeats where job = 'alerts';`
+
+- [ ] **Offline detection is degraded while this persists.** Every failed sweep
+  is a five-minute window where a genuinely silent sensor would not be noticed.
+  Safe, but not free.
+
+### Proposed durable fix (not built — decide first)
+
+Stop the sweep reading the `readings` table at all. Ingest already updates the
+sensor row on every reading (`status = 'online'`); if it also stamped
+`last_reading_at` there, the sweep could answer "who has gone quiet?" from the
+`sensors` table alone — a handful of rows, no scan over the largest table in the
+database, and nothing to time out.
+
+- one column on `sensors`, plus a backfill from `max(readings.recorded_at)`
+- one extra field in ingest's existing update, so no new query on the hot path
+- `sweepForSilence()` reads that column instead of querying `readings`
+- side benefit: each sensor's last reading time becomes directly visible instead
+  of inferred
+
+Caveat worth weighing: this sidesteps the question rather than answering it. If
+the failure is something broader between Vercel and Supabase, it will resurface
+elsewhere.
+
+### The general lesson
+
+Anywhere a conclusion is drawn from **not finding** something, a failed lookup
+and a true negative are the same value. Those are the places the error must be
+checked. Worth auditing for the same shape elsewhere.
+
 ## Alerting — added 2026-09-09
 
 - [ ] **A retired sensor's open *threshold* alert also strands.** The sweep now
