@@ -188,6 +188,17 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Alerting — added 2026-09-09
 
+- [ ] **Alerting v2 phases 5 and 6 — deferred 2026-09-10 by decision.** Phase 5:
+  trigger the sender from pg_cron/pg_net, remove the VPS alert crontab, drop
+  `job_heartbeats`, point the daily health check at `platform_status`. Phase 6:
+  pages read `sensors.last_reading_at` instead of scanning readings. Neither
+  affects alerting correctness, which is finished (see `ALERTING.md`). The one
+  residual worth remembering: if pg_cron stops, the offline sweep and the
+  watchdog stop together and only the dashboard card shows it, because the daily
+  health check still reads `job_heartbeats`. Pointing it at
+  `platform_status.sweep_last_ok_at` is ~30 lines in `api/cron/health` if that
+  ever bites.
+
 - [x] ~~**Should a dark site email the customer, or only us?**~~ **DECIDED 2026-09-10 — unchanged, customer is told.** When one restaurant's gateway loses power or internet, every sensor there goes stale together and the customer receives one email listing all of them. Kept deliberately: all sensors down at once is itself the signal that the fault is bigger than a sensor, and the customer is the only one who can plug the gateway back in. Not to be confused with the VPS rule, which is the opposite: a failure on our side reaches `OPS_ALERT_EMAIL` only, never a customer (Alerting v2 phase 2b). Do not re-raise without a customer asking for it.
 
 - [x] ~~**A retired sensor's open *threshold* alert also strands.**~~ **FIXED 2026-09-10** — `sweep_offline_sensors()` closes any open threshold alert whose sensor is retired or uncommissioned, through the `alert_configs` join; `resolved_at` is stamped. Fixture case "retired sensor stranded threshold alert closed". Original finding: The sweep now
