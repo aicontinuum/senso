@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Settings } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
@@ -334,17 +334,9 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               anyone added to one sensor received the others anyway. One list, one
               place to change it. */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Alert Recipients
-              </p>
-              <Link
-                href="/settings"
-                className="text-xs text-muted-foreground hover:underline underline-offset-2"
-              >
-                Manage in Settings →
-              </Link>
-            </div>
+            <p className="text-xs font-medium text-muted-foreground">
+              Alert Recipients
+            </p>
             {accountRecipients.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 None set — nobody will be emailed about this sensor.
@@ -357,6 +349,17 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                   </p>
                 ))}
               </div>
+            )}
+            {/* The way to change the list is offered only while editing: in
+                view mode it is a fact about the sensor, and a link beside it
+                read as one more thing to do. */}
+            {editing && (
+              <Button asChild variant="secondary" size="sm" className="mt-1">
+                <Link href="/settings">
+                  <Settings className="size-4" />
+                  Manage recipients in Settings
+                </Link>
+              </Button>
             )}
           </div>
 
