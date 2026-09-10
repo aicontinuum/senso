@@ -1,4 +1,4 @@
-import { assessPlatform, formatAgo, type PlatformLevel, type PlatformStatusRow } from '@/lib/platform-status';
+import { assessPlatform, formatCheck, type PlatformLevel, type PlatformStatusRow } from '@/lib/platform-status';
 
 // The first tile on the admin dashboard: is Senso's own infrastructure alive?
 //
@@ -42,9 +42,7 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
               <dt className="text-xs font-medium text-muted-foreground">{check.label}</dt>
               <dd className={`mt-0.5 flex items-center gap-1.5 tabular-nums ${flagged ? `font-medium ${checkTone.text}` : ''}`}>
                 {flagged && <span className={`inline-block h-1.5 w-1.5 rounded-full ${checkTone.dot}`} aria-hidden />}
-                {check.label === 'ChirpStack'
-                  ? chirpstackText(status?.chirpstack_ok ?? null, check.level)
-                  : formatAgo(check.at, now)}
+                {formatCheck(check, status, now)}
               </dd>
             </div>
           );
@@ -52,11 +50,4 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
       </dl>
     </section>
   );
-}
-
-function chirpstackText(ok: boolean | null, level: PlatformLevel): string {
-  if (level === 'down' && ok === false) return 'not answering';
-  if (level === 'down') return 'unknown';
-  if (ok === null) return 'not reported';
-  return 'answering';
 }

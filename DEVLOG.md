@@ -50,12 +50,39 @@ the pulse saying ChirpStack is not answering. The pulse crontab runs a local
 health request against ChirpStack in the same line, so "box up, service down"
 is visible without inferring it from the fleet.
 
+### Phase 2b — `20260910_platform_watchdog.sql` and the ops email
+
+The card can now speak. Every five minutes `pg_cron` inside Supabase calls
+`POST /api/platform/watchdog` through `pg_net`, authenticating with the
+`CRON_SECRET` held in Supabase Vault. The endpoint runs the same
+`assessPlatform` the card runs, compares the level with `platform_status.ops_level`
+(what it last reported), and on a change sends one email to `OPS_ALERT_EMAIL`:
+"Senso platform is DOWN", "is late", or "has recovered", with the reason and
+every stamp. Same level, no email. A provider failure leaves the level
+unrecorded so the transition is retried five minutes later rather than lost.
+Every run is a `job_runs` row under `watchdog`.
+
+It runs from the database rather than the VPS because the VPS dying is the
+first thing it exists to report. Customers are not in the path at all: the
+email has no customer, no sensor, and one fixed address.
+
+`formatCheck` moved into `lib/platform-status.ts` so the card and the email
+render a row identically; `plainTextEmailHtml` is shared with the daily health
+check, which previously inlined the same escaping.
+
+### Deployed and verified 2026-09-10
+
+Phases 1, 2 and 2b migrations applied by hand, block by block, all verifications
+as expected. Merged to main. The pulse crontab is installed on the VPS; the
+card went from "The VPS has never pulsed" to Healthy within two minutes, with
+the sweep and sender stamps landing on the alert job's next run.
+
 ### Not done here
 
-Phase 2b (the admin-only outage email) and everything from phase 3 on. The VPS
-alert crontab is unchanged; the pulse line is added beside it, not instead of
-it. Both migrations must be applied by hand, block by block, before deploying
-the code — the alert route and the dashboard read the new tables.
+Phase 3 onwards. The VPS alert crontab is unchanged; the pulse line sits beside
+it. The daily health check still reads `job_heartbeats` and does not yet know
+about the watchdog job — a stopped `pg_cron` is the one silence nothing reports
+until phase 5 points the health check at `platform_status` and `job_runs`.
 
 ---
 

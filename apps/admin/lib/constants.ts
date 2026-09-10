@@ -28,3 +28,4 @@ export const JOB_RUN_STALE_MS = 15 * 60 * 1000;
 /** Job names written to `job_runs` and read back by the watchdog. */
 export const JOB_SWEEP = 'sweep';
 export const JOB_SENDER = 'sender';
+export const JOB_WATCHDOG = 'watchdog';
