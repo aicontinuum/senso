@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { integrationSecretOk } from '@/lib/ingest-auth';
 import { stampPlatform } from '@/lib/platform-status';
+import { MAX_READING_AGE_MS } from '@/lib/constants';
 
 // Ingest endpoint for ChirpStack's HTTP integration (LoRaWAN).
 //
-// Replaces the old Raspberry Pi forwarder format
-// (`{mac_address, readings:[{hardware_id, temperature, recorded_at}]}`), which is
-// gone along with the prototype stack. Payload contract and field mapping:
-// network-server/UPLINK-FORMAT.md
+// This route is a writer. It authenticates, validates, and stores the reading.
+// It does not decide anything: the sensor's freshness stamp and the threshold
+// verdict are made by the trigger on `readings` in the same transaction as the
+// insert (20260910_alerting_v2_cutover.sql), so a reading cannot exist without
+// its verdict and every path that inserts one gets the verdict for free.
+//
+// Payload contract and field mapping: network-server/UPLINK-FORMAT.md
 
 /** Only fPort 2 carries a sensor reading. See UPLINK-FORMAT.md §4. */
 const READING_FPORT = 2;
@@ -121,11 +125,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ ignored: 'unknown_device', devEui });
   }
 
-  // Timestamp is ChirpStack's receive time. Guard against a bad clock writing a
-  // future `recorded_at`: since that column is the upsert conflict key, a future
-  // row would silently swallow the real reading for that slot later.
+  // Timestamp is ChirpStack's receive time, bounded on both sides.
+  //
+  // Ahead of now: a bad clock writing a future `recorded_at` would, since that
+  // column is the upsert conflict key, silently swallow the real reading for
+  // that slot later — so it is clamped to now.
+  //
+  // Behind now: anything older than the window is refused outright. A retry
+  // through an outage arrives within hours; a reading claiming to be from last
+  // month is either a broken clock or someone holding the ingest secret trying
+  // to re-file the past. The record is append-only and the past is not for
+  // re-filing. 200, not 4xx: retrying will not make it younger.
   const nowMs = Date.now();
   const parsed = body.time ? Date.parse(body.time) : NaN;
+  if (Number.isFinite(parsed) && parsed < nowMs - MAX_READING_AGE_MS) {
+    console.warn(`[ingest] ${devEui}: reading timestamp ${body.time} is older than the window`);
+    return NextResponse.json({ ignored: 'stale_reading', devEui });
+  }
   const recordedAt = Number.isFinite(parsed) && parsed <= nowMs + MAX_CLOCK_SKEW_MS
     ? new Date(parsed).toISOString()
     : new Date(nowMs).toISOString();
@@ -141,20 +157,24 @@ export async function POST(request: Request) {
     snr: rx?.snr ?? null,
     spreading_factor: body.txInfo?.modulation?.lora?.spreadingFactor ?? null,
     recorded_at: recordedAt,
+    dedup_id: body.deduplicationId ?? null,
   };
 
-  // 6. Idempotent insert. ChirpStack already de-duplicates the same uplink heard by
-  //    multiple gateways, so a repeat here means an HTTP retry — which carries the
-  //    same `time`, so the unique (sensor_id, recorded_at) index absorbs it.
+  // 6. Idempotent insert. Two indexes make a repeat harmless: (sensor_id,
+  //    recorded_at), which the upsert names, and ChirpStack's own dedup_id,
+  //    which surfaces as a unique violation and is treated as the same answer.
+  //    The trigger on readings stamps the sensor and judges the thresholds
+  //    inside this same statement.
   const { data: inserted, error: insertError } = await admin
     .from('readings')
     .upsert(reading, { onConflict: 'sensor_id,recorded_at', ignoreDuplicates: true })
     .select('id');
 
-  if (insertError) {
+  if (insertError && insertError.code !== '23505') {
     console.error('[ingest] insert failed', insertError);
     return NextResponse.json({ error: 'Could not store reading' }, { status: 500 });
   }
+  const duplicate = Boolean(insertError) || !inserted || inserted.length === 0;
 
   // Mark the receiving gateway(s) alive. This replaces the Pi's heartbeat.sh —
   // a gateway relaying uplinks is by definition reachable.
@@ -167,74 +187,17 @@ export async function POST(request: Request) {
       .is('decommissioned_at', null);
   }
 
-  // Already stored (a retry) — don't re-run alerts off a duplicate.
-  if (!inserted || inserted.length === 0) {
+  if (duplicate) {
     return NextResponse.json({ accepted: 0, duplicate: true });
   }
 
-  const readingId = inserted[0].id;
-  await admin.from('sensors').update({ status: 'online' }).eq('id', sensor.id);
-
-  // 7. Threshold evaluation — unchanged in behaviour from the previous ingest,
-  //    now linked to the reading that triggered it.
-  //
-  //    Skipped entirely until the sensor has been commissioned. Before that it is
-  //    on a bench or in a van, so its readings are real measurements of the wrong
-  //    place: alerting on them would email the customer about a fridge failure
-  //    that is actually a desk in an air-conditioned office, and open an alert
-  //    that lands in their record. The reading itself is still stored above —
-  //    the install bench test depends on watching it arrive.
-  if (sensor.commissioned_at === null) {
-    return NextResponse.json({ accepted: 1, devEui, temperature, notInService: true });
-  }
-
-  const { data: configs } = await admin
-    .from('alert_configs')
-    .select('id, type, threshold')
-    .eq('sensor_id', sensor.id);
-
-  for (const config of configs ?? []) {
-    const breaching =
-      (config.type === 'min' && temperature < config.threshold) ||
-      (config.type === 'max' && temperature > config.threshold);
-
-    if (breaching) {
-      const { data: existing } = await admin
-        .from('alert_logs')
-        .select('id, triggered_at')
-        .eq('alert_config_id', config.id)
-        .eq('is_resolved', false)
-        .order('triggered_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // One row for the whole episode. This used to resolve and re-open every 30
-      // minutes, which turned a six-hour breach into twelve rows in the alert
-      // history — and would now be twelve emails. Re-notification is the
-      // scheduler's job (immediate, +30 min, +2 h); ingest only records that the
-      // breach is still open.
-      if (!existing) {
-        const { error } = await admin.from('alert_logs').insert({
-          alert_config_id: config.id,
-          reading_id: readingId,
-          kind: 'threshold',
-          triggered_at: recordedAt,
-          is_resolved: false,
-        });
-        // 23505 means a concurrent ingest opened it first, which is the partial
-        // unique index doing its job rather than a failure.
-        if (error && error.code !== '23505') {
-          console.error('[ingest] could not open alert', { sensorId: sensor.id, error });
-        }
-      }
-    } else {
-      await admin
-        .from('alert_logs')
-        .update({ is_resolved: true })
-        .eq('alert_config_id', config.id)
-        .eq('is_resolved', false);
-    }
-  }
-
-  return NextResponse.json({ accepted: 1, devEui, temperature });
+  // Stored, stamped and judged — all by the one insert. `notInService` is
+  // informational: an uncommissioned sensor's reading is kept (the bench test
+  // depends on watching it arrive) but the trigger raises nothing for it.
+  return NextResponse.json({
+    accepted: 1,
+    devEui,
+    temperature,
+    ...(sensor.commissioned_at === null ? { notInService: true } : {}),
+  });
 }
