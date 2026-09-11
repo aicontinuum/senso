@@ -95,22 +95,26 @@ export function SensorCard({
       </div>
 
       {/* Where the reading sits between its limits, only when it is being
-          judged against them. The slot keeps its height either way, so an
-          offline tile's footer lines up with its neighbours' instead of
-          riding up into the space the track would have taken. */}
-      <div className="mb-4 h-4">
-        {judged && (
+          judged against them. The track doubles as the rule between the
+          reading and the footer; a tile with nothing to judge draws a plain
+          hairline in the same slot, so every tile's footer sits at the same
+          height. */}
+      <div className="mb-3 mt-6 flex h-4 items-center">
+        {judged ? (
           <RangeTrack
             temp={temp}
             min={alertConfig.minTemp}
             max={alertConfig.maxTemp}
             outOfRange={outOfRange}
+            className="w-full"
           />
+        ) : (
+          <div className="h-px w-full bg-hairline" aria-hidden />
         )}
       </div>
 
       {/* Footer */}
-      <div className="space-y-1 border-t border-hairline pt-3 text-xs text-muted-foreground">
+      <div className="space-y-1 text-xs text-muted-foreground">
         {alertConfig && inService && (
           <div className="flex justify-between">
             <span>Threshold</span>
