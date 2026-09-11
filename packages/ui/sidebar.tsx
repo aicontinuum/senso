@@ -40,7 +40,7 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r bg-card transition-transform duration-200 print:hidden",
+        "flex h-full flex-col border-r border-hairline bg-card transition-transform duration-200 print:hidden",
         // Mobile: fixed overlay, slides in and out.
         "fixed left-0 top-0 z-30 w-62",
         mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
@@ -51,7 +51,7 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
     >
       {/* Header row. On desktop it holds nothing — the brand lives in the top
           bar — but it stays so this divider lines up with the header's. */}
-      <div className="flex h-(--topbar-height) shrink-0 items-center justify-end border-b px-3">
+      <div className="flex h-(--topbar-height) shrink-0 items-center justify-end border-b border-hairline px-3">
         <button
           onClick={onMobileClose}
           className="rounded-md p-1.5 hover:bg-accent md:hidden"
@@ -95,7 +95,7 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
         })}
       </nav>
 
-      <div className="shrink-0 border-t px-2 py-3">
+      <div className="shrink-0 border-t border-hairline px-2 py-3">
         <button
           onClick={onLogout}
           aria-label="Logout"
