@@ -1,11 +1,14 @@
 import { cn } from "@/lib/utils";
-import { formatTemp, rangePosition } from "@/lib/temperature";
+import { formatTemp, rangeTrackScale, scalePosition } from "@/lib/temperature";
 
-// Where the reading sits between its two limits, drawn as a marker on a track.
-// The card's number says what the temperature is; this says how much room it
-// has left. The marker is green anywhere inside the limits and red once it
-// has crossed one, pinned to the edge it crossed: the track shows closeness by
-// position alone and never changes colour before a breach.
+// Where the reading sits relative to its limits. The track is wider than the
+// allowed range: the safe band is drawn green in the middle, with a margin on
+// each side, so a marker outside the band is visibly outside it rather than
+// pinned to an edge. The marker is green inside the band and red once it has
+// crossed a limit, and nothing changes colour before that.
+//
+// The limits are labelled under the band's edges, where they apply, rather
+// than at the ends of the track.
 
 interface RangeTrackProps {
   temp: number;
@@ -15,28 +18,45 @@ interface RangeTrackProps {
   className?: string;
 }
 
+const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
+
 export function RangeTrack({ temp, min, max, outOfRange, className }: RangeTrackProps) {
-  const left = `${rangePosition(temp, min, max) * 100}%`;
+  const { lo, hi } = rangeTrackScale(min, max);
+  const bandStart = scalePosition(min, lo, hi);
+  const bandEnd = scalePosition(max, lo, hi);
+  const marker = scalePosition(temp, lo, hi);
 
   return (
-    <div className={cn("space-y-1", className)}>
-      <div
-        role="img"
-        aria-label={`${formatTemp(temp)}, limits ${formatTemp(min)} to ${formatTemp(max)}`}
-        className="relative h-1.5 rounded-full bg-chart-track"
-      >
+    <div
+      role="img"
+      aria-label={`${formatTemp(temp)}, limits ${formatTemp(min)} to ${formatTemp(max)}`}
+      className={cn("relative pb-4 pt-1", className)}
+    >
+      <div className="relative h-2 rounded-full bg-chart-track">
+        <div
+          className="absolute inset-y-0 rounded-full bg-ok-500/45"
+          style={{ left: pct(bandStart), width: pct(bandEnd - bandStart) }}
+        />
         <div
           className={cn(
-            "absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card",
+            "absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-sm ring-2 ring-card",
             outOfRange ? "bg-alert-500" : "bg-ok-500",
           )}
-          style={{ left }}
+          style={{ left: pct(marker) }}
         />
       </div>
-      <div className="flex justify-between font-mono text-2xs text-text-faint">
-        <span>{formatTemp(min)}</span>
-        <span>{formatTemp(max)}</span>
-      </div>
+      <span
+        className="absolute bottom-0 -translate-x-1/2 font-mono text-2xs text-text-faint"
+        style={{ left: pct(bandStart) }}
+      >
+        {formatTemp(min)}
+      </span>
+      <span
+        className="absolute bottom-0 -translate-x-1/2 font-mono text-2xs text-text-faint"
+        style={{ left: pct(bandEnd) }}
+      >
+        {formatTemp(max)}
+      </span>
     </div>
   );
 }

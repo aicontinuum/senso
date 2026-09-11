@@ -1,15 +1,23 @@
-import { TEMP_UNIT, TEMP_DECIMALS } from "./constants";
+import { TEMP_UNIT, TEMP_DECIMALS, RANGE_TRACK_PADDING_FRACTION } from "./constants";
 import { DEFAULT_TIMEZONE } from "./timezones";
 
 export function isOutOfRange(temp: number, min: number, max: number): boolean {
   return temp < min || temp > max;
 }
 
-// 0 at the lower limit, 1 at the upper, clamped so an out-of-range reading
-// pins to the nearest edge of the track rather than leaving it.
-export function rangePosition(temp: number, min: number, max: number): number {
-  if (max <= min) return 0.5;
-  return Math.min(1, Math.max(0, (temp - min) / (max - min)));
+// The scale the dashboard track is drawn on: the limits plus a margin each
+// side, so a reading past a limit has somewhere to be drawn.
+export function rangeTrackScale(min: number, max: number): { lo: number; hi: number } {
+  const span = Math.max(max - min, 0);
+  const pad = span * RANGE_TRACK_PADDING_FRACTION;
+  return { lo: min - pad, hi: max + pad };
+}
+
+// 0 at the low end of a scale, 1 at the high end, clamped so a reading far
+// outside the scale pins to the nearest end rather than leaving the track.
+export function scalePosition(value: number, lo: number, hi: number): number {
+  if (hi <= lo) return 0.5;
+  return Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
 }
 
 export function formatTemp(temp: number): string {
