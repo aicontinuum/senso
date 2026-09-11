@@ -171,6 +171,8 @@ export default async function DashboardPage() {
         </SummaryItem>
       </Card>
 
+      <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
+
       {sensors.length === 0 ? (
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">No sensors yet.</p>
