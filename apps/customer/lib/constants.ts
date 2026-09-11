@@ -8,6 +8,12 @@ export const TEMP_UNIT = "°C";
 // reads as more precise when the precision is stated consistently.
 export const TEMP_DECIMALS = 1;
 
+// The dashboard's range track extends past the limits on each side by this
+// fraction of the allowed span, so an out-of-range reading is drawn outside
+// the safe band rather than pinned to its edge. Half a span each side puts the
+// band in the middle half of the track.
+export const RANGE_TRACK_PADDING_FRACTION = 0.5;
+
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Alerts", href: "/alerts" },
