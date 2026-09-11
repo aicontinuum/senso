@@ -23,6 +23,10 @@ import type { NavItem } from "./nav";
 // when open, so it shows them like the wide rail does.
 const RAIL_LABEL = "inline md:hidden lg:inline";
 
+// Icons grow in the icons-only tier, where they are the whole target and the
+// tier exists for tablets; the row grows with them so the rail stays tappable.
+const RAIL_ICON = "size-4 shrink-0 md:size-5 lg:size-4";
+
 interface SidebarProps {
   navItems: NavItem[];
   mobileOpen: boolean;
@@ -69,18 +73,22 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
               onClick={onMobileClose}
               aria-current={isActive ? "page" : undefined}
               // Named explicitly because the label is not rendered in the
-              // icons-only tier. `title` would not do this: it is unreliable for
-              // screen readers and never appears on keyboard focus.
+              // icons-only tier. aria-label is for screen readers; title is the
+              // hover hint for everyone else, since a bell and a document on
+              // their own are not self-explanatory.
               aria-label={item.label}
+              title={item.label}
               className={cn(
                 "flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors",
-                "md:justify-center md:gap-0 lg:justify-start lg:gap-3",
+                "md:justify-center md:gap-0 md:py-2.5 lg:justify-start lg:gap-3 lg:py-2",
+                // Soft tint, not the solid brand fill: "you are here" should
+                // not weigh the same as the page's primary button.
                 isActive
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary-soft text-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
-              {Icon && <Icon className="h-4 w-4 shrink-0" />}
+              {Icon && <Icon className={RAIL_ICON} />}
               <span className={RAIL_LABEL}>{item.label}</span>
             </Link>
           );
@@ -91,12 +99,13 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
         <button
           onClick={onLogout}
           aria-label="Logout"
+          title="Logout"
           className={cn(
             "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-            "md:justify-center md:gap-0 lg:justify-start lg:gap-3",
+            "md:justify-center md:gap-0 md:py-2.5 lg:justify-start lg:gap-3 lg:py-2",
           )}
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <LogOut className={RAIL_ICON} />
           <span className={RAIL_LABEL}>Logout</span>
         </button>
       </div>
