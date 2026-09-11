@@ -49,12 +49,12 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
         "md:w-16 lg:w-62",
       )}
     >
-      {/* Header row. On desktop it holds nothing — the brand lives in the top
-          bar — but it stays so this divider lines up with the header's. */}
-      <div className="flex h-(--topbar-height) shrink-0 items-center justify-end border-b border-hairline px-3">
+      {/* The drawer's close button. On desktop the rail starts under the top
+          bar and has no header row of its own. */}
+      <div className="flex h-(--topbar-height) shrink-0 items-center justify-end border-b border-hairline px-3 md:hidden">
         <button
           onClick={onMobileClose}
-          className="rounded-md p-1.5 hover:bg-accent md:hidden"
+          className="rounded-md p-1.5 hover:bg-accent"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
