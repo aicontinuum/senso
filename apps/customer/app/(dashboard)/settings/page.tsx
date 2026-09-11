@@ -11,6 +11,7 @@ import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {
   const customer = await requireCustomer();
+  const now = Date.now();
 
   const supabase = await createClient();
 
@@ -61,25 +62,25 @@ export default async function SettingsPage() {
     gatewayId: s.gatewayId,
     customerId: customer.id,
     name: s.name,
-    status: isSensorOnline(s.status, lastReadingAtBySensor.get(s.id)) ? "online" : "offline",
+    status: isSensorOnline(s.status, lastReadingAtBySensor.get(s.id), now) ? "online" : "offline",
   }));
 
   const gatewayShapes: Gateway[] = (gateways ?? []).map((g) => ({
     id: g.id,
     customerId: customer.id,
     name: g.name ?? "Gateway",
-    status: isGatewayOnline(g.is_online, g.last_seen_at) ? "online" : "offline",
+    status: isGatewayOnline(g.is_online, g.last_seen_at, now) ? "online" : "offline",
     lastSeen: g.last_seen_at ?? new Date().toISOString(),
     firmwareVersion: g.firmware_version ?? "—",
   }));
 
   return (
-    <div className="max-w-lg space-y-5">
+    <div className="max-w-lg space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
       <AccountInfoSection customer={customerShape} />
       <TimezoneSection initialTimezone={customer.timezone} />
       <SensorsSection sensors={sensorShapes} />
-      <GatewaysSection gateways={gatewayShapes} timezone={customer.timezone} />
+      <GatewaysSection gateways={gatewayShapes} timezone={customer.timezone} now={now} />
       <AlertRecipientsSection initialEmails={initialAlertEmails} />
       <ChangePasswordSection />
     </div>

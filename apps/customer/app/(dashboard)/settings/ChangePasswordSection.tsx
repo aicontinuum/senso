@@ -1,8 +1,11 @@
 "use client";
 import { useState } from "react";
+import { KeyRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@senso/ui";
-import { Input } from "@senso/ui";
+import { Button, Input } from "@senso/ui";
+import { SettingsCard } from "./SettingsCard";
+
+const PASSWORD_MIN_LENGTH = 8;
 
 export function ChangePasswordSection() {
   const [current, setCurrent] = useState("");
@@ -20,8 +23,8 @@ export function ChangePasswordSection() {
       setError("All fields are required");
       return;
     }
-    if (next.length < 8) {
-      setError("New password must be at least 8 characters");
+    if (next.length < PASSWORD_MIN_LENGTH) {
+      setError(`New password must be at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
     if (next !== confirm) {
@@ -65,40 +68,40 @@ export function ChangePasswordSection() {
     }
   }
 
+  const canSubmit = !saving && current !== "" && next !== "" && confirm !== "";
+
   return (
-    <section className="rounded-lg border bg-card p-5">
-      <p className="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Change Password
-      </p>
-      <div className="space-y-3">
+    <SettingsCard title="Change password">
+      <div className="space-y-4">
         <Input
-          label="Current Password"
+          label="Current password"
           type="password"
           value={current}
           onChange={(e) => { setCurrent(e.target.value); setError(""); }}
           autoComplete="current-password"
         />
         <Input
-          label="New Password"
+          label="New password"
           type="password"
           value={next}
           onChange={(e) => { setNext(e.target.value); setError(""); }}
           autoComplete="new-password"
+          hint={`At least ${PASSWORD_MIN_LENGTH} characters.`}
         />
         <Input
-          label="Confirm New Password"
+          label="Confirm new password"
           type="password"
           value={confirm}
           onChange={(e) => { setConfirm(e.target.value); setError(""); }}
           autoComplete="new-password"
         />
-        {error && <p className="text-xs text-alert-text">{error}</p>}
-        {saved && <p className="text-xs font-medium text-ok-text">✓ Password updated</p>}
-        <Button block onClick={handleSubmit} disabled={saving}>
-          {saving ? "Updating…" : "Update Password"}
+        {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
+        {saved && <p className="text-sm font-medium text-ok-text">Password updated.</p>}
+        <Button onClick={handleSubmit} disabled={!canSubmit}>
+          <KeyRound className="size-4" />
+          {saving ? "Updating…" : "Update password"}
         </Button>
       </div>
-    </section>
+    </SettingsCard>
   );
 }
-

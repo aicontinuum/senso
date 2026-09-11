@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TIMEZONES } from "@/lib/timezones";
 import { Select } from "@senso/ui";
+import { SettingsCard } from "./SettingsCard";
 
 export function TimezoneSection({ initialTimezone }: { initialTimezone: string }) {
   const router = useRouter();
@@ -38,14 +39,11 @@ export function TimezoneSection({ initialTimezone }: { initialTimezone: string }
   }
 
   return (
-    <section className="rounded-lg border bg-card p-5">
-      <p className="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Timezone
-      </p>
-      <div className="space-y-1.5">
-        <p className="text-xs text-muted-foreground">
-          All timestamps and reports are shown in this timezone.
-        </p>
+    <SettingsCard
+      title="Timezone"
+      description="All timestamps and reports are shown in this timezone."
+    >
+      <div className="space-y-2">
         <Select
           aria-label="Timezone"
           value={timezone}
@@ -58,9 +56,9 @@ export function TimezoneSection({ initialTimezone }: { initialTimezone: string }
             </option>
           ))}
         </Select>
-        {error && <p className="text-xs text-alert-text">{error}</p>}
-        {saved && <p className="text-xs font-medium text-ok-text">✓ Saved</p>}
+        {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
+        {saved && <p className="text-sm font-medium text-ok-text">Saved.</p>}
       </div>
-    </section>
+    </SettingsCard>
   );
 }

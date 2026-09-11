@@ -3,9 +3,9 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import type { Customer } from "@senso/types";
 import { cn } from "@/lib/utils";
-import { Button } from "@senso/ui";
-import { Input } from "@senso/ui";
+import { Button, Input } from "@senso/ui";
 import { Field } from "./Field";
+import { SettingsCard } from "./SettingsCard";
 
 export function AccountInfoSection({ customer }: { customer: Customer }) {
   const [editing, setEditing] = useState(false);
@@ -44,40 +44,32 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
     }
   }
 
-  return (
-    <section className="rounded-lg border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Account Info
-        </p>
-        {!editing ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setEditing(true); setSaved(false); }}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
-          </Button>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={cancel}>
-            Cancel
-          </Button>
-        )}
-      </div>
+  const action = !editing ? (
+    <Button variant="ghost" size="sm" onClick={() => { setEditing(true); setSaved(false); }}>
+      <Pencil className="size-4" />
+      Edit
+    </Button>
+  ) : (
+    <div className="flex gap-2">
+      <Button variant="secondary" size="sm" onClick={cancel} disabled={saving}>Cancel</Button>
+      <Button size="sm" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Button>
+    </div>
+  );
 
+  return (
+    <SettingsCard title="Account info" action={action}>
       <div className="space-y-4">
-        <Field label="Business Name">
+        <Field label="Business name">
           <p className="text-sm font-medium">{customer.name}</p>
         </Field>
-        <Field label="Contact Name">
+        <Field label="Contact name">
           {editing ? (
-            <Input aria-label="Contact Name" value={contactName} onChange={(e) => setContactName(e.target.value)} />
+            <Input aria-label="Contact name" value={contactName} onChange={(e) => setContactName(e.target.value)} />
           ) : (
             <p className="text-sm font-medium">{contactName || <span className="text-muted-foreground">Not set</span>}</p>
           )}
         </Field>
-        <Field label="Contact Email">
+        <Field label="Contact email">
           <p className="text-sm font-medium">{customer.contactEmail}</p>
         </Field>
         <Field label="Phone">
@@ -90,19 +82,11 @@ export function AccountInfoSection({ customer }: { customer: Customer }) {
           )}
         </Field>
 
-        {editing && (
-          <div className="space-y-1.5">
-            <Button block onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save Changes"}
-            </Button>
-            {error && <p className="text-center text-xs text-alert-text">{error}</p>}
-          </div>
-        )}
+        {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
         {saved && !editing && (
-          <p className="text-center text-xs font-medium text-ok-text">✓ Changes saved</p>
+          <p className="text-sm font-medium text-ok-text">Changes saved.</p>
         )}
       </div>
-    </section>
+    </SettingsCard>
   );
 }
-
