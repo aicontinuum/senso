@@ -184,18 +184,13 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
             )}
           </Row>
 
+          {/* No recipients row: the list is account-wide and edited on the
+              customer page. The per-sensor list that used to live here promised
+              per-fridge routing it could not deliver — the two lists were
+              unioned, so it could only add people, and one email covers every
+              alert open for a customer. */}
           <Row label="DevEUI">
             <span className="font-mono text-sm text-muted-foreground">{sensor.hardwareId || '—'}</span>
-          </Row>
-
-          {/* Recipients are account-wide and edited on the customer page. The
-              per-sensor list that used to live here promised per-fridge routing
-              it could not deliver: the two lists were unioned, so it could only
-              add people, and one email covers every alert open for a customer. */}
-          <Row label="Alert Recipients">
-            <span className="text-sm text-muted-foreground">
-              Account-wide — set on the customer page.
-            </span>
           </Row>
         </dl>
 
