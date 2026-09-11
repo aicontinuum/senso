@@ -177,7 +177,7 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
                 <th className={TH}>Gateway</th>
                 <th className={TH}>Status</th>
                 <th className={TH}>Battery</th>
-                <th className={TH}><span className="sr-only">Actions</span></th>
+                <th className={`${TH} relative`}><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
