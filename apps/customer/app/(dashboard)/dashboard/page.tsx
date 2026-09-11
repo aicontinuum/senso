@@ -14,6 +14,7 @@ const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(2
 
 export default async function DashboardPage() {
   const customer = await requireCustomer();
+  const now = Date.now();
 
   const supabase = await createClient();
 
@@ -58,7 +59,7 @@ export default async function DashboardPage() {
         ? supabase.from("alert_logs").select("alert_config_id").in("alert_config_id", alertConfigIds).eq("is_resolved", false)
         : { data: [] as { alert_config_id: string }[] },
       alertConfigIds.length > 0
-        ? supabase.from("alert_logs").select("alert_config_id").in("alert_config_id", alertConfigIds).gte("triggered_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        ? supabase.from("alert_logs").select("alert_config_id").in("alert_config_id", alertConfigIds).gte("triggered_at", new Date(now - 24 * 60 * 60 * 1000).toISOString())
         : { data: [] as { alert_config_id: string }[] },
     ]);
 
@@ -77,7 +78,7 @@ export default async function DashboardPage() {
   // Derive online/offline from data freshness — a silent gateway/sensor never
   // sends an explicit offline signal, so stale data means offline.
   const sensorOnlineById = new Map(
-    allSensors.map((s) => [s.id, isSensorOnline(s.status, lastReadingBySensor.get(s.id)?.recorded_at)]),
+    allSensors.map((s) => [s.id, isSensorOnline(s.status, lastReadingBySensor.get(s.id)?.recorded_at, now)]),
   );
   // The headline counts describe live monitoring, so a sensor that has not been
   // commissioned belongs in neither tally — counting one as "offline" would read
@@ -184,6 +185,7 @@ export default async function DashboardPage() {
               alertConfig={configMap.get(sensor.id)}
               hasActiveAlert={activeAlertSensorIds.has(sensor.id)}
               timezone={customer.timezone}
+              now={now}
             />
           ))}
         </div>
