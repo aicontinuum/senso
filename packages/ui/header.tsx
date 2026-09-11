@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Logo } from "./logo";
 
@@ -10,9 +11,11 @@ interface HeaderProps {
   logoSrc?: string;
   /** Right-hand slot: the customer's name on one app, a role label on the other. */
   right?: React.ReactNode;
+  /** Where the brand takes you. Both apps land on their dashboard. */
+  homeHref?: string;
 }
 
-export function Header({ onMenuClick, appName, logoSrc, right }: HeaderProps) {
+export function Header({ onMenuClick, appName, logoSrc, right, homeHref = "/dashboard" }: HeaderProps) {
   return (
     // Three tracks rather than flex with justify-between, so the brand is centred
     // on the bar itself and not on whatever space the side content leaves over.
@@ -29,7 +32,14 @@ export function Header({ onMenuClick, appName, logoSrc, right }: HeaderProps) {
       </div>
 
       <div className="flex justify-center">
-        <Logo appName={appName} src={logoSrc} />
+        {/* The brand is the way home, as on every site people already use. */}
+        <Link
+          href={homeHref}
+          aria-label={`${appName} dashboard`}
+          className="rounded-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32"
+        >
+          <Logo appName={appName} src={logoSrc} />
+        </Link>
       </div>
 
       <div className="flex min-w-0 justify-end">
