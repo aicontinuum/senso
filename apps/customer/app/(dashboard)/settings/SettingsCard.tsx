@@ -12,19 +12,20 @@ export function SettingsCard({
   title: string;
   description?: string;
   action?: React.ReactNode;
-  children: React.ReactNode;
+  /** Omit for a card that is only its header, such as a collapsed form. */
+  children?: React.ReactNode;
 }) {
   return (
     <Card asChild className="overflow-hidden">
       <section aria-label={title}>
-        <CardHeader className="border-b border-hairline">
+        <CardHeader className={children ? "border-b border-hairline" : undefined}>
           <div className="flex items-center justify-between gap-3">
             <CardTitle>{title}</CardTitle>
             {action}
           </div>
           {description && <CardDescription>{description}</CardDescription>}
         </CardHeader>
-        <div className="p-5">{children}</div>
+        {children && <div className="p-5">{children}</div>}
       </section>
     </Card>
   );
