@@ -20,7 +20,7 @@ export function Header({ onMenuClick, appName, logoSrc, right, homeHref = "/dash
     // Three tracks rather than flex with justify-between, so the brand is centred
     // on the bar itself and not on whatever space the side content leaves over.
     // It stays centred as the right-hand content changes length.
-    <header className="grid h-(--topbar-height) shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b bg-card px-4 sm:px-6 print:hidden">
+    <header className="grid h-(--topbar-height) shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-hairline bg-card px-4 sm:px-6 print:hidden">
       <div className="flex min-w-0 justify-start">
         <button
           onClick={onMenuClick}
