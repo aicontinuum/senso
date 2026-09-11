@@ -4,7 +4,7 @@ import { Pencil } from "lucide-react";
 import type { Customer } from "@senso/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@senso/ui";
-import { Input } from "@/components/ui/input";
+import { Input } from "@senso/ui";
 import { Field } from "./Field";
 
 export function AccountInfoSection({ customer }: { customer: Customer }) {
