@@ -10,6 +10,7 @@ export default async function CustomerDetailPage({
 }) {
   const { id } = await params;
   const admin = createAdminClient();
+  const now = Date.now();
 
   const { data: customer } = await admin
     .from('customers')
@@ -45,7 +46,7 @@ export default async function CustomerDetailPage({
   // last reading out of the window.
   const batteryBySensor = new Map<string, number | null>();
   if (sensorIds.length > 0) {
-    const sinceStale = new Date(Date.now() - SENSOR_STALE_MS).toISOString();
+    const sinceStale = new Date(now - SENSOR_STALE_MS).toISOString();
     const [{ data: freshReadings }, latestReadings] = await Promise.all([
       admin
         .from('readings')
@@ -83,6 +84,7 @@ export default async function CustomerDetailPage({
       customer={customer}
       gateways={gatewayRows}
       sensors={sensorRows}
+      now={now}
     />
   );
 }

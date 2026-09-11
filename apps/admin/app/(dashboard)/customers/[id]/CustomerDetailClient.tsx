@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
+import { GatewaysSection, type GatewayRow } from '@/components/customers/GatewaysSection';
 import { SensorsSection, type SensorRow } from '@/components/customers/SensorsSection';
-import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
 
 type CustomerRow = {
   id: string;
@@ -19,28 +19,14 @@ type CustomerRow = {
   alert_recipients: string[] | null;
 };
 
-type GatewayRow = {
-  id: string;
-  name: string | null;
-  is_online: boolean;
-  firmware_version: string | null;
-  last_seen_at: string | null;
-  mac_address: string | null;
-};
-
 interface Props {
   customer: CustomerRow;
   gateways: GatewayRow[];
   sensors: SensorRow[];
+  /** Server clock at render, so relative times match the rest of the page. */
+  now: number;
 }
 
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -73,7 +59,7 @@ function Field({ label, value, editing, onChange }: {
   );
 }
 
-export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
+export function CustomerDetailClient({ customer, gateways, sensors, now }: Props) {
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
@@ -122,13 +108,6 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
     }
   }
 
-  const [euiInput, setEuiInput] = useState('');
-  const [gwName, setGwName] = useState('');
-  const [linking, setLinking] = useState(false);
-  const [linkError, setLinkError] = useState('');
-  const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
-  const [unlinking, setUnlinking] = useState(false);
-
   const [newPassword, setNewPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -161,38 +140,6 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
     }
   }
 
-  async function linkGateway() {
-    setLinkError('');
-    const normalised = normaliseIdentifier(euiInput);
-    if (!isValidGatewayId(normalised)) {
-      setLinkError('Invalid Gateway EUI — expected 16 hex characters, e.g. 2cf7f11081400088');
-      return;
-    }
-    if (!gwName.trim()) {
-      setLinkError('Gateway name is required');
-      return;
-    }
-
-    setLinking(true);
-    try {
-      const res = await fetch(`/api/customers/${customer.id}/gateways`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ macAddress: normalised, name: gwName }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setLinkError(data.error ?? 'Failed to link gateway');
-        return;
-      }
-      setEuiInput('');
-      setGwName('');
-      router.refresh();
-    } finally {
-      setLinking(false);
-    }
-  }
-
   async function updatePassword() {
     setPasswordError('');
     setPasswordSuccess(false);
@@ -216,31 +163,6 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
       setPasswordSuccess(true);
     } finally {
       setPasswordSaving(false);
-    }
-  }
-
-  async function unlinkGateway(gatewayId: string) {
-    const linkedSensors = sensors.filter(s => s.gateway_id === gatewayId);
-    if (linkedSensors.length > 0) {
-      const ok = window.confirm(
-        `This gateway has ${linkedSensors.length} sensor${linkedSensors.length > 1 ? 's' : ''} linked to it (${linkedSensors.map(s => s.name).join(', ')}).\n\nRemoving the gateway will also retire all linked sensors. Their recorded readings are kept for the compliance history. Proceed?`
-      );
-      if (!ok) {
-        setConfirmUnlinkId(null);
-        return;
-      }
-    }
-    setUnlinking(true);
-    try {
-      const res = await fetch(`/api/customers/${customer.id}/gateways/${gatewayId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setConfirmUnlinkId(null);
-        router.refresh();
-      }
-    } finally {
-      setUnlinking(false);
     }
   }
 
@@ -298,89 +220,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
         </div>
       </Section>
 
-      <Section title="Gateway">
-        {gateways.length === 0 && (
-          <p className="mb-4 text-sm text-muted-foreground">No gateway linked yet.</p>
-        )}
-        {gateways.length > 0 && (
-          <div className="mb-4 space-y-2">
-            {gateways.map(g => (
-              <div key={g.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
-                <div>
-                  <p className="font-medium">{g.name ?? g.id}</p>
-                  <p className="text-xs text-muted-foreground">
-                    ID: {g.id}
-                    {g.mac_address && ` · EUI: ${g.mac_address}`}
-                    {g.firmware_version && ` · Firmware ${g.firmware_version}`}
-                    {g.last_seen_at && ` · Last seen ${formatDate(g.last_seen_at)}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={`flex items-center gap-1.5 text-xs font-medium ${g.is_online ? 'text-ok-text' : 'text-muted-foreground'}`}>
-                    <span className={`inline-block h-2 w-2 rounded-full ${g.is_online ? 'bg-ok-500' : 'bg-offline-500'}`} />
-                    {g.is_online ? 'Online' : 'Offline'}
-                  </span>
-                  {confirmUnlinkId === g.id ? (
-                    <span className="flex items-center gap-1.5 text-xs">
-                      <span className="text-muted-foreground">Unlink?</span>
-                      <button
-                        onClick={() => unlinkGateway(g.id)}
-                        disabled={unlinking}
-                        className="font-medium text-alert-text hover:text-alert-text disabled:opacity-50"
-                      >
-                        {unlinking ? 'Removing…' : 'Yes'}
-                      </button>
-                      <button
-                        onClick={() => setConfirmUnlinkId(null)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        Cancel
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmUnlinkId(g.id)}
-                      className="text-xs text-muted-foreground hover:text-alert-text"
-                    >
-                      Unlink
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {/* Stacks on a phone. Side by side these three come to 465px, so on a
-              390px screen the button sat 112px off the right edge and could not
-              be tapped at all — and this form is used standing in a kitchen. */}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              value={euiInput}
-              onChange={e => { setEuiInput(e.target.value); setLinkError(''); }}
-              onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="Gateway EUI (e.g. 2cf7f11081400088)"
-              className={`w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-auto sm:flex-1 sm:max-w-xs ${linkError ? 'border-alert-border focus:ring-alert-500' : 'border-border'}`}
-            />
-            <input
-              value={gwName}
-              onChange={e => setGwName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="Name"
-              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-36"
-            />
-            <button
-              onClick={linkGateway}
-              disabled={linking || !euiInput.trim() || !gwName.trim()}
-              className="w-full shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-            >
-              {linking ? 'Linking…' : 'Link Gateway'}
-            </button>
-          </div>
-          {linkError && <p className="text-xs text-alert-text">{linkError}</p>}
-        </div>
-      </Section>
+      <GatewaysSection customerId={customer.id} gateways={gateways} sensors={sensors} now={now} />
 
       <SensorsSection customerId={customer.id} gateways={gateways} sensors={sensors} />
 
