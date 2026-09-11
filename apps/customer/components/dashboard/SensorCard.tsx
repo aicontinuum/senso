@@ -6,13 +6,11 @@ import { cn } from "@/lib/utils";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { RangeTrack } from "@/components/dashboard/RangeTrack";
 import { sensorState } from "@/lib/alert-state";
-import { RANGE_NEAR_FRACTION } from "@/lib/constants";
 import {
-  rangeProximity,
+  isOutOfRange,
   formatTemp,
   formatThreshold,
   formatReadingTime,
-  type RangeProximity,
 } from "@/lib/temperature";
 
 interface SensorCardProps {
@@ -23,14 +21,6 @@ interface SensorCardProps {
   /** Server clock at render; the page refreshes itself, so this stays current. */
   now: number;
 }
-
-// Below the number, one line saying what it means. Tone follows proximity so
-// "near limit" is the amber step between in range and out of range.
-const RANGE_LABEL: Record<RangeProximity, { text: string; className: string }> = {
-  ok: { text: "In range", className: "font-medium text-ok-text" },
-  near: { text: "Near limit", className: "font-semibold text-warn-text" },
-  out: { text: "Out of range", className: "font-semibold text-alert-text" },
-};
 
 export function SensorCard({
   sensor,
@@ -47,10 +37,7 @@ export function SensorCard({
   // A reading from a sensor that is not installed yet is a real measurement of
   // the wrong place, so it is neither in range nor out of it.
   const judged = inService && !isOffline && temp !== undefined && alertConfig !== undefined;
-  const proximity: RangeProximity | null = judged
-    ? rangeProximity(temp, alertConfig.minTemp, alertConfig.maxTemp)
-    : null;
-  const outOfRange = proximity === "out";
+  const outOfRange = judged && isOutOfRange(temp, alertConfig.minTemp, alertConfig.maxTemp);
 
   const state = sensorState({ inService, isOffline, outOfRange, hasOpenAlert: hasActiveAlert });
 
@@ -98,8 +85,10 @@ export function SensorCard({
           <span className="font-medium text-muted-foreground">Awaiting installation</span>
         ) : isOffline ? (
           <span className="font-medium text-muted-foreground">Offline</span>
-        ) : proximity ? (
-          <span className={RANGE_LABEL[proximity].className}>{RANGE_LABEL[proximity].text}</span>
+        ) : judged ? (
+          outOfRange
+            ? <span className="font-semibold text-alert-text">Out of range</span>
+            : <span className="font-medium text-ok-text">In range</span>
         ) : (
           <span className="font-medium text-muted-foreground">No limit set</span>
         )}
@@ -107,13 +96,12 @@ export function SensorCard({
 
       {/* Where the reading sits between its limits, only when it is being
           judged against them. */}
-      {judged && proximity && (
+      {judged && (
         <RangeTrack
           temp={temp}
           min={alertConfig.minTemp}
           max={alertConfig.maxTemp}
-          proximity={proximity}
-          nearFraction={RANGE_NEAR_FRACTION}
+          outOfRange={outOfRange}
           className="mb-4"
         />
       )}

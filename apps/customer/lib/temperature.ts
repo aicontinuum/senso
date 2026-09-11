@@ -1,20 +1,8 @@
-import { TEMP_UNIT, TEMP_DECIMALS, RANGE_NEAR_FRACTION } from "./constants";
+import { TEMP_UNIT, TEMP_DECIMALS } from "./constants";
 import { DEFAULT_TIMEZONE } from "./timezones";
 
 export function isOutOfRange(temp: number, min: number, max: number): boolean {
   return temp < min || temp > max;
-}
-
-export type RangeProximity = "ok" | "near" | "out";
-
-// Where a reading sits inside its limits. "Near" is the band inside either
-// edge, a fixed fraction of the span, so a fridge drifting toward its limit
-// shows before it crosses it. The alert logic does not use this: an alert is
-// still raised only on a breach.
-export function rangeProximity(temp: number, min: number, max: number): RangeProximity {
-  if (isOutOfRange(temp, min, max)) return "out";
-  const margin = (max - min) * RANGE_NEAR_FRACTION;
-  return temp < min + margin || temp > max - margin ? "near" : "ok";
 }
 
 // 0 at the lower limit, 1 at the upper, clamped so an out-of-range reading
