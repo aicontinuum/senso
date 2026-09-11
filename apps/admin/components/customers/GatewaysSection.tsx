@@ -134,7 +134,7 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
                 const linked = sensors.filter(s => s.gateway_id === g.id);
                 return (
                   <tr key={g.id}>
-                    <td className={`${TD} font-medium`}>{g.name ?? g.id}</td>
+                    <td className={`${TD} whitespace-nowrap font-medium`}>{g.name ?? g.id}</td>
                     <td className={`${TD} font-mono text-xs text-muted-foreground`}>{g.mac_address ?? '—'}</td>
                     <td className={`${TD} text-muted-foreground`}>{g.firmware_version ?? '—'}</td>
                     <td className={`${TD} whitespace-nowrap text-muted-foreground`}>{formatAgo(g.last_seen_at, now)}</td>

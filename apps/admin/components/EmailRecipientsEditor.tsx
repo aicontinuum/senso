@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Button, Card, Input } from '@senso/ui';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
@@ -11,6 +11,8 @@ interface Props {
   onChange: (emails: string[]) => void;
 }
 
+// A list of addresses with an add row underneath. Each change is handed up
+// immediately; the caller decides when and how it is saved.
 export function EmailRecipientsEditor({ emails, onChange }: Props) {
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
@@ -29,44 +31,45 @@ export function EmailRecipientsEditor({ emails, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-1.5">
-      {emails.length === 0 && (
-        <p className="text-sm text-muted-foreground">None set.</p>
+    <div className="space-y-4">
+      {emails.length === 0 ? (
+        <p className="text-sm text-muted-foreground">None set — nobody will be emailed about this account&apos;s alerts.</p>
+      ) : (
+        <Card tone="sunken" className="divide-y divide-hairline overflow-hidden">
+          {emails.map(email => (
+            <div key={email} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <span className="truncate font-medium">{email}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => remove(email)}
+                aria-label={`Remove ${email}`}
+                title="Remove"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </Card>
       )}
-      {emails.map(email => (
-        <div key={email} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-sm">
-          <span className="truncate">{email}</span>
-          <button
-            onClick={() => remove(email)}
-            className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label={`Remove ${email}`}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ))}
-      <div className="space-y-1 pt-1">
-        <div className="flex gap-2">
-          <input
-            type="email"
-            value={newEmail}
-            onChange={e => { setNewEmail(e.target.value); setError(''); }}
-            onKeyDown={e => e.key === 'Enter' && add()}
-            placeholder="name@example.com"
-            className={cn(
-              'min-w-0 flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring',
-              error ? 'border-alert-border focus:ring-alert-500' : 'border-border',
-            )}
-          />
-          <button
-            onClick={add}
-            className="flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add
-          </button>
-        </div>
-        {error && <p className="text-xs text-alert-text">{error}</p>}
+
+      {/* Stacks on a phone: side by side the button falls off the card edge. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <Input
+          type="email"
+          value={newEmail}
+          onChange={e => { setNewEmail(e.target.value); setError(''); }}
+          onKeyDown={e => e.key === 'Enter' && add()}
+          placeholder="name@example.com"
+          aria-label="Email address to add"
+          error={error || undefined}
+          wrapperClassName="max-w-sm"
+        />
+        <Button variant="secondary" className="self-start" onClick={add} disabled={newEmail.trim() === ''}>
+          <Plus className="size-4" />
+          Add
+        </Button>
       </div>
     </div>
   );
