@@ -37,9 +37,11 @@ export function RangeTrack({ temp, min, max, outOfRange, className }: RangeTrack
           className="absolute inset-y-0 rounded-full bg-ok-500/45"
           style={{ left: pct(bandStart), width: pct(bandEnd - bandStart) }}
         />
+        {/* A slim vertical pill, taller than the track, so it reads as a
+            cursor on a scale rather than a bead on a string. */}
         <div
           className={cn(
-            "absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-sm ring-2 ring-card",
+            "absolute top-1/2 h-4 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-sm ring-2 ring-card",
             outOfRange ? "bg-alert-500" : "bg-ok-500",
           )}
           style={{ left: pct(marker) }}
