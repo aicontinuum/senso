@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, Plus } from 'lucide-react';
 import { Badge, Button, Card } from '@senso/ui';
-import { LinkRow } from '@/components/ui/link-row';
+import { LinkRow } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 function formatDate(iso: string) {

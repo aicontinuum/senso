@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@senso/ui";
+import { Pencil } from "lucide-react";
+import { Button, Card } from "@senso/ui";
 import { ALERT_COMMENT_MAX_LENGTH } from "@/lib/constants";
 import { formatDateTimeLong } from "@/lib/temperature";
 
@@ -68,11 +69,13 @@ export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timez
     new Date(savedAt.updated).getTime() - new Date(savedAt.created).getTime() > 1000;
 
   return (
-    <section className="mt-6 rounded-lg border bg-card p-4">
+    <Card asChild className="mt-6 p-5">
+    <section aria-label="Comment">
       <div className="mb-3 flex items-center justify-between gap-4">
-        <h2 className="text-sm font-medium text-muted-foreground">Comments</h2>
+        <h2 className="font-display text-md font-semibold leading-snug tracking-tight">Comment</h2>
         {!editing && (
           <Button variant="ghost" size="sm" onClick={() => { setDraft(body); setEditing(true); }}>
+            <Pencil className="size-4" />
             Edit
           </Button>
         )}
@@ -130,5 +133,6 @@ export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timez
 
       {error && <p className="mt-3 text-sm text-alert-text">{error}</p>}
     </section>
+    </Card>
   );
 }

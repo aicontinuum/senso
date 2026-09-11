@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Badge, Card } from '@senso/ui';
-import { LinkRow } from '@/components/ui/link-row';
+import { LinkRow } from '@senso/ui';
 import { formatAgo } from '@/lib/platform-status';
 
 // One row per customer: is their site up, are their sensors reporting, and
