@@ -77,7 +77,7 @@ export default async function CustomersPage() {
               <th className={TH}>Sensors</th>
               <th className={TH}>Gateway</th>
               <th className={`${TH} whitespace-nowrap`}>Date added</th>
-              <th className={TH}><span className="sr-only">Open</span></th>
+              <th className={`${TH} relative`}><span className="sr-only">Open</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline">

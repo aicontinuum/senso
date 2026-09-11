@@ -171,7 +171,7 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
                 <th className={TH}>Firmware</th>
                 <th className={`${TH} whitespace-nowrap`}>Last seen</th>
                 <th className={TH}>Status</th>
-                <th className={TH}><span className="sr-only">Actions</span></th>
+                <th className={`${TH} relative`}><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
