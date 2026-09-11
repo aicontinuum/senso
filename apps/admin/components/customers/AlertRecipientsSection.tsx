@@ -13,8 +13,7 @@ export function AlertRecipientsSection({ customer }: { customer: CustomerRow }) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  async function save(next: string[]) {
-    setEmails(next);
+  async function save(next: string[]): Promise<boolean> {
     setError('');
     setSaving(true);
     try {
@@ -30,7 +29,15 @@ export function AlertRecipientsSection({ customer }: { customer: CustomerRow }) 
         }),
       });
       const data = await res.json();
-      if (!res.ok) setError(data.error ?? 'Failed to save');
+      if (!res.ok) {
+        setError(data.error ?? 'Could not save. Please try again.');
+        return false;
+      }
+      setEmails(next);
+      return true;
+    } catch {
+      setError('Could not save. Please try again.');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -45,7 +52,7 @@ export function AlertRecipientsSection({ customer }: { customer: CustomerRow }) 
         </CardDescription>
       </CardHeader>
       <div className="px-5 py-5">
-        <EmailRecipientsEditor emails={emails} onChange={save} />
+        <EmailRecipientsEditor emails={emails} onChange={save} saving={saving} />
         {saving && <p className="mt-3 text-xs text-muted-foreground">Saving…</p>}
         {error && <p role="alert" className="mt-3 text-sm text-alert-text">{error}</p>}
       </div>

@@ -51,7 +51,8 @@ export async function DELETE(
     .eq('id', gatewayId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error('Gateway update failed', { gatewayId, code: error.code, message: error.message });
+    return NextResponse.json({ error: 'Could not update the gateway. Please try again.' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

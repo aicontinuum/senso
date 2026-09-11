@@ -8,22 +8,25 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
 interface Props {
   emails: string[];
-  onChange: (emails: string[]) => void;
+  /** Resolves true once the change is saved; the list only moves on success. */
+  onChange: (emails: string[]) => Promise<boolean>;
+  /** Disables the controls while a save is in flight. */
+  saving?: boolean;
 }
 
-// A list of addresses with an add row underneath. Each change is handed up
-// immediately; the caller decides when and how it is saved.
-export function EmailRecipientsEditor({ emails, onChange }: Props) {
+// A list of addresses with an add row underneath. Each change is handed up to
+// the caller to save; the list shown is always the caller's, so an address is
+// never shown as gone, or added, while the database still says otherwise.
+export function EmailRecipientsEditor({ emails, onChange, saving = false }: Props) {
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
 
-  function add() {
+  async function add() {
     const e = newEmail.trim().toLowerCase();
     if (!EMAIL_RE.test(e)) { setError('Enter a valid email address (e.g. name@example.com)'); return; }
     if (emails.includes(e)) { setError('Already in the list'); return; }
-    onChange([...emails, e]);
-    setNewEmail('');
     setError('');
+    if (await onChange([...emails, e])) setNewEmail('');
   }
 
   function remove(email: string) {
@@ -44,6 +47,7 @@ export function EmailRecipientsEditor({ emails, onChange }: Props) {
                 size="icon"
                 className="size-7"
                 onClick={() => remove(email)}
+                disabled={saving}
                 aria-label={`Remove ${email}`}
                 title="Remove"
               >
@@ -66,7 +70,7 @@ export function EmailRecipientsEditor({ emails, onChange }: Props) {
           error={error || undefined}
           wrapperClassName="max-w-sm"
         />
-        <Button variant="secondary" className="self-start" onClick={add} disabled={newEmail.trim() === ''}>
+        <Button variant="secondary" className="self-start" onClick={add} disabled={saving || newEmail.trim() === ''}>
           <Plus className="size-4" />
           Add
         </Button>
