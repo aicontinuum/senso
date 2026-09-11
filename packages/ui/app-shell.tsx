@@ -20,30 +20,35 @@ interface AppShellProps {
 export function AppShell({ children, appName, logoSrc, navItems, headerRight, onLogout }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // The bar spans the full width and the rail starts under it, so the rail's
+  // edge and the bar's edge meet at a corner instead of crossing. A rail that
+  // ran up beside the bar needed an empty header-height row with its own rule
+  // just to make the two lines line up, and left a cross where they met.
   return (
-    <div className="flex h-full overflow-hidden print:block print:h-auto print:overflow-visible">
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <Sidebar
-        navItems={navItems}
-        mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
-        onLogout={onLogout}
+    <div className="flex h-full flex-col overflow-hidden print:block print:h-auto print:overflow-visible">
+      <Header
+        onMenuClick={() => setMobileOpen((v) => !v)}
+        appName={appName}
+        logoSrc={logoSrc}
+        right={headerRight}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden print:block print:overflow-visible">
-        <Header
-          onMenuClick={() => setMobileOpen((v) => !v)}
-          appName={appName}
-          logoSrc={logoSrc}
-          right={headerRight}
+      <div className="flex min-h-0 flex-1 print:block">
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-black/40 md:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        <Sidebar
+          navItems={navItems}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+          onLogout={onLogout}
         />
-        <main className="flex-1 overflow-auto p-4 sm:p-6 print:overflow-visible print:p-0">
+
+        <main className="min-w-0 flex-1 overflow-auto p-4 sm:p-6 print:overflow-visible print:p-0">
           {children}
         </main>
       </div>
