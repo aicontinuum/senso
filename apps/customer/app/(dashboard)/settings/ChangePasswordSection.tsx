@@ -147,7 +147,6 @@ export function ChangePasswordSection() {
   return (
     <SettingsCard
       title="Password"
-      description={saved ? undefined : "Used to sign in to the dashboard."}
       action={action}
     >
       {body}
