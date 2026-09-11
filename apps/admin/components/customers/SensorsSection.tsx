@@ -129,7 +129,7 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
             <tbody className="divide-y divide-hairline">
               {sensors.map(s => (
                 <tr key={s.id}>
-                  <td className={`${TD} font-medium`}>{s.name}</td>
+                  <td className={`${TD} whitespace-nowrap font-medium`}>{s.name}</td>
                   <td className={`${TD} text-muted-foreground`}>
                     {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
                   </td>
