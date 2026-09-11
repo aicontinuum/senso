@@ -62,3 +62,26 @@ export function batteryTier(volts: number | null | undefined): BatteryTier | nul
   if (volts >= BATTERY_LOW_V) return "low";
   return "critical";
 }
+
+// ── Reading freshness ──────────────────────────────────────────────────────
+//
+// Sensors report every 15 minutes. A reading older than two intervals means
+// one has been missed: not yet offline (see SENSOR_STALE_MS), but worth a
+// second look, and the dashboard tints the "updated" line to say so.
+export const SENSOR_REPORT_INTERVAL_MS = 15 * 60 * 1000;
+export const READING_STALE_WARN_MS = 2 * SENSOR_REPORT_INTERVAL_MS;
+
+/** "40 seconds ago", "6 minutes ago", "3 hours ago", "2 days ago", or "never". */
+export function formatAgo(at: string | null | undefined, now: number = Date.now()): string {
+  if (!at) return "never";
+  const t = new Date(at).getTime();
+  if (!Number.isFinite(t)) return "never";
+  const s = Math.max(0, Math.round((now - t) / 1000));
+  if (s < 60) return `${s} second${s === 1 ? "" : "s"} ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} minute${m === 1 ? "" : "s"} ago`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+}

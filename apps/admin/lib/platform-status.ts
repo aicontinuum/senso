@@ -6,7 +6,7 @@
 // offline sweep reads it too, so that an outage on our side is never reported
 // to a customer as their fridge going quiet.
 
-import { SENSOR_STALE_MS } from '@senso/status';
+import { SENSOR_STALE_MS, formatAgo } from '@senso/status';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { VPS_PULSE_STALE_MS, JOB_RUN_STALE_MS } from '@/lib/constants';
 
@@ -121,19 +121,9 @@ export function formatCheck(check: PlatformCheck, row: PlatformStatusRow | null,
   return 'answering';
 }
 
-/** "40 seconds ago", "6 minutes ago", "3 hours ago", "2 days ago", or "never". */
-export function formatAgo(at: string | null, now: number = Date.now()): string {
-  const age = ageMs(at, now);
-  if (age === null) return 'never';
-  const s = Math.max(0, Math.round(age / 1000));
-  if (s < 60) return `${s} second${s === 1 ? '' : 's'} ago`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
-  const h = Math.round(m / 60);
-  if (h < 48) return `${h} hour${h === 1 ? '' : 's'} ago`;
-  const d = Math.round(h / 24);
-  return `${d} day${d === 1 ? '' : 's'} ago`;
-}
+// The relative-time formatter lives in @senso/status so both sites word it the
+// same way; re-exported here for the admin callers that already import it.
+export { formatAgo } from '@senso/status';
 
 /**
  * The one write path. Every stamper goes through here so a failure is logged

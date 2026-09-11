@@ -8,6 +8,12 @@ export const TEMP_UNIT = "°C";
 // reads as more precise when the precision is stated consistently.
 export const TEMP_DECIMALS = 1;
 
+// How close to a limit counts as "near" on the dashboard, as a fraction of the
+// allowed span. On a 2–8 °C fridge that is the outer 0.9 °C at each end: wide
+// enough to catch a drift a cycle early, narrow enough that a fridge holding
+// its set point never shows amber.
+export const RANGE_NEAR_FRACTION = 0.15;
+
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Alerts", href: "/alerts" },
