@@ -53,7 +53,12 @@ export async function PATCH(request: Request) {
     .update(update)
     .eq('id', customer.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    // The detail stays in the server log; the browser gets a message it can
+    // show. A raw database error names tables and constraints it should not.
+    console.error('Account update failed', { customerId: customer.id, code: error.code, message: error.message });
+    return NextResponse.json({ error: 'Could not save your changes. Please try again.' }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }

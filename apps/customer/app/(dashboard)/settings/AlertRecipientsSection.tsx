@@ -19,7 +19,9 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  async function persist(updated: string[]) {
+  // Saves first and changes the list only on success, so an address is never
+  // shown as removed, or added, while the database still says otherwise.
+  async function persist(updated: string[]): Promise<boolean> {
     setSaving(true);
     setSaveError("");
     try {
@@ -29,13 +31,21 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
         body: JSON.stringify({ alertRecipients: updated }),
       });
       const data = await res.json();
-      if (!res.ok) setSaveError(data.error ?? "Failed to save");
+      if (!res.ok) {
+        setSaveError(data.error ?? "Could not save your changes. Please try again.");
+        return false;
+      }
+      setEmails(updated);
+      return true;
+    } catch {
+      setSaveError("Could not save your changes. Please try again.");
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  function addEmail() {
+  async function addEmail() {
     const e = newEmail.trim().toLowerCase();
     if (!EMAIL_RE.test(e)) {
       setEmailError("Enter a valid email address (e.g. name@example.com)");
@@ -45,17 +55,12 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
       setEmailError("This email is already in the list");
       return;
     }
-    const updated = [...emails, e];
-    setEmails(updated);
-    setNewEmail("");
     setEmailError("");
-    persist(updated);
+    if (await persist([...emails, e])) setNewEmail("");
   }
 
   function removeEmail(email: string) {
-    const updated = emails.filter((e) => e !== email);
-    setEmails(updated);
-    persist(updated);
+    persist(emails.filter((e) => e !== email));
   }
 
   return (
@@ -77,6 +82,7 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
                   variant="ghost"
                   size="icon"
                   onClick={() => removeEmail(email)}
+                  disabled={saving}
                   aria-label={`Remove ${email}`}
                   title="Remove"
                   className="size-7 shrink-0"
@@ -100,7 +106,7 @@ export function AlertRecipientsSection({ initialEmails }: Props) {
             error={emailError || undefined}
             wrapperClassName="min-w-0 flex-1"
           />
-          <Button variant="secondary" onClick={addEmail} disabled={newEmail.trim() === ""} className="self-start">
+          <Button variant="secondary" onClick={addEmail} disabled={saving || newEmail.trim() === ""} className="self-start">
             <Plus className="size-4" />
             Add
           </Button>
