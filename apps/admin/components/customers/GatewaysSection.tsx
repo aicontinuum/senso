@@ -106,15 +106,60 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex-row items-baseline gap-2 space-y-0 border-b border-hairline">
-        <CardTitle>Gateways</CardTitle>
-        <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{gateways.length}</span>
+      <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
+        <div className="flex items-baseline gap-2">
+          <CardTitle>Gateways</CardTitle>
+          <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{gateways.length}</span>
+        </div>
+        {!adding && (
+          <Button size="sm" onClick={() => { resetForm(); setAdding(true); }}>
+            <Plus className="size-4" />
+            Link gateway
+          </Button>
+        )}
       </CardHeader>
+
+      {/* The form opens where the click landed, under the header. */}
+      {adding && (
+        <div className="border-b border-hairline px-5 py-4">
+          <Card tone="sunken" className="space-y-4 p-4">
+            <p className="text-sm font-semibold">Link a gateway</p>
+
+            <Input
+              label="Gateway EUI"
+              hint="From the label on the gateway."
+              value={eui}
+              onChange={e => { setEui(e.target.value); setFormError(''); }}
+              onKeyDown={e => e.key === 'Enter' && linkGateway()}
+              placeholder="2cf7f11081400088"
+              className="font-mono"
+              error={formError || undefined}
+            />
+
+            <Input
+              label="Name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && linkGateway()}
+              placeholder="e.g. Kitchen gateway"
+            />
+
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={linkGateway} disabled={!canSubmit}>
+                {linking ? 'Linking…' : 'Link gateway'}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => { setAdding(false); resetForm(); }}>
+                Cancel
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {gateways.length === 0 ? (
         <div className="m-5 rounded-inner border border-dashed px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">No gateway linked yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Link one by its EUI below, then register sensors against it.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Link one by its EUI with Link gateway, then register sensors against it.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -177,46 +222,6 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
         </div>
       )}
 
-      <div className="border-t border-hairline px-5 py-4">
-        {!adding ? (
-          <Button size="sm" onClick={() => { resetForm(); setAdding(true); }}>
-            <Plus className="size-4" />
-            Link gateway
-          </Button>
-        ) : (
-          <Card tone="sunken" className="space-y-4 p-4">
-            <p className="text-sm font-semibold">Link a gateway</p>
-
-            <Input
-              label="Gateway EUI"
-              hint="From the label on the gateway."
-              value={eui}
-              onChange={e => { setEui(e.target.value); setFormError(''); }}
-              onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="2cf7f11081400088"
-              className="font-mono"
-              error={formError || undefined}
-            />
-
-            <Input
-              label="Name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="e.g. Kitchen gateway"
-            />
-
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={linkGateway} disabled={!canSubmit}>
-                {linking ? 'Linking…' : 'Link gateway'}
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => { setAdding(false); resetForm(); }}>
-                Cancel
-              </Button>
-            </div>
-          </Card>
-        )}
-      </div>
     </Card>
   );
 }

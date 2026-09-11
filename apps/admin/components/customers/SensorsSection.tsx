@@ -104,15 +104,69 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex-row items-baseline gap-2 space-y-0 border-b border-hairline">
-        <CardTitle>Sensors</CardTitle>
-        <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{sensors.length}</span>
+      <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
+        <div className="flex items-baseline gap-2">
+          <CardTitle>Sensors</CardTitle>
+          <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{sensors.length}</span>
+        </div>
+        {!adding && (
+          <Button size="sm" onClick={() => { setForm(emptyForm(gateways)); setAdding(true); }}>
+            <Plus className="size-4" />
+            Add sensor
+          </Button>
+        )}
       </CardHeader>
+
+      {/* The form opens where the click landed, under the header, rather than
+          below a table that may be long. */}
+      {adding && (
+        <div className="border-b border-hairline px-5 py-4">
+          <Card tone="sunken" className="space-y-4 p-4">
+            <p className="text-sm font-semibold">New sensor</p>
+
+            {gateways.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No gateways linked — add a gateway first.</p>
+            ) : (
+              <Select label="Gateway" value={form.gatewayId} onChange={e => setField('gatewayId')(e.target.value)}>
+                {gateways.map(g => (
+                  <option key={g.id} value={g.id}>{g.name ?? g.id}</option>
+                ))}
+              </Select>
+            )}
+
+            <Input
+              label="Sensor name"
+              value={form.name}
+              onChange={e => setField('name')(e.target.value)}
+              placeholder="e.g. Cold Storage A"
+            />
+
+            <Input
+              label="DevEUI"
+              hint="From the sensor label or QR code."
+              value={form.hardwareId}
+              onChange={e => setField('hardwareId')(e.target.value)}
+              placeholder="a840419edb62011c"
+              className="font-mono"
+              error={formError || undefined}
+            />
+
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={addSensor} disabled={!canSubmit}>
+                {saving ? 'Adding…' : 'Add sensor'}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => { setAdding(false); setFormError(''); }}>
+                Cancel
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {sensors.length === 0 ? (
         <div className="m-5 rounded-inner border border-dashed px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">No sensors yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Register one against a gateway below.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Register one against a gateway with Add sensor.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -178,54 +232,6 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
         </div>
       )}
 
-      <div className="border-t border-hairline px-5 py-4">
-        {!adding ? (
-          <Button size="sm" onClick={() => { setForm(emptyForm(gateways)); setAdding(true); }}>
-            <Plus className="size-4" />
-            Add sensor
-          </Button>
-        ) : (
-          <Card tone="sunken" className="space-y-4 p-4">
-            <p className="text-sm font-semibold">New sensor</p>
-
-            {gateways.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No gateways linked — add a gateway first.</p>
-            ) : (
-              <Select label="Gateway" value={form.gatewayId} onChange={e => setField('gatewayId')(e.target.value)}>
-                {gateways.map(g => (
-                  <option key={g.id} value={g.id}>{g.name ?? g.id}</option>
-                ))}
-              </Select>
-            )}
-
-            <Input
-              label="Sensor name"
-              value={form.name}
-              onChange={e => setField('name')(e.target.value)}
-              placeholder="e.g. Cold Storage A"
-            />
-
-            <Input
-              label="DevEUI"
-              hint="From the sensor label or QR code."
-              value={form.hardwareId}
-              onChange={e => setField('hardwareId')(e.target.value)}
-              placeholder="a840419edb62011c"
-              className="font-mono"
-              error={formError || undefined}
-            />
-
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={addSensor} disabled={!canSubmit}>
-                {saving ? 'Adding…' : 'Add sensor'}
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => { setAdding(false); setFormError(''); }}>
-                Cancel
-              </Button>
-            </div>
-          </Card>
-        )}
-      </div>
     </Card>
   );
 }
