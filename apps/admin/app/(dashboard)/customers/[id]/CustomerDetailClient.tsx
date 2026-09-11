@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
+import { SensorsSection, type SensorRow } from '@/components/customers/SensorsSection';
 import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
-import { normaliseDevEui, isValidDevEui } from '@/lib/deveui';
 
 type CustomerRow = {
   id: string;
@@ -26,16 +26,6 @@ type GatewayRow = {
   firmware_version: string | null;
   last_seen_at: string | null;
   mac_address: string | null;
-};
-
-type SensorRow = {
-  id: string;
-  name: string;
-  status: string;
-  battery_level: number | null;
-  gateway_id: string;
-  /** Null until a technician marks the sensor installed. */
-  commissioned_at: string | null;
 };
 
 interface Props {
@@ -144,14 +134,6 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  const [addingSensor, setAddingSensor] = useState(false);
-  const [sensorForm, setSensorForm] = useState({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' });
-  const [sensorError, setSensorError] = useState('');
-  const [savingSensor, setSavingSensor] = useState(false);
-  const setSensorField = (key: keyof typeof sensorForm) => (v: string) => setSensorForm(f => ({ ...f, [key]: v }));
-  const [confirmUnlinkSensorId, setConfirmUnlinkSensorId] = useState<string | null>(null);
-  const [unlinkingSensor, setUnlinkingSensor] = useState(false);
-
   const [acctEmails, setAcctEmails] = useState<string[]>(customer.alert_recipients ?? []);
   const [savingAcctEmails, setSavingAcctEmails] = useState(false);
   const [acctEmailError, setAcctEmailError] = useState('');
@@ -234,48 +216,6 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
       setPasswordSuccess(true);
     } finally {
       setPasswordSaving(false);
-    }
-  }
-
-  async function addSensor() {
-    setSensorError('');
-    // Normalise here as well as server-side, so a DevEUI pasted from a label or QR
-    // with colons or dashes is accepted rather than bounced back to the technician.
-    const devEui = normaliseDevEui(sensorForm.hardwareId);
-    if (!isValidDevEui(devEui)) {
-      setSensorError('Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c');
-      return;
-    }
-    setSavingSensor(true);
-    try {
-      const res = await fetch(`/api/customers/${customer.id}/sensors`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...sensorForm, hardwareId: devEui }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSensorError(data.error ?? 'Failed to add sensor');
-        return;
-      }
-      setAddingSensor(false);
-      setSensorForm({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' });
-      router.refresh();
-    } finally {
-      setSavingSensor(false);
-    }
-  }
-
-  async function unlinkSensor(sensorId: string) {
-    setUnlinkingSensor(true);
-    try {
-      const res = await fetch(`/api/customers/${customer.id}/sensors/${sensorId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setConfirmUnlinkSensorId(null);
-        router.refresh();
-      }
-    } finally {
-      setUnlinkingSensor(false);
     }
   }
 
@@ -442,137 +382,7 @@ export function CustomerDetailClient({ customer, gateways, sensors }: Props) {
         </div>
       </Section>
 
-      <Section title={`Sensors (${sensors.length})`}>
-        {sensors.length === 0 && (
-          <p className="mb-4 text-sm text-muted-foreground">No sensors yet.</p>
-        )}
-        {sensors.length > 0 && (
-          <div className="mb-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-8 font-medium">Name</th>
-                  <th className="pb-2 pr-8 font-medium">Gateway</th>
-                  <th className="pb-2 pr-8 font-medium">Status</th>
-                  <th className="pb-2 pr-8 font-medium">Battery</th>
-                  <th className="pb-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {sensors.map(s => (
-                  <tr key={s.id}>
-                    <td className="py-2.5 pr-8 font-medium">{s.name}</td>
-                    <td className="py-2.5 pr-8 text-muted-foreground">
-                      {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
-                    </td>
-                    <td className="py-2.5 pr-8">
-                      {/* Not commissioned outranks online/offline: the sensor may
-                          be reporting perfectly and still not be monitoring
-                          anything the customer owns. */}
-                      {s.commissioned_at === null ? (
-                        <span className="flex items-center gap-1.5 text-warn-text">
-                          <span className="inline-block h-2 w-2 rounded-full bg-warn-500" />
-                          Not in service
-                        </span>
-                      ) : (
-                        <span className={`flex items-center gap-1.5 ${s.status === 'online' ? 'text-ok-text' : 'text-muted-foreground'}`}>
-                          <span className={`inline-block h-2 w-2 rounded-full ${s.status === 'online' ? 'bg-ok-500' : 'bg-offline-500'}`} />
-                          {s.status === 'online' ? 'Online' : 'Offline'}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 text-muted-foreground">
-                      {s.battery_level != null ? `${s.battery_level}%` : '—'}
-                    </td>
-                    <td className="py-2.5 text-right">
-                      {confirmUnlinkSensorId === s.id ? (
-                        <span className="flex items-center justify-end gap-1.5 text-xs">
-                          <span className="text-muted-foreground">Remove?</span>
-                          <button onClick={() => unlinkSensor(s.id)} disabled={unlinkingSensor} className="font-medium text-alert-text hover:text-alert-text disabled:opacity-50">
-                            {unlinkingSensor ? 'Removing…' : 'Yes'}
-                          </button>
-                          <button onClick={() => setConfirmUnlinkSensorId(null)} className="text-muted-foreground hover:text-foreground">Cancel</button>
-                        </span>
-                      ) : (
-                        <span className="flex items-center justify-end gap-3">
-                          <Link href={`/customers/${customer.id}/sensors/${s.id}`} className="text-xs text-muted-foreground hover:text-foreground">Settings</Link>
-                          <button onClick={() => setConfirmUnlinkSensorId(s.id)} className="text-xs text-muted-foreground hover:text-alert-text">Remove</button>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {!addingSensor ? (
-          <button
-            onClick={() => { setSensorForm({ gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' }); setAddingSensor(true); }}
-            className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            + Add Sensor
-          </button>
-        ) : (
-          <div className="mt-2 space-y-3 rounded-md border border-border p-4">
-            <p className="text-sm font-medium">New Sensor</p>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Gateway</label>
-              {gateways.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No gateways linked — add a gateway first.</p>
-              ) : (
-                <select
-                  value={sensorForm.gatewayId}
-                  onChange={e => setSensorField('gatewayId')(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {gateways.map(g => (
-                    <option key={g.id} value={g.id}>{g.name ?? g.id}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Sensor Name</label>
-              <input
-                value={sensorForm.name}
-                onChange={e => setSensorField('name')(e.target.value)}
-                placeholder="e.g. Cold Storage A"
-                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">DevEUI (from the sensor label / QR)</label>
-              <input
-                value={sensorForm.hardwareId}
-                onChange={e => setSensorField('hardwareId')(e.target.value)}
-                placeholder="a840419edb62011c"
-                className="w-full rounded-md border border-border bg-background px-3 py-1.5 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-
-            {sensorError && <p className="text-xs text-alert-text">{sensorError}</p>}
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={addSensor}
-                disabled={savingSensor || !sensorForm.gatewayId || !sensorForm.name.trim() || !sensorForm.hardwareId.trim()}
-                className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {savingSensor ? 'Adding…' : 'Add Sensor'}
-              </button>
-              <button
-                onClick={() => { setAddingSensor(false); setSensorError(''); }}
-                className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </Section>
+      <SensorsSection customerId={customer.id} gateways={gateways} sensors={sensors} />
 
       <Section title="Alert Recipients">
         <p className="mb-4 text-sm text-muted-foreground">

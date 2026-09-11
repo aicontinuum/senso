@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TIMEZONES } from "@/lib/timezones";
-import { Select } from "@/components/ui/select";
+import { Select } from "@senso/ui";
 
 export function TimezoneSection({ initialTimezone }: { initialTimezone: string }) {
   const router = useRouter();

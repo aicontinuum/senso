@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { APP_NAME } from '@/lib/constants';
 import { Button } from '@senso/ui';
-import { Input } from '@/components/ui/input';
+import { Input } from '@senso/ui';
 
 export default function LoginForm() {
   const router = useRouter();

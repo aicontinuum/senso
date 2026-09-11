@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 // Single-line text field with optional label, unit suffix and error state.
 //

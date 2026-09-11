@@ -8,8 +8,7 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
-import { Button } from "@senso/ui";
-import { Input } from "@/components/ui/input";
+import { BatteryMeter, Button, Input } from "@senso/ui";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { sensorState } from "@/lib/alert-state";
 import { formatDevEui } from "@/lib/deveui";
@@ -124,16 +123,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
       setSaving(false);
     }
   }
-
-  // Three segments, one lit per tier — so the level reads at a glance from the
-  // count as well as the colour, rather than from bar length alone.
-  const tier = batteryTier(batteryVolts);
-  const battery =
-    tier === "good"
-      ? { color: "bg-ok-500", segments: 3 }
-      : tier === "low"
-        ? { color: "bg-warn-500", segments: 2 }
-        : { color: "bg-alert-500", segments: 1 };
 
   return (
     <div className="max-w-lg">
@@ -392,22 +381,9 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               {formatReadingTime(sensor.lastReading.recordedAt, timezone)}
             </InfoRow>
           )}
-          {tier && (
+          {batteryTier(batteryVolts) && (
             <InfoRow label="Battery">
-              <div
-                className="flex w-20 gap-1"
-                title={batteryVolts !== null ? `${batteryVolts.toFixed(2)} V` : undefined}
-              >
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-2 flex-1 rounded-full",
-                      i < battery.segments ? battery.color : "bg-muted",
-                    )}
-                  />
-                ))}
-              </div>
+              <BatteryMeter volts={batteryVolts} className="w-20" />
             </InfoRow>
           )}
         </div>

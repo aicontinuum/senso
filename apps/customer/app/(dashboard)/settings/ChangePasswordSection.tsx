@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@senso/ui";
-import { Input } from "@/components/ui/input";
+import { Input } from "@senso/ui";
 
 export function ChangePasswordSection() {
   const [current, setCurrent] = useState("");
