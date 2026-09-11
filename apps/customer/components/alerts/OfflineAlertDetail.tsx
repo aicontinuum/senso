@@ -1,3 +1,4 @@
+import { Badge, Card } from "@senso/ui";
 import { formatDateTimeLong, formatTemp, formatReadingTime } from "@/lib/temperature";
 
 // An offline alert has no readings to plot — that is the whole incident. What is
@@ -23,17 +24,23 @@ export function OfflineAlertDetail({
 }: Props) {
   return (
     <>
-      <div className="mb-6 mt-4">
-        <h1 className="text-2xl font-bold">{sensorName}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          No readings
-          {" · "}
-          {formatDateTimeLong(since, timezone)}
-          {isResolved && <> · Reporting again</>}
-        </p>
+      <div className="mb-6 mt-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{sensorName}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            No readings
+            {" · "}
+            {formatDateTimeLong(since, timezone)}
+          </p>
+        </div>
+        {isResolved ? (
+          <Badge variant="ok" dot className="shrink-0">Reporting again</Badge>
+        ) : (
+          <Badge variant="alert" dot className="shrink-0">Active</Badge>
+        )}
       </div>
 
-      <div className="rounded-lg border p-4">
+      <Card className="p-5">
         <p className="mb-1 text-sm font-medium">
           {isResolved
             ? "This sensor stopped reporting and has since recovered."
@@ -46,14 +53,14 @@ export function OfflineAlertDetail({
         </p>
 
         {lastReadings.length > 0 && (
-          <div className="mt-4 border-t pt-4">
+          <div className="mt-4 border-t border-hairline pt-4">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Last readings before it went quiet
             </p>
             <table className="w-full text-sm">
               <tbody>
                 {lastReadings.map((r) => (
-                  <tr key={r.id} className="border-b border-border/50 last:border-0">
+                  <tr key={r.id} className="border-b border-hairline last:border-0">
                     <td className="py-1.5 text-muted-foreground">
                       {formatReadingTime(r.recordedAt, timezone)}
                     </td>
@@ -64,7 +71,7 @@ export function OfflineAlertDetail({
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </>
   );
 }

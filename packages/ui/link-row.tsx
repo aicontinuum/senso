@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { cn } from '@senso/ui';
+import { cn } from './cn';
 
 // A table row that navigates when clicked anywhere, so a list of customers
 // does not make people hunt for the one word that is a link.

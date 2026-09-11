@@ -13,6 +13,7 @@ export { Button, buttonVariants, type ButtonProps } from "./button";
 export { Input, type InputProps } from "./input";
 export { Select, type SelectProps } from "./select";
 export { BatteryMeter } from "./battery-meter";
+export { LinkRow } from "./link-row";
 export { StatusDot, type StatusTone } from "./status-dot";
 export { Logo } from "./logo";
 export { Sidebar } from "./sidebar";
