@@ -95,16 +95,19 @@ export function SensorCard({
       </div>
 
       {/* Where the reading sits between its limits, only when it is being
-          judged against them. */}
-      {judged && (
-        <RangeTrack
-          temp={temp}
-          min={alertConfig.minTemp}
-          max={alertConfig.maxTemp}
-          outOfRange={outOfRange}
-          className="mb-4"
-        />
-      )}
+          judged against them. The slot keeps its height either way, so an
+          offline tile's footer lines up with its neighbours' instead of
+          riding up into the space the track would have taken. */}
+      <div className="mb-4 h-4">
+        {judged && (
+          <RangeTrack
+            temp={temp}
+            min={alertConfig.minTemp}
+            max={alertConfig.maxTemp}
+            outOfRange={outOfRange}
+          />
+        )}
+      </div>
 
       {/* Footer */}
       <div className="space-y-1 border-t border-hairline pt-3 text-xs text-muted-foreground">
