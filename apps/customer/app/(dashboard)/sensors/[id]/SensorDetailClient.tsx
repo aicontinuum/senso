@@ -8,7 +8,7 @@ import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
-import { BatteryMeter, Button, Input } from "@senso/ui";
+import { BatteryMeter, Button, Card, Input } from "@senso/ui";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { sensorState } from "@/lib/alert-state";
 import { formatDevEui } from "@/lib/deveui";
@@ -147,7 +147,8 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           leaving a grey badge to be interpreted. The reading stays on screen
           below because the install bench test depends on seeing it arrive. */}
       {!inService && (
-        <section className="mb-4 rounded-lg border border-hairline bg-sunken p-4">
+        <Card asChild tone="sunken" className="mb-4 border border-hairline p-4">
+        <section>
           <p className="text-sm font-semibold">Not in service yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             This sensor is registered but has not been marked as installed, so its
@@ -156,10 +157,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             during installation.
           </p>
         </section>
+      </Card>
       )}
 
       {/* Current reading */}
-      <section className="mb-4 rounded-lg border bg-card p-5">
+      <Card asChild className="mb-4 p-5">
+        <section>
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Current Reading
         </p>
@@ -193,10 +196,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           </p>
         </div>
       </section>
+      </Card>
 
       {/* Recent readings chart */}
       {recentReadings.length >= 2 && (
-        <section className="mb-4 rounded-lg border bg-card p-5">
+        <Card asChild className="mb-4 p-5">
+        <section>
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Recent Readings
           </p>
@@ -237,10 +242,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             </LineChart>
           </ResponsiveContainer>
         </section>
+      </Card>
       )}
 
       {/* Settings */}
-      <section className="mb-4 rounded-lg border bg-card p-5">
+      <Card asChild className="mb-4 p-5">
+        <section>
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Settings
@@ -368,9 +375,11 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           )}
         </div>
       </section>
+      </Card>
 
       {/* Device info */}
-      <section className="rounded-lg border bg-card p-5">
+      <Card asChild className="p-5">
+        <section>
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Device Info
         </p>
@@ -388,6 +397,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           )}
         </div>
       </section>
+      </Card>
     </div>
   );
 }

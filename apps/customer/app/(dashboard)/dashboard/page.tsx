@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { Button, Card, StatusDot } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorCard } from "@/components/dashboard/SensorCard";
@@ -124,22 +125,23 @@ export default async function DashboardPage() {
       <AutoRefresh />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Link
-          href="/setup"
-          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Add Device</span>
-        </Link>
+        <Button asChild size="sm">
+          <Link href="/setup">
+            <Plus className="size-4" />
+            <span className="hidden sm:inline">Add device</span>
+          </Link>
+        </Button>
       </div>
 
-      <div className="mb-6 grid grid-cols-3 divide-x rounded-lg border bg-card">
+      {/* One card, hairline-divided into three, so the summary reads as a
+          single instrument rather than three boxes. */}
+      <Card className="mb-6 grid grid-cols-3 divide-x divide-hairline overflow-hidden">
         <SummaryItem label="Gateway">
           {!hasGateway ? (
             <span className="text-sm text-muted-foreground">None</span>
           ) : (
             <span className="flex items-center gap-1.5 text-sm font-medium">
-              <span className={gatewayOnline ? "size-2 rounded-full bg-ok-500" : "size-2 rounded-full bg-offline-500"} />
+              <StatusDot status={gatewayOnline ? "ok" : "offline"} className="size-2" />
               {gatewayOnline ? "Online" : "Offline"}
             </span>
           )}
@@ -166,10 +168,10 @@ export default async function DashboardPage() {
             <span className="text-sm font-medium text-ok-text">None</span>
           )}
         </SummaryItem>
-      </div>
+      </Card>
 
       {sensors.length === 0 ? (
-        <div className="rounded-lg border border-dashed bg-card px-6 py-12 text-center">
+        <div className="rounded-card border border-dashed px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">No sensors yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">Add a gateway and sensors to start monitoring.</p>
         </div>

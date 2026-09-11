@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Sensor, AlertConfig } from "@senso/types";
+import { Card } from "@senso/ui";
 import { cn } from "@/lib/utils";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { sensorState } from "@/lib/alert-state";
@@ -40,15 +41,19 @@ export function SensorCard({
   const state = sensorState({ inService, isOffline, outOfRange, hasOpenAlert: hasActiveAlert });
 
   return (
-    <Link
-      href={`/sensors/${sensor.id}`}
+    // The card is the link: the whole tile is the target, and the design
+    // system's card chrome comes from the primitive rather than being redrawn
+    // here. A breach or open alert tints the hairline in its status tone.
+    <Card
+      asChild
       className={cn(
-        "block rounded-lg border bg-card p-5 shadow-sm transition-colors hover:bg-accent/40",
+        "block p-5 transition-[background-color,box-shadow] hover:bg-sunken hover:shadow-md",
         (isOffline || !inService) && "opacity-70",
         state === "breaching" && "border-alert-border",
         state === "alert-open" && "border-warn-border",
       )}
     >
+    <Link href={`/sensors/${sensor.id}`}>
       {/* Header row */}
       <div className="mb-4 flex items-start justify-between gap-2">
         <span className="font-semibold leading-tight">{sensor.name}</span>
@@ -90,7 +95,7 @@ export function SensorCard({
       </div>
 
       {/* Footer */}
-      <div className="space-y-1 border-t pt-3 text-xs text-muted-foreground">
+      <div className="space-y-1 border-t border-hairline pt-3 text-xs text-muted-foreground">
         {alertConfig && inService && (
           <div className="flex justify-between">
             <span>Threshold</span>
@@ -107,5 +112,6 @@ export function SensorCard({
         )}
       </div>
     </Link>
+    </Card>
   );
 }
