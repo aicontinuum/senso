@@ -47,6 +47,8 @@ export default function Loading() {
         ))}
       </Card>
 
+      <Skeleton className="mb-3 h-6 w-20" />
+
       {/* Three cards is a guess at the fleet size — the grid is responsive, so
           settling to a different count reflows without disturbing anything above. */}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]">
