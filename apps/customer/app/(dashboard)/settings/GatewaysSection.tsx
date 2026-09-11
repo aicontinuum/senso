@@ -17,7 +17,10 @@ export function GatewaysSection({
   now: number;
 }) {
   return (
-    <SettingsCard title="Gateways">
+    <SettingsCard
+      title="Gateways"
+      description="The hub at your site that relays readings from your sensors."
+    >
       {gateways.length === 0 ? (
         <p className="text-sm text-muted-foreground">No gateway installed yet.</p>
       ) : (
@@ -25,10 +28,10 @@ export function GatewaysSection({
           {gateways.map((gw) => {
             const online = gw.status === "online";
             return (
-              <div key={gw.id} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{gw.name}</p>
-                  <p className="text-xs text-muted-foreground">
+              <div key={gw.id} className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate text-base font-semibold leading-snug">{gw.name}</p>
+                  <p className="text-sm text-muted-foreground">
                     {gw.firmwareVersion !== "—" ? `Firmware ${gw.firmwareVersion} · ` : ""}
                     <span title={formatReadingTime(gw.lastSeen, timezone)}>
                       {online ? "Updated" : "Last seen"} {formatAgo(gw.lastSeen, now)}
