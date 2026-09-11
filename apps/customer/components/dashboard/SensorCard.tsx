@@ -108,9 +108,7 @@ export function SensorCard({
 
       {/* Footer */}
       <div className="space-y-1 border-t border-hairline pt-3 text-xs text-muted-foreground">
-        {/* The track already carries the limits at its ends; the row repeats
-            them only when there is no track, such as offline. */}
-        {alertConfig && inService && !judged && (
+        {alertConfig && inService && (
           <div className="flex justify-between">
             <span>Threshold</span>
             <span className="font-medium text-foreground">

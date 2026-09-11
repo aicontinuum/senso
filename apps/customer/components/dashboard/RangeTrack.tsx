@@ -7,8 +7,8 @@ import { formatTemp, rangeTrackScale, scalePosition } from "@/lib/temperature";
 // pinned to an edge. The marker is green inside the band and red once it has
 // crossed a limit, and nothing changes colour before that.
 //
-// The limits are labelled under the band's edges, where they apply, rather
-// than at the ends of the track.
+// Purely visual: the limits themselves are printed in the card's footer, where
+// they are legible, rather than as tiny labels fighting the marker for space.
 
 interface RangeTrackProps {
   temp: number;
@@ -30,7 +30,7 @@ export function RangeTrack({ temp, min, max, outOfRange, className }: RangeTrack
     <div
       role="img"
       aria-label={`${formatTemp(temp)}, limits ${formatTemp(min)} to ${formatTemp(max)}`}
-      className={cn("relative pb-4 pt-1", className)}
+      className={cn("py-1", className)}
     >
       <div className="relative h-2 rounded-full bg-chart-track">
         <div
@@ -45,18 +45,6 @@ export function RangeTrack({ temp, min, max, outOfRange, className }: RangeTrack
           style={{ left: pct(marker) }}
         />
       </div>
-      <span
-        className="absolute bottom-0 -translate-x-1/2 font-mono text-2xs text-text-faint"
-        style={{ left: pct(bandStart) }}
-      >
-        {formatTemp(min)}
-      </span>
-      <span
-        className="absolute bottom-0 -translate-x-1/2 font-mono text-2xs text-text-faint"
-        style={{ left: pct(bandEnd) }}
-      >
-        {formatTemp(max)}
-      </span>
     </div>
   );
 }
