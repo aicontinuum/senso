@@ -8,7 +8,7 @@
 
 import { SENSOR_STALE_MS } from '@senso/status';
 import type { createAdminClient } from '@/lib/supabase/admin';
-import { VPS_PULSE_STALE_MS, JOB_RUN_STALE_MS } from '@/lib/constants';
+import { VPS_PULSE_STALE_MS, JOB_RUN_STALE_MS, SENDER_RUN_STALE_MS } from '@/lib/constants';
 
 export type PlatformStatusRow = {
   vps_last_seen_at: string | null;
@@ -76,14 +76,14 @@ export function assessPlatform(row: PlatformStatusRow | null, now: number = Date
   const chirpstack: PlatformLevel = vps === 'down' ? 'down' : r.chirpstack_ok === false ? 'down' : 'ok';
   const uplink = levelFor(r.last_uplink_at, SENSOR_STALE_MS, now, 'late');
   const sweep = levelFor(r.sweep_last_ok_at, JOB_RUN_STALE_MS, now, 'late');
-  const sender = levelFor(r.sender_last_ok_at, JOB_RUN_STALE_MS, now, 'late');
+  const sender = levelFor(r.sender_last_ok_at, SENDER_RUN_STALE_MS, now, 'late');
 
   const checks: PlatformCheck[] = [
     { label: 'VPS pulse', at: r.vps_last_seen_at, staleAfterMs: VPS_PULSE_STALE_MS, level: vps },
     { label: 'ChirpStack', at: r.vps_last_seen_at, staleAfterMs: null, level: chirpstack },
     { label: 'Last uplink received', at: r.last_uplink_at, staleAfterMs: SENSOR_STALE_MS, level: uplink },
     { label: 'Last offline sweep', at: r.sweep_last_ok_at, staleAfterMs: JOB_RUN_STALE_MS, level: sweep },
-    { label: 'Last email run', at: r.sender_last_ok_at, staleAfterMs: JOB_RUN_STALE_MS, level: sender },
+    { label: 'Last email run', at: r.sender_last_ok_at, staleAfterMs: SENDER_RUN_STALE_MS, level: sender },
     { label: 'Last customer email', at: r.last_customer_email_at, staleAfterMs: null, level: 'ok' },
   ];
 

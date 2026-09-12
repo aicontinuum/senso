@@ -10,6 +10,7 @@ import {
   type PlatformStatusRow,
 } from '@/lib/platform-status';
 import { sendEmail, emailConfigured } from '@/lib/email/send';
+import { retry, describeError } from '@/lib/retry';
 import {
   alertEmailSubject,
   alertEmailText,
@@ -146,16 +147,17 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
   // an outage on Senso's side. The same rule the SQL sweep applies, read from
   // the same row. A run that holds is still a completed run: ok, nothing sent,
   // and it says why.
-  const { data: status, error: statusError } = await admin
-    .from('platform_status')
-    .select(PLATFORM_STATUS_COLUMNS)
-    .eq('id', true)
-    .maybeSingle();
+  //
+  // Retried: the Vercel → Supabase path drops a request now and then, and a
+  // dropped read must cost one retry, not a whole run.
+  const { data: status, error: statusError, attempts: statusAttempts } = await retry(
+    'platform_status read',
+    () => admin.from('platform_status').select(PLATFORM_STATUS_COLUMNS).eq('id', true).maybeSingle(),
+  );
   if (statusError) {
     // Cannot tell up from down. Holding is the safe direction: a late email is
     // recoverable, an email about our own outage is not.
-    console.error('[alerts] could not read platform_status; holding', statusError);
-    return { ok: false, claimed: 0, emailed: 0, failed: 0, error: 'status_unreadable' };
+    return { ok: false, claimed: 0, emailed: 0, failed: 0, error: 'status_unreadable', cause: describeError(statusError) };
   }
   if (assessPlatform((status as PlatformStatusRow | null) ?? null).level === 'down') {
     return { ok: true, claimed: 0, emailed: 0, failed: 0, held: 'platform_down' };
@@ -163,19 +165,23 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
 
   // Claiming is a database function because PostgREST cannot express row
   // locking, and `for update skip locked` is what stops two overlapping runs
-  // sending the same alert twice.
-  const { data: claimed, error: claimError } = await admin.rpc('claim_due_alerts', {
-    p_limit: MAX_ALERTS_PER_RUN,
-    p_lease_seconds: 300,
-  });
+  // sending the same alert twice. Safe to retry: a claim that succeeded on the
+  // server but whose answer was lost simply leaves a lease that expires.
+  const { data: claimed, error: claimError, attempts: claimAttempts } = await retry(
+    'claim_due_alerts',
+    () => admin.rpc('claim_due_alerts', { p_limit: MAX_ALERTS_PER_RUN, p_lease_seconds: 300 }),
+  );
 
   if (claimError) {
-    console.error('[alerts] could not claim alerts', claimError);
-    return { ok: false, claimed: 0, emailed: 0, failed: 0, error: 'claim_failed' };
+    return { ok: false, claimed: 0, emailed: 0, failed: 0, error: 'claim_failed', cause: describeError(claimError) };
   }
 
+  // Worth a line in the ledger when a request had to be repeated: it is how the
+  // drop rate stays visible after the retries have hidden its cost.
+  const retried = Math.max(statusAttempts, claimAttempts) - 1;
+
   const alerts = (claimed ?? []) as ClaimedAlert[];
-  if (alerts.length === 0) return { ok: true, claimed: 0, emailed: 0, failed: 0 };
+  if (alerts.length === 0) return { ok: true, claimed: 0, emailed: 0, failed: 0, ...(retried ? { retried } : {}) };
 
   // Nothing can be delivered, so release every claim rather than counting sends
   // that never happened. The run itself did not do its job, and says so.
@@ -262,14 +268,21 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
 
   // Only successful sends advance the schedule. Failures release their lease so
   // the next run retries, rather than silently consuming a reminder.
+  //
+  // Retried, and this one matters more than the reads: a mark that is lost
+  // leaves a sent alert on a lease that expires in five minutes, after which
+  // the next run claims it again and the customer gets the same email twice.
   if (sentIds.length > 0) {
-    await admin.rpc('mark_alerts_notified', { p_ids: sentIds });
+    await retry('mark_alerts_notified', () => admin.rpc('mark_alerts_notified', { p_ids: sentIds }));
   }
   if (failedIds.length > 0) {
-    await admin.rpc('release_alert_claims', { p_ids: failedIds });
+    await retry('release_alert_claims', () => admin.rpc('release_alert_claims', { p_ids: failedIds }));
   }
 
-  return { ok: true, claimed: alerts.length, emailed: sentIds.length, failed: failedIds.length };
+  return {
+    ok: true, claimed: alerts.length, emailed: sentIds.length, failed: failedIds.length,
+    ...(retried ? { retried } : {}),
+  };
 }
 
 // ── Context lookup ──────────────────────────────────────────────────────────

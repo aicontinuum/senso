@@ -9,6 +9,7 @@ import {
   type PlatformStatusRow,
 } from '@/lib/platform-status';
 import { sendEmail, emailConfigured } from '@/lib/email/send';
+import { retry, describeError } from '@/lib/retry';
 import { opsEmailSubject, opsEmailText, opsEmailHtml } from '@/lib/email/ops-email';
 
 // The platform watchdog. Called every five minutes by pg_cron from inside
@@ -39,18 +40,22 @@ export async function POST(request: Request) {
   const now = Date.now();
   const startedAt = new Date(now).toISOString();
 
-  const { data, error } = await admin
-    .from('platform_status')
-    .select(`${PLATFORM_STATUS_COLUMNS}, ops_level, ops_level_since, ops_notified_at`)
-    .eq('id', true)
-    .maybeSingle();
+  // Retried: this route judges the platform from one read, and a dropped
+  // request on the Vercel → Supabase path must not read as an outage.
+  const { data, error } = await retry(
+    'platform_status read',
+    () => admin
+      .from('platform_status')
+      .select(`${PLATFORM_STATUS_COLUMNS}, ops_level, ops_level_since, ops_notified_at`)
+      .eq('id', true)
+      .maybeSingle(),
+  );
 
   // Cannot tell healthy from down. Say so in the run record; the daily health
   // check is the layer that notices this one, and it must not be papered over
   // by reporting "ok" on a query that failed.
   if (error || !data) {
-    console.error('[watchdog] could not read platform_status', error);
-    await recordRun(admin, startedAt, false, { error: 'status_unreadable' });
+    await recordRun(admin, startedAt, false, { error: 'status_unreadable', cause: describeError(error) });
     return NextResponse.json({ error: 'status_unreadable' }, { status: 500 });
   }
 
