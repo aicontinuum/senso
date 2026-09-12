@@ -101,7 +101,10 @@ export async function DELETE(
     .from('sensors')
     .update({ decommissioned_at: new Date().toISOString() })
     .eq('id', sensorId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error('Sensor update failed', { sensorId, code: error.code, message: error.message });
+    return NextResponse.json({ error: 'Could not save the sensor. Please try again.' }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }

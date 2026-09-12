@@ -40,7 +40,8 @@ export async function POST(
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error('Password update failed', { code: error.code, message: error.message });
+    return NextResponse.json({ error: 'Could not update the password. Please try again.' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

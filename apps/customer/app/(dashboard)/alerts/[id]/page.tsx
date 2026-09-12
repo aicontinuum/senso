@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
+import { Badge, Button, Card } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { rangeAt, type ThresholdVersion } from "@/lib/thresholds";
 import { requireCustomer } from "@/lib/supabase/get-customer";
@@ -76,12 +78,12 @@ export default async function AlertDetailPage({
   );
 
   const backLink = (
-    <Link
-      href="/alerts"
-      className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-    >
-      ← Alerts
-    </Link>
+    <Button asChild variant="ghost" size="sm" className="-ml-2">
+      <Link href="/alerts">
+        <ChevronLeft className="size-4" />
+        Alerts
+      </Link>
+    </Button>
   );
 
   if (alertLog.kind === "sensor_offline") {
@@ -197,18 +199,24 @@ export default async function AlertDetailPage({
     <div>
       {backLink}
 
-      <div className="mb-6 mt-4">
-        <h1 className="text-2xl font-bold">{sensor.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {alertType === "max" ? "Too high" : "Too low"}
-          {triggeringTemp !== undefined && <> · {formatTemp(triggeringTemp)}</>}
-          {" · "}{formatDateTimeLong(alertLog.triggered_at, customer.timezone)}
-          {alertLog.is_resolved && <> · Resolved</>}
-        </p>
+      <div className="mb-6 mt-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{sensor.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {alertType === "max" ? "Too high" : "Too low"}
+            {triggeringTemp !== undefined && <> · {formatTemp(triggeringTemp)}</>}
+            {" · "}{formatDateTimeLong(alertLog.triggered_at, customer.timezone)}
+          </p>
+        </div>
+        {alertLog.is_resolved ? (
+          <Badge variant="offline" dot className="shrink-0">Resolved</Badge>
+        ) : (
+          <Badge variant="alert" dot className="shrink-0">Active</Badge>
+        )}
       </div>
 
       {chartData.length > 0 ? (
-        <div className="rounded-lg border p-4">
+        <Card className="p-5">
           <p className="mb-4 text-sm font-medium text-muted-foreground">
             {episode.breachCount === 1
               ? "1 reading out of range"
@@ -228,9 +236,9 @@ export default async function AlertDetailPage({
               full series.
             </p>
           )}
-        </div>
+        </Card>
       ) : (
-        <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+        <div className="rounded-card border border-dashed px-6 py-10 text-center text-sm text-muted-foreground">
           No readings recorded around this alert.
         </div>
       )}

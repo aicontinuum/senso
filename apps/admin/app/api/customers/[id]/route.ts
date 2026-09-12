@@ -43,7 +43,8 @@ export async function PATCH(
     .eq('id', customerId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error('Customer update failed', { customerId, code: error.code, message: error.message });
+    return NextResponse.json({ error: 'Could not save the customer. Please try again.' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

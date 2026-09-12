@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 // The Senso action button: a 10px softened rectangle (--radius-button), never a
 // pill. Hover darkens one step and deepens the shadow, press scales to 0.985,

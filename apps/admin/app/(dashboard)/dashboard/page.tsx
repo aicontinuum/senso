@@ -1,8 +1,12 @@
-import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
 import { PLATFORM_STATUS_COLUMNS, type PlatformStatusRow } from '@/lib/platform-status';
 import { PlatformWatchdogCard } from '@/components/dashboard/PlatformWatchdogCard';
+import { CustomerFleetTable, type FleetRow } from '@/components/dashboard/CustomerFleetTable';
+import { Card } from '@senso/ui';
+
+const STAT_TILE = 'px-4 py-4 sm:px-6 sm:py-5';
+const STAT_VALUE = 'mt-1 font-display text-3xl font-bold tabular-nums';
 
 type GatewayWithSensors = {
   id: string;
@@ -21,6 +25,15 @@ function activeGateways(raw: unknown): GatewayWithSensors[] {
 
 function activeSensors(g: GatewayWithSensors) {
   return (g.sensors ?? []).filter(s => s.decommissioned_at === null);
+}
+
+// Highest first. A dark site outranks everything: no readings means no
+// monitoring and no record, whatever else the row says.
+function attentionRank(row: FleetRow): number {
+  if (row.gateways.some(g => !g.online)) return 3;
+  if (row.alertCount > 0) return 2;
+  if (row.sensorsOffline > 0) return 1;
+  return 0;
 }
 
 export default async function AdminDashboardPage() {
@@ -88,33 +101,53 @@ export default async function AdminDashboardPage() {
     }
   }
 
-  let sensorsOnline = 0;
-  let sensorsOffline = 0;
-  // A sensor registered but never marked as installed is a customer with no
-  // monitoring and no record — the quiet half of a botched install. It belongs on
-  // this page rather than waiting to be noticed.
-  let sensorsPending = 0;
-  // Customers are no longer emailed when a gateway goes quiet — that signal is
-  // derived from their own readings, and a dark site is our problem to fix, not
-  // theirs to be woken about. This is where it surfaces instead.
-  let sitesDark = 0;
-
-  const rows = (customers ?? []).map(customer => {
-    const gateways = activeGateways(customer.gateways);
-    const sensors = gateways.flatMap(activeSensors);
-    for (const g of gateways) {
-      if (!isGatewayOnline(g.is_online, g.last_seen_at)) sitesDark += 1;
-    }
-
+  const rows: FleetRow[] = (customers ?? []).map(customer => {
+    const liveGateways = activeGateways(customer.gateways);
+    const sensors = liveGateways.flatMap(activeSensors);
+    const row: FleetRow = {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      gateways: liveGateways.map(g => ({
+        id: g.id,
+        online: isGatewayOnline(g.is_online, g.last_seen_at),
+        lastSeenAt: g.last_seen_at,
+      })),
+      sensorsOnline: 0,
+      sensorsOffline: 0,
+      sensorsPending: 0,
+      alertCount: sensors.reduce((sum, s) => sum + (alertsBySensorId.get(s.id) ?? 0), 0),
+    };
+    // A sensor registered but never marked as installed is a customer with no
+    // monitoring and no record — the quiet half of a botched install. It
+    // belongs on this page rather than waiting to be noticed.
     for (const s of sensors) {
-      if (s.commissioned_at === null) sensorsPending++;
-      else if (isSensorOnline(s.status, freshReadingBySensor.get(s.id))) sensorsOnline++;
-      else sensorsOffline++;
+      if (s.commissioned_at === null) row.sensorsPending++;
+      else if (isSensorOnline(s.status, freshReadingBySensor.get(s.id))) row.sensorsOnline++;
+      else row.sensorsOffline++;
     }
-
-    const alertCount = sensors.reduce((sum, s) => sum + (alertsBySensorId.get(s.id) ?? 0), 0);
-    return { customer, gateways, sensorCount: sensors.length, alertCount };
+    return row;
   });
+
+  // Fleet-wide totals for the tiles, summed from the rows so the two can never
+  // disagree. Customers are no longer emailed when a gateway goes quiet — that
+  // signal is derived from their own readings, and a dark site is our problem
+  // to fix, not theirs to be woken about. "Sites dark" is where it surfaces.
+  const sum = (pick: (row: FleetRow) => number) => rows.reduce((total, row) => total + pick(row), 0);
+  const sitesDark = sum(row => row.gateways.filter(g => !g.online).length);
+  const sensorsOnline = sum(row => row.sensorsOnline);
+  const sensorsOffline = sum(row => row.sensorsOffline);
+  const sensorsPending = sum(row => row.sensorsPending);
+
+  // Customers who need attention come first: a dark site, then alerts, then
+  // offline sensors, and only then the alphabet. On an ops page the order is
+  // part of the information.
+  rows.sort((a, b) =>
+    attentionRank(b) - attentionRank(a)
+    || b.alertCount - a.alertCount
+    || b.sensorsOffline - a.sensorsOffline
+    || a.name.localeCompare(b.name),
+  );
 
   return (
     <div className="space-y-6">
@@ -122,85 +155,46 @@ export default async function AdminDashboardPage() {
 
       <PlatformWatchdogCard status={(platformStatus as PlatformStatusRow | null) ?? null} now={now} />
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border text-card-foreground shadow-sm sm:grid-cols-4">
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+      {/* One card, hairline-divided into tiles, so the four numbers read as one
+          row of the same instrument rather than four unrelated boxes. */}
+      <Card className="grid grid-cols-2 divide-hairline overflow-hidden sm:grid-cols-4 sm:divide-x [&>*:nth-child(-n+2)]:border-b sm:[&>*:nth-child(-n+2)]:border-b-0">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Customers</p>
-          <p className="mt-1 text-3xl font-bold">{(customers ?? []).length}</p>
+          <p className={STAT_VALUE}>{(customers ?? []).length}</p>
         </div>
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Sites dark</p>
-          <p className={`mt-1 text-3xl font-bold ${sitesDark > 0 ? 'text-alert-text' : ''}`}>
+          <p className={`${STAT_VALUE} ${sitesDark > 0 ? 'text-alert-text' : ''}`}>
             {sitesDark}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             {sitesDark > 0 ? 'no readings arriving' : 'all gateways reporting'}
           </p>
         </div>
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Sensors</p>
-          <p className="mt-1 text-3xl font-bold">{sensorsOnline + sensorsOffline + sensorsPending}</p>
+          <p className={STAT_VALUE}>{sensorsOnline + sensorsOffline + sensorsPending}</p>
+          {/* A count is tinted only when it is above zero: "0 offline" in alert
+              red pulls the eye toward nothing, and the tile above already
+              follows this rule for dark sites. */}
           <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-            <p><span className="font-medium text-ok-text">{sensorsOnline}</span> online</p>
-            <p><span className="font-medium text-alert-text">{sensorsOffline}</span> offline</p>
+            <p><span className={`font-medium ${sensorsOnline > 0 ? 'text-ok-text' : ''}`}>{sensorsOnline}</span> online</p>
+            <p><span className={`font-medium ${sensorsOffline > 0 ? 'text-alert-text' : ''}`}>{sensorsOffline}</span> offline</p>
             {sensorsPending > 0 && (
               <p><span className="font-medium text-warn-text">{sensorsPending}</span> awaiting commissioning</p>
             )}
           </div>
         </div>
-        <div className="bg-card px-4 py-4 sm:px-6 sm:py-5">
+        <div className={STAT_TILE}>
           <p className="text-sm font-medium text-muted-foreground">Alerts (past 24h)</p>
-          <p className={`mt-1 text-3xl font-bold ${totalAlerts > 0 ? 'text-alert-text' : ''}`}>{totalAlerts}</p>
+          <p className={`${STAT_VALUE} ${totalAlerts > 0 ? 'text-alert-text' : ''}`}>{totalAlerts}</p>
           <p className="mt-2 text-sm text-muted-foreground">across all customers</p>
         </div>
-      </div>
+      </Card>
 
       <div>
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Customers</h2>
-        <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="px-6 py-3 font-medium">Customer</th>
-                <th className="px-6 py-3 font-medium">Gateway</th>
-                <th className="px-6 py-3 font-medium">Sensors</th>
-                <th className="px-6 py-3 font-medium">Alerts (past 24h)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {rows.length === 0 && (
-                <tr><td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">No customers yet.</td></tr>
-              )}
-              {rows.map(({ customer, gateways, sensorCount, alertCount }) => (
-                <tr key={customer.id} className="hover:bg-muted/40 transition-colors">
-                  <td className="px-6 py-4">
-                    <Link href={`/customers/${customer.id}`} className="font-medium hover:underline">{customer.name}</Link>
-                    <p className="text-xs text-muted-foreground">{customer.email}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    {gateways.length > 0 ? gateways.map(g => {
-                      const online = isGatewayOnline(g.is_online, g.last_seen_at);
-                      return (
-                        <span
-                          key={g.id}
-                          className={`flex items-center gap-1.5 text-sm ${online ? '' : 'font-medium text-alert-text'}`}
-                        >
-                          <span className={`inline-block h-2 w-2 rounded-full ${online ? 'bg-ok-500' : 'bg-alert-500'}`} />
-                          {online ? 'Online' : 'Offline'}
-                        </span>
-                      );
-                    }) : <span className="text-muted-foreground">—</span>}
-                  </td>
-                  <td className="px-6 py-4 tabular-nums">{sensorCount}</td>
-                  <td className="px-6 py-4 tabular-nums">
-                    {alertCount > 0
-                      ? <span className="font-medium text-alert-text">{alertCount}</span>
-                      : <span className="text-muted-foreground">0</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CustomerFleetTable rows={rows} now={now} />
       </div>
     </div>
   );

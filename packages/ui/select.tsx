@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 
 // Dropdown matching Input's shape — same 12px --radius-control, same border and
 // focus ring — with a chevron the native control does not draw consistently

@@ -2,14 +2,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Settings } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 import { batteryTier } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { BatteryMeter, Button, Card, Input } from "@senso/ui";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { sensorState } from "@/lib/alert-state";
 import { formatDevEui } from "@/lib/deveui";
@@ -125,16 +124,6 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
     }
   }
 
-  // Three segments, one lit per tier — so the level reads at a glance from the
-  // count as well as the colour, rather than from bar length alone.
-  const tier = batteryTier(batteryVolts);
-  const battery =
-    tier === "good"
-      ? { color: "bg-ok-500", segments: 3 }
-      : tier === "low"
-        ? { color: "bg-warn-500", segments: 2 }
-        : { color: "bg-alert-500", segments: 1 };
-
   return (
     <div className="max-w-lg">
       <Button
@@ -158,7 +147,8 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           leaving a grey badge to be interpreted. The reading stays on screen
           below because the install bench test depends on seeing it arrive. */}
       {!inService && (
-        <section className="mb-4 rounded-lg border border-hairline bg-sunken p-4">
+        <Card asChild tone="sunken" className="mb-4 border border-hairline p-4">
+        <section>
           <p className="text-sm font-semibold">Not in service yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             This sensor is registered but has not been marked as installed, so its
@@ -167,10 +157,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             during installation.
           </p>
         </section>
+      </Card>
       )}
 
       {/* Current reading */}
-      <section className="mb-4 rounded-lg border bg-card p-5">
+      <Card asChild className="mb-4 p-5">
+        <section>
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Current Reading
         </p>
@@ -204,10 +196,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           </p>
         </div>
       </section>
+      </Card>
 
       {/* Recent readings chart */}
       {recentReadings.length >= 2 && (
-        <section className="mb-4 rounded-lg border bg-card p-5">
+        <Card asChild className="mb-4 p-5">
+        <section>
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Recent Readings
           </p>
@@ -248,10 +242,12 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
             </LineChart>
           </ResponsiveContainer>
         </section>
+      </Card>
       )}
 
       {/* Settings */}
-      <section className="mb-4 rounded-lg border bg-card p-5">
+      <Card asChild className="mb-4 p-5">
+        <section>
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Settings
@@ -334,17 +330,9 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               anyone added to one sensor received the others anyway. One list, one
               place to change it. */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Alert Recipients
-              </p>
-              <Link
-                href="/settings"
-                className="text-xs text-muted-foreground hover:underline underline-offset-2"
-              >
-                Manage in Settings →
-              </Link>
-            </div>
+            <p className="text-xs font-medium text-muted-foreground">
+              Alert Recipients
+            </p>
             {accountRecipients.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 None set — nobody will be emailed about this sensor.
@@ -357,6 +345,17 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                   </p>
                 ))}
               </div>
+            )}
+            {/* The way to change the list is offered only while editing: in
+                view mode it is a fact about the sensor, and a link beside it
+                read as one more thing to do. */}
+            {editing && (
+              <Button asChild variant="secondary" size="sm" className="mt-1">
+                <Link href="/settings">
+                  <Settings className="size-4" />
+                  Manage recipients in Settings
+                </Link>
+              </Button>
             )}
           </div>
 
@@ -376,9 +375,11 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           )}
         </div>
       </section>
+      </Card>
 
       {/* Device info */}
-      <section className="rounded-lg border bg-card p-5">
+      <Card asChild className="p-5">
+        <section>
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Device Info
         </p>
@@ -389,26 +390,14 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
               {formatReadingTime(sensor.lastReading.recordedAt, timezone)}
             </InfoRow>
           )}
-          {tier && (
+          {batteryTier(batteryVolts) && (
             <InfoRow label="Battery">
-              <div
-                className="flex w-20 gap-1"
-                title={batteryVolts !== null ? `${batteryVolts.toFixed(2)} V` : undefined}
-              >
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-2 flex-1 rounded-full",
-                      i < battery.segments ? battery.color : "bg-muted",
-                    )}
-                  />
-                ))}
-              </div>
+              <BatteryMeter volts={batteryVolts} className="w-20" />
             </InfoRow>
           )}
         </div>
       </section>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "./cn";
 import { StatusDot, type StatusTone } from "./status-dot";
 
 // Status chips — the shared vocabulary for whether a reading, sensor or site is
@@ -13,7 +13,9 @@ import { StatusDot, type StatusTone } from "./status-dot";
 // Each status variant pairs a soft fill with its own border and the readable end
 // of the same ramp, which keeps the chip legible without a heavy fill.
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-chip border px-2.5 py-0.5 text-xs font-semibold transition-colors",
+  // A chip never wraps: a two-line badge in a narrow table cell stops reading
+  // as a label.
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-chip border px-2.5 py-0.5 text-xs font-semibold transition-colors",
   {
     variants: {
       variant: {

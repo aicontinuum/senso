@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@senso/ui";
 import { formatTemp, formatReadingTime, formatDateTimeLong } from "@/lib/temperature";
 import { rangeAt, formatRange, isOutOfRangeAt, hasRange, thresholdSummary } from "@/lib/thresholds";
 import { formatDevEui } from "@/lib/deveui";

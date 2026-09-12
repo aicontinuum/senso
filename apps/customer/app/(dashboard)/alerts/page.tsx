@@ -1,7 +1,12 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { Badge, Button, Card, LinkRow } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { formatDateTimeLong } from "@/lib/temperature";
+
+const TH = "px-6 py-3 font-medium";
+const TD = "px-6 py-3";
 
 export default async function AlertsPage() {
   const customer = await requireCustomer();
@@ -83,59 +88,63 @@ export default async function AlertsPage() {
     <div>
       <h1 className="mb-6 text-2xl font-bold">Alerts</h1>
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/40 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3">Sensor</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Triggered</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {alertRows.map((alert) => {
-              const sensorId = alert.sensorId;
-              return (
-                <tr key={alert.id} className="border-b last:border-0 hover:bg-muted/40">
-                  <td className="px-4 py-3 font-medium">
-                    {sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {alert.kind === "threshold" ? "Out of range" : "No readings"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDateTimeLong(alert.triggeredAt, customer.timezone)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {alert.isResolved ? (
-                      <span className="text-muted-foreground">Resolved</span>
-                    ) : (
-                      <span className="font-medium text-alert-text">Active</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/alerts/${alert.id}`}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      →
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-            {alertRows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                  No alerts recorded.
-                </td>
+      {alertRows.length === 0 ? (
+        <div className="rounded-card border border-dashed px-6 py-12 text-center">
+          <p className="text-sm text-muted-foreground">No alerts recorded.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Out-of-range readings and sensors that stop reporting will be listed here.
+          </p>
+        </div>
+      ) : (
+        <Card className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-hairline text-left text-muted-foreground">
+                <th className={TH}>Sensor</th>
+                <th className={TH}>Type</th>
+                <th className={TH}>Triggered</th>
+                <th className={TH}>Status</th>
+                <th className={`${TH} relative`}><span className="sr-only">Open</span></th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {alertRows.map((alert) => {
+                const sensorId = alert.sensorId;
+                const href = `/alerts/${alert.id}`;
+                return (
+                  <LinkRow key={alert.id} href={href}>
+                    <td className={`${TD} whitespace-nowrap font-medium`}>
+                      {sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : "—"}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap text-muted-foreground`}>
+                      {alert.kind === "threshold" ? "Out of range" : "No readings"}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap text-muted-foreground`}>
+                      {formatDateTimeLong(alert.triggeredAt, customer.timezone)}
+                    </td>
+                    <td className={TD}>
+                      {/* An open alert is the one thing on this page that
+                          needs attention, so it alone carries a tone. */}
+                      {alert.isResolved ? (
+                        <Badge variant="offline" dot>Resolved</Badge>
+                      ) : (
+                        <Badge variant="alert" dot>Active</Badge>
+                      )}
+                    </td>
+                    <td className={`${TD} text-right`}>
+                      <Button asChild variant="ghost" size="icon" aria-label="Open alert">
+                        <Link href={href}>
+                          <ChevronRight className="size-4" />
+                        </Link>
+                      </Button>
+                    </td>
+                  </LinkRow>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
     </div>
   );
 }

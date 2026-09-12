@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Badge } from "@senso/ui";
+import { Card } from "@senso/ui";
 import { cn } from "@/lib/utils";
 import type { SensorShape } from "./report-model";
 

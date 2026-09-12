@@ -1,6 +1,6 @@
 import { Download, FileText, Table } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@senso/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@senso/ui";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { SensorPicker } from "./SensorPicker";
 import {
