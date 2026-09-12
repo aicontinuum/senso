@@ -4,6 +4,43 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-12 — The 9 September failure, seen again, and harmless this time
+
+Overnight the watchdog emailed "platform is late" and "recovered" several
+times. `job_runs` for the sender showed why: about four runs in ten between
+01:00 and 05:00 UTC failed with `status_unreadable` or `claim_failed` — the
+sender on Vercel asked Supabase's API a question and got no usable answer.
+That is the same dropped-request failure that on 9 September made the old
+sweep think the fleet had gone silent and email a customer four times.
+
+This time nothing reached a customer. Detection runs inside Postgres and never
+saw it; the sender held and recorded the failure; the only cost was emails a
+few minutes late and a noisy inbox for us. The redesign did what it was for.
+
+### Change
+
+- `lib/retry.ts`: three attempts with a short pause, for calls that are safe
+  to repeat. Applied to the sender's status read and claim, to
+  `mark_alerts_notified` and `release_alert_claims` (a lost mark would let the
+  next run re-claim and re-send the same email), and to the watchdog's status
+  read. At the observed drop rate this takes a run's failure chance from ~40 %
+  to under 1 %.
+- Ledger rows now carry `cause` — the error's code and message — so the next
+  `job_runs` query shows *why*, not only *that*. Runs that needed a retry
+  record `retried: n`, so the drop rate stays visible after the retries have
+  hidden its cost.
+- The sender's "late" threshold is now 30 minutes (`SENDER_RUN_STALE_MS`);
+  the SQL sweep keeps 15. Delivery crossing a flaky network deserves a wider
+  bar than detection that does not.
+
+### Still unknown
+
+What is dropping the requests. Candidates: Supabase's free-tier pooler under
+load, or Vercel and Supabase being in distant regions. The `cause` field will
+say on the next occurrence.
+
+---
+
 ## 2026-09-10 — Alerting v2, phase 4: the database decides
 
 After this, no alert is opened or closed outside PostgreSQL. Phase 3 (a shadow

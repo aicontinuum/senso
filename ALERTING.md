@@ -60,7 +60,7 @@ database can open or close an alert.
 | Ingest as a writer | Keeps auth and validation; 6-hour lower bound on `time`; dedup on `deduplicationId`; no threshold logic. | **Live** (phase 4). |
 | Threshold alerts in the trigger | Opened/closed in the same transaction as the reading, only for the sensor's newest reading, only when commissioned, only active limits. | **Live** (phase 4). Decided: the cabinet. |
 | `sweep_offline_sensors()` | pg_cron every 5 min. Four statements on `sensors` and `alert_logs`: open where the stamp is past the window, close where fresh or out of service, close stranded threshold alerts. Holds while the platform is down. No readings scan, no row limit, no network. | **Live** (phase 4). |
-| Sender hold | `/api/cron/alerts` reads `platform_status` and claims nothing while the platform is down. | **Live** (phase 4). |
+| Sender hold | `/api/cron/alerts` reads `platform_status` and claims nothing while the platform is down. Its gating calls retry three times (`lib/retry.ts`); a failed run records the cause. | **Live** (phase 4, retries 2026-09-12). |
 | Fixture tests | `supabase/tests/alerting-v2/`: live-schema fixture + 33 asserting cases against PostgreSQL 16. | **Live**. Re-run before any change to the trigger or sweep. |
 | Delivery triggered from the database | pg_cron → pg_net → sender, same claim/mark/release functions as today. Sender also holds while the platform is down. VPS alert crontab removed. | Phase 5 |
 | Read the snapshot everywhere | Customer and admin pages use `last_reading_at` instead of scanning readings. | Phase 6 |
@@ -73,7 +73,7 @@ database can open or close an alert.
 | **VPS dies** | Pulse stops; platform marked down at 10 min; sweep and sender hold | nothing | card red; one email within 10 min; one on recovery |
 | ChirpStack crashed, VPS up | Pulse continues with `chirpstack_ok=false`; same hold | nothing | card names the container, not the box |
 | Postgres down | Nothing runs; ChirpStack retries ingest | nothing | daily Vercel health check emails |
-| Vercel / sender down | Alerts open and wait; sent on first good run | late email | sender stamp stale; card amber; email at 15 min |
+| Vercel / sender down, or the Vercel → Supabase path dropping requests | Alerts open and wait; gating calls retry; sent on first good run | late email | sender stamp stale after 30 min; card amber; one email; cause in job_runs |
 | Resend rejects | Claim released, retried; attempt logged | late email | `alert_notifications` row, status failed |
 | Two uplinks lost over LoRa | Sensor stamp ages past 35 min; real alert; resolves on next reading | real offline alert | correct |
 | **One site's gateway dark**, platform fine | Every sensor there stale together; sweep opens them | one email listing that site's sensors | "Sites dark" tile |

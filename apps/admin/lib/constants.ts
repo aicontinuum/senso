@@ -29,8 +29,12 @@ export const MAX_READING_AGE_MS = 6 * 60 * 60 * 1000;
 // far shorter than the 35 minutes a sensor gets, so the platform is always known
 // to be down before any fridge could look silent because of it.
 export const VPS_PULSE_STALE_MS = 10 * 60 * 1000;
-/** The alert route runs every five minutes; three misses is late, not dead. */
+/** The offline sweep runs every five minutes inside Postgres; three misses is late. */
 export const JOB_RUN_STALE_MS = 15 * 60 * 1000;
+/** The sender crosses the network to Supabase and drops a run now and then. It
+ *  is delivery, not detection: half an hour without a good run is the honest
+ *  bar for "something is wrong", and short of that a late email is the cost. */
+export const SENDER_RUN_STALE_MS = 30 * 60 * 1000;
 /** Job names written to `job_runs` and read back by the watchdog. */
 export const JOB_SWEEP = 'sweep';
 export const JOB_SENDER = 'sender';
