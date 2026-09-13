@@ -270,7 +270,15 @@ design system does not cover print geometry.
   the readings scan that raised false alerts on 2026-09-09. Pages still scan readings
   for display; that is cosmetic and deferred.
 - **Ingest is a writer.** Auth, validation, a six-hour lower bound on the device
-  timestamp, ChirpStack dedup, insert. It decides nothing.
+  timestamp, ChirpStack dedup, insert. It decides nothing. Its three database
+  calls retry, because the Vercel → Supabase path drops requests now and then
+  and ChirpStack's HTTP integration never re-sends: a reading that still cannot
+  be stored is answered 503 and written to `job_runs` under `ingest`, never
+  passed off as an unknown device (that is how an hour of one sensor's readings
+  vanished on 2026-09-13).
+- **The rule behind all of this, once more:** a failed lookup and a true negative
+  must never be the same value. Every place that draws a conclusion from *not
+  finding* something checks the error first. When you write one, do the same.
 - **Fixture tests exist.** `supabase/tests/alerting-v2/` proves the trigger and the
   sweep against a real PostgreSQL 16. Re-run before touching either.
 - **The admin site carries its own ADMIN lockup**, so the two sites cannot be
