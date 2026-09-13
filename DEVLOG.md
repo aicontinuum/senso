@@ -4,6 +4,60 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-13 — An hour of one sensor's readings lost inside ingest
+
+Sensor 2 was reported offline for an hour while sensor 1, on the same gateway,
+was fine. The alert itself was correct: `alert_logs` showed it opening at the
+last stored reading (09:12:59 UTC) and closing on the first sweep after the
+next one (10:27:58). Five readings out of six in that hour never reached the
+database.
+
+### Where they went
+
+`readings` had sensor 1 every fifteen minutes through the hour, so nothing on
+the shared path was down. ChirpStack's device dashboard showed sensor 2's
+"Received" count flat at four per hour across the whole day, including the
+missing hour, and the frame counters either side were consecutive — so the
+sensor transmitted, the gateway heard it, and ChirpStack received every frame.
+The readings were lost between ChirpStack and the database.
+
+The mechanism was in `/api/ingest`: the sensor lookup discarded its error.
+
+```ts
+const { data: sensor } = await admin.from('sensors')…   // error dropped
+if (!sensor) return 200 { ignored: 'unknown_device' }
+```
+
+When the Vercel → Supabase path dropped the request, `sensor` came back empty,
+the route answered ChirpStack with a 200 "unknown device", and ChirpStack —
+whose HTTP integration never retries — moved on. The reading was gone with a
+log line saying the device was not registered. Same shape as 9 September:
+a failed lookup and a true negative arriving as the same value. The 12
+September DEVLOG entry swept the sender for it and missed this one.
+
+### Change
+
+- The sensor lookup, the reading upsert and the gateway stamp in ingest go
+  through `retry()`. All three are safe to repeat; the two unique indexes on
+  `readings` make a re-sent insert a no-op.
+- A lookup or insert that still fails after retries answers **503**, not 200,
+  and writes a `job_runs` row under `ingest` with the step, the DevEUI and the
+  error — the only time ingest writes to the ledger. ChirpStack will still not
+  re-send, so the reading is still lost, but it is lost honestly and visibly
+  rather than as a fake "unknown device".
+- The other twelve discarded-error reads in the API routes were reviewed. All
+  are interactive: a dropped read becomes a "not found" to a person who can try
+  again, not a wrong row in the record. Two can create a duplicate
+  `alert_configs` row on a dropped lookup; noted in TODO, not fixed here.
+
+### Not resolved
+
+Why the Vercel → Supabase path drops requests at all. Every retry that fires
+now leaves `retried: n` or a `cause` in `job_runs`, which is the evidence to
+take to Supabase or to a region change.
+
+---
+
 ## 2026-09-12 — The 9 September failure, seen again, and harmless this time
 
 Overnight the watchdog emailed "platform is late" and "recovered" several

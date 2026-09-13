@@ -188,6 +188,22 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 
 ## Alerting — added 2026-09-09
 
+- [ ] **Threshold updates can duplicate a limit on a dropped lookup** *(added
+  2026-09-13)*. `apps/admin/app/api/customers/[id]/sensors/[sensorId]/route.ts`
+  and `apps/customer/app/api/sensors/[id]/route.ts` look up the existing
+  `alert_configs` row and insert a new one when none comes back — but the
+  lookup's error is discarded, so a dropped request reads as "none" and inserts
+  a second `min` or `max` for the sensor. Low frequency, admin/customer-facing,
+  and the trigger evaluates every active row so both limits then fire. Fix:
+  check the error and return 503, or make `(sensor_id, type)` unique where
+  `is_active` and upsert on it.
+
+- [ ] **Why does the Vercel → Supabase path drop requests?** *(added 2026-09-13)*.
+  Seen on 9, 11 and 13 September. Retries now hide the cost and record
+  `retried`/`cause` in `job_runs`; after a week, count them and take the
+  `cause` text to Supabase support, or check whether the Vercel function region
+  and the Supabase project region match.
+
 - [ ] **Alerting v2 phases 5 and 6 — deferred 2026-09-10 by decision.** Phase 5:
   trigger the sender from pg_cron/pg_net, remove the VPS alert crontab, drop
   `job_heartbeats`, point the daily health check at `platform_status`. Phase 6:

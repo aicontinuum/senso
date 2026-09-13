@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { integrationSecretOk } from '@/lib/ingest-auth';
 import { stampPlatform } from '@/lib/platform-status';
-import { MAX_READING_AGE_MS } from '@/lib/constants';
+import { retry, describeError } from '@/lib/retry';
+import { MAX_READING_AGE_MS, JOB_INGEST } from '@/lib/constants';
 
 // Ingest endpoint for ChirpStack's HTTP integration (LoRaWAN).
 //
@@ -37,6 +38,25 @@ type ChirpStackUplink = {
   txInfo?: { modulation?: { lora?: { spreadingFactor?: number } } };
   regionConfigId?: string;
 };
+
+/**
+ * A reading that could not be stored, on the record. Ingest has no per-request
+ * ledger — thousands of successes a day would say nothing — but a loss is the
+ * one event worth a row, because ChirpStack will not re-send and the reading is
+ * otherwise gone without a trace. Its own failure is logged and swallowed: it
+ * must not turn a 503 into a crash.
+ */
+async function recordFailure(
+  admin: ReturnType<typeof createAdminClient>,
+  detail: { step: string; devEui: string; cause: string },
+) {
+  console.error('[ingest] reading lost', detail);
+  const now = new Date().toISOString();
+  const { error } = await admin
+    .from('job_runs')
+    .insert({ job: JOB_INGEST, started_at: now, finished_at: now, ok: false, detail });
+  if (error) console.error('[ingest] could not record the loss', error);
+}
 
 /** Decoders sometimes emit numbers as strings; coerce and reject anything unusable. */
 function num(value: unknown): number | null {
@@ -113,12 +133,29 @@ export async function POST(request: Request) {
   //    stray, or someone else's device — it must never enter a customer's
   //    compliance record. 200 (not 4xx) because this is a permanent condition and
   //    retrying won't fix it; the warning is the signal.
-  const { data: sensor } = await admin
-    .from('sensors')
-    .select('id, gateway_id, commissioned_at')
-    .eq('hardware_id', devEui)
-    .is('decommissioned_at', null)
-    .maybeSingle();
+  //
+  //    The lookup's error is checked, and retried, because "no row" and "the
+  //    request was dropped" are different answers that arrive as the same
+  //    value. On 2026-09-13 an hour of one sensor's readings vanished this way:
+  //    the Vercel → Supabase path dropped the lookup, the empty result read as
+  //    "unknown device", and ChirpStack was told 200 so it never re-sent. A
+  //    lookup that still fails after retries is a 503 and a ledger row —
+  //    ChirpStack's HTTP integration does not retry, so the retries here are
+  //    the only defence, and the row is the evidence when they are not enough.
+  const { data: sensor, error: lookupError } = await retry(
+    'ingest sensor lookup',
+    () => admin
+      .from('sensors')
+      .select('id, gateway_id, commissioned_at')
+      .eq('hardware_id', devEui)
+      .is('decommissioned_at', null)
+      .maybeSingle(),
+  );
+
+  if (lookupError) {
+    await recordFailure(admin, { step: 'sensor_lookup', devEui, cause: describeError(lookupError) });
+    return NextResponse.json({ error: 'Could not look up device' }, { status: 503 });
+  }
 
   if (!sensor) {
     console.warn(`[ingest] unregistered or retired DevEUI: ${devEui}`);
@@ -165,26 +202,36 @@ export async function POST(request: Request) {
   //    which surfaces as a unique violation and is treated as the same answer.
   //    The trigger on readings stamps the sensor and judges the thresholds
   //    inside this same statement.
-  const { data: inserted, error: insertError } = await admin
-    .from('readings')
-    .upsert(reading, { onConflict: 'sensor_id,recorded_at', ignoreDuplicates: true })
-    .select('id');
+  //    Retried for the same reason as the lookup. Safe to repeat: both unique
+  //    indexes make a second arrival of the same reading a no-op, so a request
+  //    that succeeded on the server but lost its answer cannot double-store.
+  const { data: inserted, error: insertError } = await retry(
+    'ingest reading upsert',
+    () => admin
+      .from('readings')
+      .upsert(reading, { onConflict: 'sensor_id,recorded_at', ignoreDuplicates: true })
+      .select('id'),
+  );
 
   if (insertError && insertError.code !== '23505') {
-    console.error('[ingest] insert failed', insertError);
-    return NextResponse.json({ error: 'Could not store reading' }, { status: 500 });
+    await recordFailure(admin, { step: 'reading_insert', devEui, cause: describeError(insertError) });
+    return NextResponse.json({ error: 'Could not store reading' }, { status: 503 });
   }
   const duplicate = Boolean(insertError) || !inserted || inserted.length === 0;
 
   // Mark the receiving gateway(s) alive. This replaces the Pi's heartbeat.sh —
-  // a gateway relaying uplinks is by definition reachable.
+  // a gateway relaying uplinks is by definition reachable. Bookkeeping: a
+  // failure here is retried and then logged, never returned.
   const gatewayIds = [...new Set((body.rxInfo ?? []).map(r => r.gatewayId).filter(Boolean))] as string[];
   if (gatewayIds.length > 0) {
-    await admin
-      .from('gateways')
-      .update({ is_online: true, last_seen_at: recordedAt })
-      .in('mac_address', gatewayIds)
-      .is('decommissioned_at', null);
+    await retry(
+      'gateway last_seen stamp',
+      () => admin
+        .from('gateways')
+        .update({ is_online: true, last_seen_at: recordedAt })
+        .in('mac_address', gatewayIds)
+        .is('decommissioned_at', null),
+    );
   }
 
   if (duplicate) {

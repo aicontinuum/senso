@@ -39,3 +39,5 @@ export const SENDER_RUN_STALE_MS = 30 * 60 * 1000;
 export const JOB_SWEEP = 'sweep';
 export const JOB_SENDER = 'sender';
 export const JOB_WATCHDOG = 'watchdog';
+/** Ingest writes a job_runs row only when a reading is lost, never on success. */
+export const JOB_INGEST = 'ingest';
