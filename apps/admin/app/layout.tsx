@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { APP_NAME } from "@/lib/constants";
@@ -35,6 +35,19 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: APP_NAME,
   description: "Senso administration",
+};
+
+// The platform layer that separates "a website in a browser" from something
+// that feels installed. viewport-fit lets the page under the notch so the
+// header can paint edge to edge; the theme colour matches the top bar, not the
+// brand; and zoom stays enabled — the 16px inputs below are what stop iOS
+// zooming into a field, not a scale lock.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

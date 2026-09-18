@@ -53,7 +53,11 @@ export function SensorCard({
     <Card
       asChild
       className={cn(
-        "block p-5 transition-[background-color,box-shadow] hover:bg-sunken hover:shadow-md",
+        // Hover lifts; press settles. The lift is gated to fine pointers by
+        // Tailwind's hover variant, and the press scale answers a touch the
+        // instant the finger lands, which is where a tile feels responsive.
+        "block p-5 transition-[background-color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
+        "hover:bg-sunken hover:shadow-md active:scale-[--press-scale] motion-reduce:active:scale-100",
         (isOffline || !inService) && "opacity-70",
         state === "breaching" && "border-alert-border",
         state === "alert-open" && "border-warn-border",

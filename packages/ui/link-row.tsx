@@ -20,7 +20,7 @@ export function LinkRow({ href, className, onClick, children, ...props }: LinkRo
   return (
     <tr
       {...props}
-      className={cn('cursor-pointer transition-colors hover:bg-sunken', className)}
+      className={cn('cursor-pointer transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset', className)}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;

@@ -49,7 +49,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-button px-3.5 text-sm font-semibold tracking-tight",
-              "transition-[background-color,color,box-shadow] duration-[--dur-fast] ease-[--ease-out]",
+              "transition-[background-color,color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
+              "active:scale-[0.97] motion-reduce:active:scale-100",
               "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32",
               selected
                 ? "bg-card text-foreground shadow-xs"

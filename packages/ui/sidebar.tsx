@@ -54,7 +54,7 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
       <div className="flex h-(--topbar-height) shrink-0 items-center justify-end border-b border-hairline px-3 md:hidden">
         <button
           onClick={onMobileClose}
-          className="rounded-md p-1.5 hover:bg-accent"
+          className="rounded-md p-1.5 transition-colors duration-[--dur-fast] hover:bg-accent active:bg-inset"
           aria-label="Close menu"
         >
           <X className="h-4 w-4" />
@@ -79,7 +79,8 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
               aria-label={item.label}
               title={item.label}
               className={cn(
-                "flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-[background-color,color,transform] duration-[--dur-fast] ease-[--ease-out]",
+                "active:scale-[0.97] motion-reduce:active:scale-100",
                 "md:justify-center md:gap-0 md:py-2.5 lg:justify-start lg:gap-3 lg:py-2",
                 // Soft tint, not the solid brand fill: "you are here" should
                 // not weigh the same as the page's primary button.
@@ -101,7 +102,7 @@ export function Sidebar({ navItems, mobileOpen, onMobileClose, onLogout }: Sideb
           aria-label="Logout"
           title="Logout"
           className={cn(
-            "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+            "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-muted-foreground transition-[background-color,color,transform] duration-[--dur-fast] ease-[--ease-out] hover:bg-accent hover:text-accent-foreground active:scale-[0.97] motion-reduce:active:scale-100",
             "md:justify-center md:gap-0 md:py-2.5 lg:justify-start lg:gap-3 lg:py-2",
           )}
         >
