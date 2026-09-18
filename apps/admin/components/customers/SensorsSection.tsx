@@ -121,7 +121,7 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
           below a table that may be long. */}
       {adding && (
         <div className="border-b border-hairline px-5 py-4">
-          <Card tone="sunken" className="space-y-4 p-4">
+          <Card tone="sunken" className="space-y-4 p-4 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]">
             <p className="text-sm font-semibold">New sensor</p>
 
             {gateways.length === 0 ? (

@@ -104,7 +104,7 @@ export function ChangePasswordSection() {
   // count as children and give the collapsed card an empty body.
   const body = open ? (
     <form
-      className="space-y-4"
+      className="space-y-4 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]"
       onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
     >
       <Input

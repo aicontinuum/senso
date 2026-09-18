@@ -122,7 +122,7 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
       {/* The form opens where the click landed, under the header. */}
       {adding && (
         <div className="border-b border-hairline px-5 py-4">
-          <Card tone="sunken" className="space-y-4 p-4">
+          <Card tone="sunken" className="space-y-4 p-4 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]">
             <p className="text-sm font-semibold">Link a gateway</p>
 
             <Input
