@@ -31,7 +31,7 @@ export function PlatformWatchdogCard({ status, now }: { status: PlatformStatusRo
   return (
     <Card className={`overflow-hidden ${level === 'down' ? 'border-alert-border' : ''}`}>
     <details open={!healthy} aria-label="VPS watchdog" className="group">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-sunken sm:px-6 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset sm:px-6 [&::-webkit-details-marker]:hidden">
         <div className="flex items-center gap-2.5">
           <StatusDot status={tone.dot} className="size-2.5" />
           <h2 className="text-sm font-semibold tracking-tight">VPS watchdog</h2>

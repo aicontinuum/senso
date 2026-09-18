@@ -192,3 +192,45 @@ th,
 td {
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Feeling installed on a phone ──────────────────────────────────────────
+   Each of these is one declaration and none reproduce in desktop emulation.
+   The tap highlight is the loudest "this is a website" tell, so it goes and
+   every pressable element carries its own :active state instead. Overscroll
+   stays off the root because the shell scrolls inside <main>, and pull-to-
+   refresh on the document would fight it; main keeps its own bounce. Controls
+   never double-tap-zoom, so the click can fire immediately, and a long press
+   on a button must not select its label. Inputs sit at 16px on coarse
+   pointers because anything under that makes iOS Safari zoom the page into
+   the field and leave it there. */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  main {
+    overscroll-behavior: contain;
+  }
+
+  button,
+  a,
+  [role="button"],
+  [role="radio"],
+  summary,
+  label:has(> input[type="checkbox"]) {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}

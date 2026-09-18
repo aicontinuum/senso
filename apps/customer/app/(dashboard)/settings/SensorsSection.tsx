@@ -21,7 +21,7 @@ export function SensorsSection({ sensors }: { sensors: Sensor[] }) {
             <Link
               key={sensor.id}
               href={`/sensors/${sensor.id}`}
-              className="flex items-center justify-between gap-3 rounded-inner px-2 py-2.5 transition-colors hover:bg-sunken"
+              className="flex items-center justify-between gap-3 rounded-inner px-2 py-2.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset"
             >
               <span className="flex min-w-0 items-center gap-2.5">
                 <StatusDot status={sensor.status === "online" ? "ok" : "offline"} className="size-2" />
