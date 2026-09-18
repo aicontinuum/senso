@@ -8,7 +8,8 @@ export function Spinner({ className }: { className?: string }) {
       role="status"
       aria-label="Loading"
       className={cn(
-        "h-5 w-5 animate-spin rounded-full border-2 border-muted border-t-foreground",
+        // Spins fast: the same wait feels shorter behind a quick spinner.
+        "h-5 w-5 animate-[senso-spin_0.7s_linear_infinite] rounded-full border-2 border-muted border-t-foreground",
         // Respect reduced-motion preferences — still visible, just not spinning.
         "motion-reduce:animate-none",
         className,

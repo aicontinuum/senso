@@ -350,7 +350,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
                 view mode it is a fact about the sensor, and a link beside it
                 read as one more thing to do. */}
             {editing && (
-              <Button asChild variant="secondary" size="sm" className="mt-1">
+              <Button asChild variant="secondary" size="sm" className="mt-1 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]">
                 <Link href="/settings">
                   <Settings className="size-4" />
                   Manage recipients in Settings
