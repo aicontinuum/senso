@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, isDenied, readJson, failureResponse, ruleOrThrow } from '@/lib/billing/route-helpers';
 import { EVENT_KIND, recordBillingEvent } from '@/lib/billing/events';
-import { requireText, requireUuid } from '@/lib/billing/validate';
+import { optionalText, requireUuid } from '@/lib/billing/validate';
 
-// Void an issued invoice. The number stays, the reason is stored on the
-// invoice and in the log. A paid invoice cannot be voided; the database
+// Void an issued invoice. The number stays; a reason, if given, is stored on
+// the invoice and in the log. A paid invoice cannot be voided; the database
 // says so and the message is passed through.
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const id = requireUuid((await params).id, 'invoice');
     const body = await readJson(request);
-    const reason = requireText(body.reason, 'reason');
+    const reason = optionalText(body.reason, 'reason');
 
     const { data: head, error: readError } = await admin.from('invoices').select('customer_id, number').eq('id', id).maybeSingle();
     if (readError) throw new Error(readError.message);

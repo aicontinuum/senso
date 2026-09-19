@@ -121,12 +121,20 @@ select assert_raises($q$delete from invoice_lines where invoice_id = '00000000-0
 select assert_raises($q$update invoices set discount_value = 1 where id = '00000000-0000-0000-0000-00000000e001'$q$, 'issued invoice refuses discount change');
 select assert_raises($q$update invoices set total = 1 where id = '00000000-0000-0000-0000-00000000e001'$q$, 'issued invoice refuses total change');
 select assert_raises($q$update invoices set number = 'BT-2026-9999' where id = '00000000-0000-0000-0000-00000000e001'$q$, 'issued invoice refuses number change');
-select assert_raises($q$update invoices set due_on = current_date + 90 where id = '00000000-0000-0000-0000-00000000e001'$q$, 'issued invoice refuses due date change');
+-- The words are not frozen: descriptions, due date and discount label may be corrected.
+update invoice_lines set description = 'Standard plan, Annual (5 sensors), corrected' where invoice_id = '00000000-0000-0000-0000-00000000e001' and position = 1;
+select assert((select description like '%corrected' and amount = 9000 from invoice_lines where invoice_id = '00000000-0000-0000-0000-00000000e001' and position = 1), 'issued invoice takes a reworded line');
+select assert((select total = 9820 from invoices where id = '00000000-0000-0000-0000-00000000e001'), 'rewording a line leaves the total alone');
+update invoices set due_on = current_date + 90, discount_label = 'Loyalty (agreed)' where id = '00000000-0000-0000-0000-00000000e001';
+select assert((select due_on = current_date + 90 and discount_label = 'Loyalty (agreed)' from invoices where id = '00000000-0000-0000-0000-00000000e001'), 'issued invoice takes a due date and label change');
+select assert_raises($q$update invoice_lines set description = 'x', amount = 1 where invoice_id = '00000000-0000-0000-0000-00000000e001' and position = 1$q$, 'rewording plus an amount change is still refused');
 select assert_raises($q$delete from invoices where id = '00000000-0000-0000-0000-00000000e001'$q$, 'issued invoice cannot be deleted');
 update invoices set internal_notes = 'called them', sent_at = now(), sent_to = array['billing@fresh.example'] where id = '00000000-0000-0000-0000-00000000e001';
 select assert((select internal_notes = 'called them' from invoices where id = '00000000-0000-0000-0000-00000000e001'), 'issued invoice still takes notes and delivery');
 
 -- ── Void ────────────────────────────────────────────────────────────────────
+select void_invoice('00000000-0000-0000-0000-00000000e004', null);
+select assert((select state = 'void' and void_reason is null from invoices where id = '00000000-0000-0000-0000-00000000e004'), 'void without a reason');
 select void_invoice('00000000-0000-0000-0000-00000000e003', 'wrong amount');
 select assert((select state = 'void' and number = 'BT-2027-0001' and void_reason = 'wrong amount' and voided_at is not null from invoices where id = '00000000-0000-0000-0000-00000000e003'), 'void keeps its number');
 select void_invoice('00000000-0000-0000-0000-00000000e003', 'again');

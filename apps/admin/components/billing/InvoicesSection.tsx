@@ -5,40 +5,43 @@ import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import { Button, Card, CardHeader, CardTitle } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { INVOICE_TYPE_LABEL } from '@/lib/billing/constants';
 import { InvoiceDraftEditor } from '@/components/billing/InvoiceDraftEditor';
+import { IssuedInvoiceEditor } from '@/components/billing/IssuedInvoiceEditor';
 import { InvoiceRow } from '@/components/billing/InvoiceRow';
-import { NewInvoiceForm } from '@/components/billing/NewInvoiceForm';
-import type { Invoice, InvoiceType, Subscription } from '@/types/billing';
+import type { BillingSettings, Invoice, Subscription } from '@/types/billing';
 
-// Invoice history with the work done on it: start a draft, edit it, issue it,
-// void an issued one, discard a draft, download the PDF, email it, mark it
-// paid. One-off charges are an adjustment invoice with free-text lines.
+// Invoice history and the work done on it. "New invoice" opens an empty
+// draft straight away; the plan fills it with one click inside. Everything
+// else (issue, PDF, send, payments, void, corrections) lives on the row.
 
 type Props = {
   customerId: string;
   customerEmail: string | null;
+  settings: BillingSettings;
   subscriptions: Subscription[];
   invoices: Invoice[];
-  paymentTermsDays: number;
   now: number;
 };
 
 const TH = 'px-4 py-3 font-medium sm:px-5';
 
-export function InvoicesSection({ customerId, customerEmail, subscriptions, invoices, paymentTermsDays, now }: Props) {
+export function InvoicesSection({ customerId, customerEmail, settings, subscriptions, invoices, now }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  async function create(type: InvoiceType, subscriptionId: string | null) {
-    const result = await callApi<{ invoiceId: string }>(`/api/billing/customers/${customerId}/invoices`, 'POST', { type, subscriptionId });
-    if (!result.ok) { setError(result.error); return; }
+  async function create() {
+    setError('');
+    setCreating(true);
+    const result = await callApi<{ invoiceId: string }>(`/api/billing/customers/${customerId}/invoices`, 'POST', {});
     setCreating(false);
+    if (!result.ok) { setError(result.error); return; }
     setEditingId(result.data.invoiceId);
     router.refresh();
   }
+
+  const close = () => { setEditingId(null); router.refresh(); };
 
   return (
     <Card className="overflow-hidden">
@@ -47,28 +50,18 @@ export function InvoicesSection({ customerId, customerEmail, subscriptions, invo
           <CardTitle>Invoices</CardTitle>
           <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{invoices.length}</span>
         </div>
-        {!creating && (
-          <Button size="sm" onClick={() => { setError(''); setCreating(true); }}>
-            <Plus className="size-4" />
-            New invoice
-          </Button>
-        )}
+        <Button size="sm" onClick={create} disabled={creating}>
+          <Plus className="size-4" />
+          {creating ? 'Opening…' : 'New invoice'}
+        </Button>
       </CardHeader>
-
-      {creating && (
-        <div className="border-b border-hairline px-5 py-4">
-          <NewInvoiceForm subscriptions={subscriptions.filter(s => s.endedAt === null)} onCreate={create} onCancel={() => setCreating(false)} />
-        </div>
-      )}
 
       {error && <p role="alert" className="px-5 pt-4 text-sm text-alert-text">{error}</p>}
 
       {invoices.length === 0 ? (
         <div className="m-5 rounded-inner border border-dashed px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">No invoices yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {INVOICE_TYPE_LABEL.onboarding} covers hardware and the first term; {INVOICE_TYPE_LABEL.renewal} the next term; {INVOICE_TYPE_LABEL.adjustment} anything one-off.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">New invoice opens a draft; one click fills it from the plan.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -76,7 +69,6 @@ export function InvoicesSection({ customerId, customerEmail, subscriptions, invo
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Number</th>
-                <th className={TH}>Type</th>
                 <th className={TH}>Issued</th>
                 <th className={TH}>Due</th>
                 <th className={`${TH} text-right`}>Amount</th>
@@ -95,10 +87,10 @@ export function InvoicesSection({ customerId, customerEmail, subscriptions, invo
                   now={now}
                   editing={editingId === inv.id}
                   onEdit={() => { setError(''); setEditingId(inv.id); }}
-                  onChanged={() => { setEditingId(null); router.refresh(); }}
-                  editor={
-                    <InvoiceDraftEditor invoice={inv} paymentTermsDays={paymentTermsDays} now={now} onSaved={() => { setEditingId(null); router.refresh(); }} onCancel={() => setEditingId(null)} />
-                  }
+                  onChanged={close}
+                  editor={inv.state === 'draft'
+                    ? <InvoiceDraftEditor invoice={inv} settings={settings} subscriptions={subscriptions} invoices={invoices} now={now} onSaved={close} onCancel={() => setEditingId(null)} />
+                    : <IssuedInvoiceEditor invoice={inv} onSaved={close} onCancel={() => setEditingId(null)} />}
                 />
               ))}
             </tbody>

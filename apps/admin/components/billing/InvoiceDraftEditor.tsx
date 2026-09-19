@@ -1,21 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { Button, Card, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatMoney, plusDays, todayIso } from '@/lib/format';
 import { round2 } from '@/lib/billing/pricing';
-import type { DiscountType, Invoice } from '@/types/billing';
+import type { LineInput } from '@/lib/billing/invoice-lines';
+import { InvoiceQuickAdd } from '@/components/billing/InvoiceQuickAdd';
+import type { BillingSettings, DiscountType, Invoice, InvoiceType, Subscription } from '@/types/billing';
 
-// A draft's contents: lines, discount, due date, internal notes. Totals shown
-// here are a preview; the stored ones are recomputed by the database on save
-// and are what the PDF prints. Issuing saves first, then numbers the invoice.
+// A draft: lines (filled from the plan or typed), discount, issue and due
+// dates. Totals shown here are a preview; the stored ones are recomputed by
+// the database on save and are what the PDF prints. Issuing saves first,
+// then numbers the invoice.
 
 type Props = {
   invoice: Invoice;
-  /** Days from issue date to due date, from settings. */
-  paymentTermsDays: number;
+  settings: BillingSettings;
+  subscriptions: Subscription[];
+  invoices: Invoice[];
   now: number;
   onSaved: () => void;
   onCancel: () => void;
@@ -23,24 +27,25 @@ type Props = {
 
 type LineDraft = { key: string; description: string; quantity: string; unitAmount: string; amount: string };
 
-function lineFrom(l?: Invoice['lines'][number]): LineDraft {
+function lineFrom(l?: Partial<LineInput> & { id?: string }): LineDraft {
   return {
     key: l?.id ?? crypto.randomUUID(), description: l?.description ?? '',
-    quantity: String(l?.quantity ?? 1), unitAmount: String(l?.unitAmount ?? 0), amount: l ? String(l.amount) : '',
+    quantity: String(l?.quantity ?? 1), unitAmount: String(l?.unitAmount ?? 0), amount: l?.amount === undefined ? '' : String(l.amount),
   };
 }
 
 const num = (s: string) => { const n = Number.parseFloat(s); return Number.isFinite(n) ? n : 0; };
 const lineAmount = (l: LineDraft) => (l.amount === '' ? round2(num(l.quantity) * num(l.unitAmount)) : num(l.amount));
+const GRID = 'sm:grid-cols-[1fr_5rem_7rem_7rem_2rem]';
 
-export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, onCancel }: Props) {
-  const [lines, setLines] = useState<LineDraft[]>(() => invoice.lines.length ? invoice.lines.map(l => lineFrom(l)) : [lineFrom()]);
+export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices, now, onSaved, onCancel }: Props) {
+  const [lines, setLines] = useState<LineDraft[]>(() => invoice.lines.map(l => lineFrom(l)));
+  const [plan, setPlan] = useState<{ subscriptionId: string | null; type: InvoiceType }>({ subscriptionId: invoice.subscriptionId, type: invoice.type });
   const [issuedOn, setIssuedOn] = useState(() => todayIso(now));
-  const [dueOn, setDueOn] = useState(() => invoice.dueOn ?? plusDays(todayIso(now), paymentTermsDays));
+  const [dueOn, setDueOn] = useState(() => invoice.dueOn ?? plusDays(todayIso(now), settings.paymentTermsDays));
   const [discountType, setDiscountType] = useState<DiscountType | ''>(invoice.discountType ?? '');
   const [discountValue, setDiscountValue] = useState(invoice.discountValue === null ? '' : String(invoice.discountValue));
   const [discountLabel, setDiscountLabel] = useState(invoice.discountLabel ?? '');
-  const [notes, setNotes] = useState(invoice.internalNotes ?? '');
   const [busy, setBusy] = useState<'save' | 'issue' | null>(null);
   const [error, setError] = useState('');
 
@@ -52,11 +57,16 @@ export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, on
 
   const updateLine = (key: string, patch: Partial<LineDraft>) => setLines(ls => ls.map(l => (l.key === key ? { ...l, ...patch } : l)));
 
+  function addLines(added: LineInput[], fromPlan: { subscriptionId: string; type: InvoiceType } | null) {
+    setLines(ls => [...ls, ...added.map(l => lineFrom(l))]);
+    if (fromPlan) setPlan(fromPlan);
+  }
+
   // The due date follows the issue date by the payment terms; typing over the
   // due date afterwards is the override.
   function changeIssuedOn(value: string) {
     setIssuedOn(value);
-    if (value) setDueOn(plusDays(value, paymentTermsDays));
+    if (value) setDueOn(plusDays(value, settings.paymentTermsDays));
   }
 
   async function save(): Promise<boolean> {
@@ -66,7 +76,8 @@ export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, on
       discountType: discountType || null,
       discountValue: discountType ? discountValue : null,
       discountLabel,
-      internalNotes: notes,
+      type: plan.type,
+      subscriptionId: plan.subscriptionId,
       lines: lines.filter(l => l.description.trim() !== '').map(l => ({
         description: l.description, quantity: num(l.quantity), unitAmount: num(l.unitAmount), amount: l.amount === '' ? undefined : num(l.amount),
       })),
@@ -75,12 +86,7 @@ export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, on
     return result.ok;
   }
 
-  async function onSave() {
-    setBusy('save');
-    if (await save()) onSaved();
-    setBusy(null);
-  }
-
+  async function onSave() { setBusy('save'); if (await save()) onSaved(); setBusy(null); }
   async function onIssue() {
     setBusy('issue');
     if (await save()) {
@@ -92,21 +98,24 @@ export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, on
 
   return (
     <Card tone="sunken" className="space-y-4 p-4">
-      <div className="space-y-2">
-        <div className="hidden gap-2 text-xs font-semibold text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_7rem_7rem_2rem]">
-          <span>Description</span><span>Qty</span><span>Unit</span><span>Amount</span><span />
-        </div>
-        {lines.map(l => (
-          <div key={l.key} className="grid gap-2 sm:grid-cols-[1fr_5rem_7rem_7rem_2rem]">
-            <Input aria-label="Description" value={l.description} onChange={e => updateLine(l.key, { description: e.target.value })} placeholder="e.g. Installation visit" />
-            <Input aria-label="Quantity" type="number" step="0.01" value={l.quantity} onChange={e => updateLine(l.key, { quantity: e.target.value, amount: '' })} />
-            <Input aria-label="Unit amount" type="number" step="0.01" value={l.unitAmount} onChange={e => updateLine(l.key, { unitAmount: e.target.value, amount: '' })} />
-            <Input aria-label="Line amount" type="number" step="0.01" value={l.amount} onChange={e => updateLine(l.key, { amount: e.target.value })} placeholder={String(lineAmount(l))} />
-            <Button variant="ghost" size="icon" aria-label="Remove line" onClick={() => setLines(ls => ls.filter(x => x.key !== l.key))}><Trash2 className="size-4" /></Button>
+      <InvoiceQuickAdd settings={settings} subscriptions={subscriptions} invoices={invoices} currentInvoiceId={invoice.id} onAdd={addLines} />
+
+      {lines.length > 0 && (
+        <div className="space-y-2">
+          <div className={`hidden gap-2 text-xs font-semibold text-muted-foreground sm:grid ${GRID}`}>
+            <span>Description</span><span>Qty</span><span>Unit</span><span>Amount</span><span />
           </div>
-        ))}
-        <Button variant="ghost" size="sm" onClick={() => setLines(ls => [...ls, lineFrom()])}><Plus className="size-4" />Add line</Button>
-      </div>
+          {lines.map(l => (
+            <div key={l.key} className={`grid gap-2 ${GRID}`}>
+              <Input aria-label="Description" value={l.description} onChange={e => updateLine(l.key, { description: e.target.value })} placeholder="What this line is for" />
+              <Input aria-label="Quantity" type="number" step="0.01" value={l.quantity} onChange={e => updateLine(l.key, { quantity: e.target.value, amount: '' })} />
+              <Input aria-label="Unit amount" type="number" step="0.01" value={l.unitAmount} onChange={e => updateLine(l.key, { unitAmount: e.target.value, amount: '' })} />
+              <Input aria-label="Line amount" type="number" step="0.01" value={l.amount} onChange={e => updateLine(l.key, { amount: e.target.value })} placeholder={String(lineAmount(l))} />
+              <Button variant="ghost" size="icon" aria-label="Remove line" onClick={() => setLines(ls => ls.filter(x => x.key !== l.key))}><Trash2 className="size-4" /></Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Select label="Discount" value={discountType} onChange={e => setDiscountType(e.target.value as DiscountType | '')}>
@@ -118,10 +127,9 @@ export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, on
         <Input label="Discount label" hint="Printed on the PDF line." value={discountLabel} onChange={e => setDiscountLabel(e.target.value)} disabled={discountType === ''} placeholder="e.g. Pilot pricing" />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Issue date" hint="Printed on the invoice; stamped when you issue." type="date" value={issuedOn} onChange={e => changeIssuedOn(e.target.value)} />
-        <Input label="Due date" hint={`Issue date plus ${paymentTermsDays} days. Change it if agreed otherwise.`} type="date" value={dueOn} onChange={e => setDueOn(e.target.value)} />
-        <Input label="Internal notes" hint="Never printed." value={notes} onChange={e => setNotes(e.target.value)} />
+        <Input label="Due date" hint={`Issue date plus ${settings.paymentTermsDays} days. Change it if agreed otherwise.`} type="date" value={dueOn} onChange={e => setDueOn(e.target.value)} />
       </div>
 
       <dl className="ml-auto grid max-w-xs grid-cols-2 gap-x-6 gap-y-1 text-sm">
