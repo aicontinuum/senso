@@ -4,7 +4,7 @@ import { BILLING_STATUSES, BILLING_STATUS_LABEL, BILLING_STATUS_TONE } from '@/l
 import type { BillingSummary } from '@/types/billing';
 
 // Five tiles in one card, the same instrument the dashboard uses. Money is
-// tinted only when it is a problem: outstanding is normal business, overdue
+// tinted only when it is a problem: money received is good news, overdue
 // is not, and a zero in alert red would pull the eye toward nothing.
 
 const STAT_TILE = 'px-4 py-4 sm:px-6 sm:py-5';
@@ -19,9 +19,9 @@ export function BillingSummaryStrip({ summary, renewalNoticeDays }: { summary: B
         <p className="mt-2 text-sm text-muted-foreground">from active terms</p>
       </div>
       <div className={STAT_TILE}>
-        <p className="text-sm font-medium text-muted-foreground">Outstanding</p>
-        <p className={STAT_VALUE}>{formatMoney(summary.outstanding)}</p>
-        <p className="mt-2 text-sm text-muted-foreground">invoiced, not yet paid</p>
+        <p className="text-sm font-medium text-muted-foreground">Total paid</p>
+        <p className={STAT_VALUE}>{formatMoney(summary.totalPaid)}</p>
+        <p className="mt-2 text-sm text-muted-foreground">received from all customers, all time</p>
       </div>
       <div className={STAT_TILE}>
         <p className="text-sm font-medium text-muted-foreground">Overdue</p>
