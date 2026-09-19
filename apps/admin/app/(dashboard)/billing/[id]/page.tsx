@@ -1,69 +1,69 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Card } from '@senso/ui';
+import { ChevronLeft } from 'lucide-react';
+import { Button, Card } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { toCustomerBilling } from '@/lib/billing/overview';
+import { loadCustomerBillingDetail } from '@/lib/billing/detail';
 import { formatDate, formatMoney } from '@/lib/format';
 import { BillingStatusBadge } from '@/components/billing/BillingStatusBadge';
-import type { CustomerBillingSummaryRow } from '@/types/billing';
+import { SubscriptionsSection } from '@/components/billing/SubscriptionsSection';
+import { InvoicesSection } from '@/components/billing/InvoicesSection';
+import { RecordPaymentForm } from '@/components/billing/RecordPaymentForm';
+import { BillingNotesSection } from '@/components/billing/BillingNotesSection';
+import { SuspensionControl } from '@/components/billing/SuspensionControl';
+import { BillingEventsSection } from '@/components/billing/BillingEventsSection';
 
-// Customer billing detail. This is the landing point for every row and every
-// Needs Action item; the plan and term blocks, invoice history, payments,
-// one-off charges, notes and suspension control are built onto it next.
+// One customer's money, top to bottom: the headline figures, whether they are
+// suspended, their plan and term, every invoice, payments in, notes, and the
+// log of who changed what. Each card owns its own editing state.
+
+function Headline({ label, tone, children }: { label: string; tone?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className={`mt-0.5 font-medium tabular-nums ${tone ?? ''}`}>{children}</p>
+    </div>
+  );
+}
 
 export default async function CustomerBillingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const admin = createAdminClient();
-
-  const { data, error } = await admin
-    .from('customer_billing_summary')
-    .select('*')
-    .eq('customer_id', id)
-    .maybeSingle();
-  if (error) throw new Error(`customer_billing_summary: ${error.message}`);
-  if (!data) notFound();
-
-  const customer = toCustomerBilling(data as CustomerBillingSummaryRow);
+  const detail = await loadCustomerBillingDetail(createAdminClient(), id);
+  if (!detail) notFound();
+  const { now, customer, settings, subscriptions, invoices, notes, events } = detail;
 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/billing" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="size-4" />
-          Billing
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
+          <Link href="/billing"><ChevronLeft className="size-4" />Billing</Link>
+        </Button>
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
           <BillingStatusBadge status={customer.status} />
+          <Button asChild variant="ghost" size="sm" className="ml-auto">
+            <Link href={`/customers/${customer.customerId}`}>Customer record</Link>
+          </Button>
         </div>
         {customer.email && <p className="text-sm text-muted-foreground">{customer.email}</p>}
       </div>
 
       <Card className="grid grid-cols-2 gap-y-4 px-4 py-4 text-sm sm:grid-cols-4 sm:px-6">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
-          <p className={`mt-0.5 font-medium tabular-nums ${customer.overdueAmount > 0 ? 'text-alert-text' : ''}`}>
-            {formatMoney(customer.outstanding)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">Annualised</p>
-          <p className="mt-0.5 font-medium tabular-nums">{formatMoney(customer.annualised)}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">Next renewal</p>
-          <p className="mt-0.5 font-medium">{formatDate(customer.nextRenewal)}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">Last payment</p>
-          <p className="mt-0.5 font-medium">{formatDate(customer.lastPaymentOn)}</p>
-        </div>
+        <Headline label="Outstanding" tone={customer.overdueAmount > 0 ? 'text-alert-text' : undefined}>{formatMoney(customer.outstanding)}</Headline>
+        <Headline label="Overdue" tone={customer.overdueAmount > 0 ? 'text-alert-text' : undefined}>
+          {customer.overdueAmount > 0 ? `${formatMoney(customer.overdueAmount)} · ${customer.daysOverdue} days` : '—'}
+        </Headline>
+        <Headline label="Annualised">{formatMoney(customer.annualised)}</Headline>
+        <Headline label="Last payment">{formatDate(customer.lastPaymentOn)}</Headline>
       </Card>
 
-      <p className="text-sm text-muted-foreground">
-        Plan, term, invoices, payments and notes are the next step of the billing build.
-      </p>
+      <SuspensionControl customerId={customer.customerId} status={customer.status} suspendedAt={customer.suspendedAt} suspensionCandidate={customer.suspensionCandidate} />
+
+      <SubscriptionsSection customerId={customer.customerId} settings={settings} subscriptions={subscriptions} now={now} />
+      <InvoicesSection customerId={customer.customerId} subscriptions={subscriptions} invoices={invoices} />
+      <RecordPaymentForm customerId={customer.customerId} invoices={invoices} now={now} />
+      <BillingNotesSection customerId={customer.customerId} notes={notes} />
+      <BillingEventsSection events={events} />
     </div>
   );
 }

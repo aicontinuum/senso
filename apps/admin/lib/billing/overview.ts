@@ -47,6 +47,7 @@ export function toCustomerBilling(row: CustomerBillingSummaryRow): CustomerBilli
     name: row.name,
     email: row.email,
     status: row.billing_status,
+    suspendedAt: row.suspended_at,
     tier: row.tier,
     subscriptionCount: row.subscription_count ?? 0,
     sensorCount: row.sensor_count,

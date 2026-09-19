@@ -42,6 +42,7 @@ export type CustomerBilling = {
   name: string;
   email: string | null;
   status: BillingStatus;
+  suspendedAt: string | null;
   tier: BillingTier | null;
   subscriptionCount: number;
   sensorCount: number;
@@ -82,6 +83,119 @@ export type UpcomingRenewal = {
   renewalDate: string;
   daysToRenewal: number;
   termTotal: number;
+};
+
+/** The defaults row, money parsed. */
+export type BillingSettings = {
+  companyName: string;
+  taxRate: number;
+  invoicePrefix: string;
+  onboardingDueDays: number;
+  renewalNoticeDays: number;
+  suspensionAfterDays: number;
+  starterMonthly: number;
+  standardMonthly: number;
+  addonMonthly: number;
+  addonMonthlyCustom: number;
+  monthsCharged6: number;
+  monthsCharged12: number;
+};
+
+export type Subscription = {
+  id: string;
+  customerId: string;
+  label: string | null;
+  tier: BillingTier;
+  sensorCount: number;
+  addonCount: number;
+  addonMonthlyRate: number;
+  termMonths: TermMonths;
+  monthlyRate: number;
+  termTotal: number;
+  termStart: string | null;
+  renewalDate: string | null;
+  endedAt: string | null;
+  createdAt: string;
+};
+
+export type InvoiceLine = {
+  id: string;
+  position: number;
+  description: string;
+  quantity: number;
+  unitAmount: number;
+  amount: number;
+};
+
+export type Payment = {
+  id: string;
+  invoiceId: string;
+  amount: number;
+  paidOn: string;
+  method: PaymentMethod;
+  reference: string | null;
+  notes: string | null;
+};
+
+export type Invoice = {
+  id: string;
+  customerId: string;
+  subscriptionId: string | null;
+  type: InvoiceType;
+  state: InvoiceState;
+  /** Null while draft. */
+  number: string | null;
+  issuedOn: string | null;
+  dueOn: string | null;
+  discountLabel: string | null;
+  discountType: DiscountType | null;
+  discountValue: number | null;
+  subtotal: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  internalNotes: string | null;
+  sentAt: string | null;
+  sentTo: string[] | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  createdAt: string;
+  lines: InvoiceLine[];
+  payments: Payment[];
+  /** Sum of payments; what is still owed is total minus this. */
+  paid: number;
+  /** True for a sent invoice past its due date. Derived, never stored. */
+  overdue: boolean;
+};
+
+export type BillingNote = {
+  id: string;
+  body: string;
+  createdAt: string;
+};
+
+export type BillingEvent = {
+  id: string;
+  kind: string;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  reason: string | null;
+  createdAt: string;
+  invoiceNumber: string | null;
+  subscriptionLabel: string | null;
+};
+
+export type CustomerBillingDetail = {
+  /** Server clock at load, so every relative figure on the page agrees. */
+  now: number;
+  customer: CustomerBilling;
+  settings: BillingSettings;
+  subscriptions: Subscription[];
+  invoices: Invoice[];
+  notes: BillingNote[];
+  events: BillingEvent[];
 };
 
 export type BillingSummary = {
