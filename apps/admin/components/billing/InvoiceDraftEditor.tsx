@@ -10,8 +10,8 @@ import type { LineInput } from '@/lib/billing/invoice-lines';
 import { InvoiceQuickAdd } from '@/components/billing/InvoiceQuickAdd';
 import type { BillingSettings, DiscountType, Invoice, InvoiceType, Subscription } from '@/types/billing';
 
-// A draft: lines (filled from the plan or typed), discount, issue and due
-// dates. Totals shown here are a preview; the stored ones are recomputed by
+// A draft, top to bottom: lines (filled from the plan or typed), the add
+// buttons, then discount, issue and due dates, and the totals. Totals shown here are a preview; the stored ones are recomputed by
 // the database on save and are what the PDF prints. Issuing saves first,
 // then numbers the invoice.
 
@@ -98,9 +98,12 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
 
   return (
     <Card tone="sunken" className="space-y-4 p-4">
-      <InvoiceQuickAdd settings={settings} subscriptions={subscriptions} invoices={invoices} currentInvoiceId={invoice.id} onAdd={addLines} />
-
-      {lines.length > 0 && (
+      {lines.length === 0 ? (
+        <div className="rounded-inner border border-dashed px-6 py-8 text-center">
+          <p className="text-sm text-muted-foreground">No lines yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Add the term from the plan, or type your own below.</p>
+        </div>
+      ) : (
         <div className="space-y-2">
           <div className={`hidden gap-2 text-xs font-semibold text-muted-foreground sm:grid ${GRID}`}>
             <span>Description</span><span>Qty</span><span>Unit</span><span>Amount</span><span />
@@ -117,6 +120,11 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
         </div>
       )}
 
+      {/* The add buttons sit under the lines because that is where a new one
+          lands; on an empty draft they are the only thing to do first. */}
+      <InvoiceQuickAdd settings={settings} subscriptions={subscriptions} invoices={invoices} currentInvoiceId={invoice.id} onAdd={addLines} />
+
+      {lines.length > 0 && (
       <div className="grid gap-4 sm:grid-cols-3">
         <Select label="Discount" value={discountType} onChange={e => setDiscountType(e.target.value as DiscountType | '')}>
           <option value="">None</option>
@@ -126,18 +134,21 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
         <Input label={discountType === 'percent' ? 'Percent off' : 'Amount off'} type="number" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)} disabled={discountType === ''} />
         <Input label="Discount label" hint="Printed on the PDF line." value={discountLabel} onChange={e => setDiscountLabel(e.target.value)} disabled={discountType === ''} placeholder="e.g. Pilot pricing" />
       </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Issue date" hint="Printed on the invoice; stamped when you issue." type="date" value={issuedOn} onChange={e => changeIssuedOn(e.target.value)} />
         <Input label="Due date" hint={`Issue date plus ${settings.paymentTermsDays} days. Change it if agreed otherwise.`} type="date" value={dueOn} onChange={e => setDueOn(e.target.value)} />
       </div>
 
+      {lines.length > 0 && (
       <dl className="ml-auto grid max-w-xs grid-cols-2 gap-x-6 gap-y-1 text-sm">
         <dt className="text-muted-foreground">Subtotal</dt><dd className="text-right tabular-nums">{formatMoney(subtotal)}</dd>
         {discount > 0 && <><dt className="text-muted-foreground">Discount</dt><dd className="text-right tabular-nums">−{formatMoney(discount)}</dd></>}
         {invoice.taxRate > 0 && <><dt className="text-muted-foreground">Tax ({invoice.taxRate * 100}%)</dt><dd className="text-right tabular-nums">{formatMoney(tax)}</dd></>}
         <dt className="font-semibold">Total</dt><dd className="text-right font-semibold tabular-nums">{formatMoney(total)}</dd>
       </dl>
+      )}
 
       {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
 
