@@ -74,8 +74,26 @@ zero. `/billing/[id]` is the landing point for every row; its blocks come next.
   price list (Starter 2,700 / 4,950; Standard 4,920 / 9,020; add-on 720 /
   1,320; month-end clamping on renewal dates; whole-months-remaining).
 
-Still to build: invoice PDF with Bloctech's details + Resend email + download
-(step 4), suspension enforcement in the customer app (step 5).
+### Step 4 — invoice PDF and email
+
+- `lib/billing/invoice-pdf.ts` builds the PDF on the server with jsPDF (the
+  library the customer app already uses for reports; now also a dependency of
+  the admin app). Header with company, CR, address, phone, billing email and
+  tax registration when set; number, type, issued and due; bill-to; lines;
+  subtotal, discount with its label, tax when the rate is non-zero, total,
+  paid and balance; payment details printing whichever of IBAN and Fawran is
+  filled in. DRAFT, PAID and VOID are stamped diagonally.
+- `GET /api/billing/invoices/[id]/pdf` streams it (admin only, never cached).
+  `POST /api/billing/invoices/[id]/send` emails it through Resend with the PDF
+  attached, recipients defaulting to the customer's account email, reply-to the
+  billing email from settings; refuses drafts and voids; records `sent_at` /
+  `sent_to` and an `invoice_sent` event only after the provider accepts.
+  `lib/email/send.ts` gained optional `replyTo` and `attachments`.
+- Every invoice row has a PDF download; issued ones have Send (Resend once
+  sent) with an editable recipient list. Settings gained Fawran and the
+  payment terms (issue date + N days, default 15) that the draft editor uses.
+
+Still to build: suspension enforcement in the customer app (step 5).
 
 ---
 
