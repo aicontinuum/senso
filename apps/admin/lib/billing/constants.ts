@@ -61,3 +61,8 @@ export function subscriptionLabel(s: { tier: BillingTier; label: string | null; 
 export function billingDetailHref(customerId: string): string {
   return `/billing/${customerId}`;
 }
+
+/** Where one invoice lives, under its customer. */
+export function invoiceHref(customerId: string, invoiceId: string): string {
+  return `${billingDetailHref(customerId)}/invoices/${invoiceId}`;
+}

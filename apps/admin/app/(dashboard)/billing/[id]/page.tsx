@@ -10,8 +10,8 @@ import { BillingNotesSection } from '@/components/billing/BillingNotesSection';
 import { BillingEventsSection } from '@/components/billing/BillingEventsSection';
 
 // One customer's money, top to bottom: the header with suspend / reactivate,
-// the headline figures, their plan and term, every invoice (with payments
-// recorded on the row), notes, and the log of who changed what. Each card
+// the headline figures, their plan and term, every invoice (each a link to
+// its own page), notes, and the log of who changed what. Each card
 // owns its own editing state.
 
 function Headline({ label, tone, children }: { label: string; tone?: string; children: React.ReactNode }) {
@@ -43,7 +43,7 @@ export default async function CustomerBillingPage({ params }: { params: Promise<
       </Card>
 
       <SubscriptionsSection customerId={customer.customerId} settings={settings} subscriptions={subscriptions} installedSensors={customer.installedSensors} now={now} />
-      <InvoicesSection customerId={customer.customerId} customerEmail={customer.email} settings={settings} subscriptions={subscriptions} invoices={invoices} now={now} />
+      <InvoicesSection customerId={customer.customerId} invoices={invoices} />
       <BillingNotesSection customerId={customer.customerId} notes={notes} />
       <BillingEventsSection events={events} />
     </div>

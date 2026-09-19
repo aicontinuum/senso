@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { Button, Card, CardHeader, CardTitle } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatDate, formatMoney, todayIso } from '@/lib/format';
-import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
+import { TERM_LABEL, TIER_LABEL, invoiceHref } from '@/lib/billing/constants';
 import { SubscriptionCard } from '@/components/billing/SubscriptionCard';
 import { SubscriptionForm, type SuggestedAdjustment } from '@/components/billing/SubscriptionForm';
 import type { BillingSettings, Subscription } from '@/types/billing';
@@ -51,7 +51,7 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
     const { subscriptionId, suggestion } = adjustment;
     setBusy(true);
     const sign = suggestion.amount < 0 ? 'credit' : 'charge';
-    const result = await callApi(`/api/billing/customers/${customerId}/invoices`, 'POST', {
+    const result = await callApi<{ invoiceId: string }>(`/api/billing/customers/${customerId}/invoices`, 'POST', {
       type: 'adjustment',
       subscriptionId,
       lines: [{
@@ -64,7 +64,8 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
     setBusy(false);
     if (!result.ok) { setError(result.error); return; }
     setAdjustment(null);
-    router.refresh();
+    // The draft wants a look before it is issued, so land on its page.
+    router.push(invoiceHref(customerId, result.data.invoiceId));
   }
 
   return (

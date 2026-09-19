@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
-import { Button, Card, Input, Select } from '@senso/ui';
+import { Button, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatMoney, plusDays, todayIso } from '@/lib/format';
 import { round2 } from '@/lib/billing/pricing';
@@ -21,8 +22,6 @@ type Props = {
   subscriptions: Subscription[];
   invoices: Invoice[];
   now: number;
-  onSaved: () => void;
-  onCancel: () => void;
 };
 
 type LineDraft = { key: string; description: string; quantity: string; unitAmount: string; amount: string };
@@ -38,7 +37,8 @@ const num = (s: string) => { const n = Number.parseFloat(s); return Number.isFin
 const lineAmount = (l: LineDraft) => (l.amount === '' ? round2(num(l.quantity) * num(l.unitAmount)) : num(l.amount));
 const GRID = 'sm:grid-cols-[1fr_5rem_7rem_7rem_2rem]';
 
-export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices, now, onSaved, onCancel }: Props) {
+export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices, now }: Props) {
+  const router = useRouter();
   const [lines, setLines] = useState<LineDraft[]>(() => invoice.lines.map(l => lineFrom(l)));
   const [plan, setPlan] = useState<{ subscriptionId: string | null; type: InvoiceType }>({ subscriptionId: invoice.subscriptionId, type: invoice.type });
   const [issuedOn, setIssuedOn] = useState(() => todayIso(now));
@@ -48,6 +48,7 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
   const [discountLabel, setDiscountLabel] = useState(invoice.discountLabel ?? '');
   const [busy, setBusy] = useState<'save' | 'issue' | null>(null);
   const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
 
   const subtotal = round2(lines.reduce((sum, l) => sum + lineAmount(l), 0));
   const discount = discountType === 'amount' ? Math.min(num(discountValue), subtotal)
@@ -55,9 +56,10 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
   const tax = round2((subtotal - discount) * invoice.taxRate);
   const total = round2(subtotal - discount + tax);
 
-  const updateLine = (key: string, patch: Partial<LineDraft>) => setLines(ls => ls.map(l => (l.key === key ? { ...l, ...patch } : l)));
+  const updateLine = (key: string, patch: Partial<LineDraft>) => { setSaved(false); setLines(ls => ls.map(l => (l.key === key ? { ...l, ...patch } : l))); };
 
   function addLines(added: LineInput[], fromPlan: { subscriptionId: string; type: InvoiceType } | null) {
+    setSaved(false);
     setLines(ls => [...ls, ...added.map(l => lineFrom(l))]);
     if (fromPlan) setPlan(fromPlan);
   }
@@ -86,18 +88,26 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
     return result.ok;
   }
 
-  async function onSave() { setBusy('save'); if (await save()) onSaved(); setBusy(null); }
+  // Save keeps you on the draft with a quiet confirmation; Issue re-renders
+  // the page as the issued invoice it has just become.
+  async function onSave() {
+    setBusy('save');
+    setSaved(false);
+    if (await save()) { setSaved(true); router.refresh(); }
+    setBusy(null);
+  }
   async function onIssue() {
     setBusy('issue');
+    setSaved(false);
     if (await save()) {
       const result = await callApi(`/api/billing/invoices/${invoice.id}/issue`, 'POST', { issuedOn });
-      if (result.ok) onSaved(); else setError(result.error);
+      if (result.ok) router.refresh(); else setError(result.error);
     }
     setBusy(null);
   }
 
   return (
-    <Card tone="sunken" className="space-y-4 p-4">
+    <div className="space-y-4">
       {lines.length === 0 ? (
         <div className="rounded-inner border border-dashed px-6 py-8 text-center">
           <p className="text-sm text-muted-foreground">No lines yet.</p>
@@ -152,11 +162,11 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
 
       {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={onIssue} disabled={busy !== null || total === 0 || issuedOn === ''}>{busy === 'issue' ? 'Issuing…' : 'Issue invoice'}</Button>
         <Button variant="secondary" size="sm" onClick={onSave} disabled={busy !== null}>{busy === 'save' ? 'Saving…' : 'Save draft'}</Button>
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy !== null}>Cancel</Button>
+        {saved && <span className="text-sm font-medium text-ok-text">Draft saved.</span>}
       </div>
-    </Card>
+    </div>
   );
 }

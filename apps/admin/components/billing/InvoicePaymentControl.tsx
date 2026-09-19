@@ -5,7 +5,7 @@ import { Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatMoney, todayIso } from '@/lib/format';
 import { PAYMENT_METHOD_LABEL } from '@/lib/billing/constants';
-import { round2 } from '@/lib/billing/pricing';
+import { balanceOf } from '@/lib/billing/pricing';
 import { InlinePanel } from '@/components/billing/InlinePanel';
 import type { Invoice, PaymentMethod } from '@/types/billing';
 
@@ -17,10 +17,6 @@ import type { Invoice, PaymentMethod } from '@/types/billing';
 type Props = { invoice: Invoice; customerId: string; now: number; onDone: () => void; onCancel: () => void };
 
 const METHODS: PaymentMethod[] = ['bank_transfer', 'cash', 'cheque'];
-
-export function balanceOf(invoice: Invoice): number {
-  return round2(Math.max(0, invoice.total - invoice.paid));
-}
 
 export function InvoicePaymentControl({ invoice, customerId, now, onDone, onCancel }: Props) {
   const balance = balanceOf(invoice);
