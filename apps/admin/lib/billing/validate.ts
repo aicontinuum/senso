@@ -75,7 +75,7 @@ export function optionalDiscountType(v: unknown): DiscountType | null {
 
 export function requireTermMonths(value: unknown): TermMonths {
   const n = typeof value === 'string' ? Number.parseInt(value, 10) : value;
-  if (n !== 6 && n !== 12) throw new BillingInputError('term must be 6 or 12 months');
+  if (n !== 6 && n !== 12) throw new BillingInputError('term must be Annual (12) or Semi-Annual (6)');
   return n;
 }
 

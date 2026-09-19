@@ -4,7 +4,7 @@
 
 import type { BillingSettings, InvoiceType, Subscription } from '@/types/billing';
 import { monthsCharged, round2 } from '@/lib/billing/pricing';
-import { TIER_LABEL } from '@/lib/billing/constants';
+import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
 import { BillingInputError, requireMoney, requireText, MAX_LABEL } from '@/lib/billing/validate';
 
 export type LineInput = {
@@ -19,7 +19,7 @@ export const MAX_LINES = 50;
 export function proposeLines(settings: BillingSettings, type: InvoiceType, subscription: Subscription | null): LineInput[] {
   if (!subscription || type === 'adjustment') return [];
   const months = monthsCharged(settings, subscription.termMonths);
-  const term = `${subscription.termMonths} months`;
+  const term = TERM_LABEL[subscription.termMonths];
   const lines: LineInput[] = [{
     description: `${TIER_LABEL[subscription.tier]} plan, ${term} (${subscription.sensorCount} sensors)`,
     quantity: months,

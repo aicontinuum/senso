@@ -1,6 +1,6 @@
 import type { BillingStatus } from '@senso/types';
 import type { StatusTone } from '@senso/ui';
-import type { BillingTier, InvoiceState, InvoiceType, PaymentMethod } from '@/types/billing';
+import type { BillingTier, InvoiceState, InvoiceType, PaymentMethod, TermMonths } from '@/types/billing';
 
 // Labels and tones for the billing vocabulary. The words come from SENSO.md;
 // the tones reuse the status ramp so an overdue account reads the way an
@@ -27,6 +27,12 @@ export const TIER_LABEL: Record<BillingTier, string> = {
   custom: 'Custom',
 };
 
+/** Terms are named, not counted: 12 months is Annual, 6 is Semi-Annual. */
+export const TERM_LABEL: Record<TermMonths, string> = {
+  12: 'Annual',
+  6: 'Semi-Annual',
+};
+
 export const INVOICE_TYPE_LABEL: Record<InvoiceType, string> = {
   onboarding: 'Onboarding',
   renewal: 'Renewal',
@@ -46,9 +52,9 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   cheque: 'Cheque',
 };
 
-/** How a plan is named in a dropdown: "Standard · Al Sadd · 12 months". */
-export function subscriptionLabel(s: { tier: BillingTier; label: string | null; termMonths: number }): string {
-  return `${TIER_LABEL[s.tier]}${s.label ? ` · ${s.label}` : ''} · ${s.termMonths} months`;
+/** How a plan is named in a dropdown: "Standard · Al Sadd · Annual". */
+export function subscriptionLabel(s: { tier: BillingTier; label: string | null; termMonths: TermMonths }): string {
+  return `${TIER_LABEL[s.tier]}${s.label ? ` · ${s.label}` : ''} · ${TERM_LABEL[s.termMonths]}`;
 }
 
 /** Where a customer's billing detail lives. */

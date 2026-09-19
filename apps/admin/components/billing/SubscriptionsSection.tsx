@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { Button, Card, CardHeader, CardTitle } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatDate, formatMoney, todayIso } from '@/lib/format';
-import { TIER_LABEL } from '@/lib/billing/constants';
+import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
 import { SubscriptionCard } from '@/components/billing/SubscriptionCard';
 import { SubscriptionForm, type SuggestedAdjustment } from '@/components/billing/SubscriptionForm';
 import type { BillingSettings, Subscription } from '@/types/billing';
@@ -144,7 +144,7 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
           <summary className="cursor-pointer text-muted-foreground">{ended.length} ended {ended.length === 1 ? 'plan' : 'plans'}</summary>
           <ul className="mt-2 space-y-1 text-muted-foreground">
             {ended.map(s => (
-              <li key={s.id}>{TIER_LABEL[s.tier]}{s.label ? ` · ${s.label}` : ''} · {s.termMonths} months · {formatMoney(s.termTotal)} · ended {formatDate(s.endedAt)}</li>
+              <li key={s.id}>{TIER_LABEL[s.tier]}{s.label ? ` · ${s.label}` : ''} · {TERM_LABEL[s.termMonths]} · {formatMoney(s.termTotal)} · ended {formatDate(s.endedAt)}</li>
             ))}
           </ul>
         </details>
