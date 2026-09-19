@@ -30,7 +30,7 @@ export type BillingOverview = {
 const SUMMARY_COLUMNS =
   'customer_id, name, email, billing_status, suspended_at, tier, subscription_count, sensor_count, '
   + 'term_months, term_total, annualised, next_renewal, days_to_renewal, outstanding, overdue_amount, '
-  + 'days_overdue, suspension_candidate, awaiting_first_payment, renewal_needs_invoice, last_payment_on';
+  + 'days_overdue, suspension_candidate, last_payment_on';
 
 type OpenInvoiceRow = {
   id: string; number: string; customer_id: string; type: InvoiceType; total: string;
@@ -63,8 +63,6 @@ export function toCustomerBilling(row: CustomerBillingSummaryRow, installedSenso
     overdueAmount: parseMoney(row.overdue_amount),
     daysOverdue: row.days_overdue,
     suspensionCandidate: row.suspension_candidate,
-    awaitingFirstPayment: row.awaiting_first_payment,
-    renewalNeedsInvoice: row.renewal_needs_invoice,
     lastPaymentOn: row.last_payment_on,
   };
 }
@@ -137,11 +135,9 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
   };
 
   const needsAction: NeedsAction = {
-    renewalsNeedingInvoice: renewals.filter(r => byId.get(r.customerId)?.renewalNeedsInvoice),
     unpaid: openInvoices.filter(i => i.daysOverdue <= 0),
     overdue: openInvoices.filter(i => i.daysOverdue > 0).sort((a, b) => b.daysOverdue - a.daysOverdue),
     suspensionCandidates: customers.filter(c => c.suspensionCandidate).sort((a, b) => b.daysOverdue - a.daysOverdue),
-    awaitingFirstPayment: customers.filter(c => c.awaitingFirstPayment),
     sensorMismatches: customers.filter(c => c.sensorMismatch),
   };
 

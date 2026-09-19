@@ -12,11 +12,11 @@ import type { CustomerBilling } from '@/types/billing';
 // read from the database; nothing here is a stored flag that could go stale.
 
 // Highest first: a suspended account, then one owing overdue money, then one
-// with a renewal to invoice, then the alphabet.
-function attentionRank(row: CustomerBilling): number {
+// with a renewal inside the notice window, then the alphabet.
+function attentionRank(row: CustomerBilling, renewalNoticeDays: number): number {
   if (row.status === 'suspended') return 3;
   if (row.overdueAmount > 0) return 2;
-  if (row.renewalNeedsInvoice || row.awaitingFirstPayment) return 1;
+  if (row.daysToRenewal !== null && row.daysToRenewal >= 0 && row.daysToRenewal <= renewalNoticeDays) return 1;
   return 0;
 }
 
@@ -36,7 +36,7 @@ export default async function BillingPage({
   const rows = customers
     .filter(c => filter === null || c.status === filter)
     .sort((a, b) =>
-      attentionRank(b) - attentionRank(a)
+      attentionRank(b, renewalNoticeDays) - attentionRank(a, renewalNoticeDays)
       || b.daysOverdue - a.daysOverdue
       || a.name.localeCompare(b.name),
     );
@@ -51,7 +51,7 @@ export default async function BillingPage({
 
       <div>
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Customers</h2>
-        <CustomerBillingTable rows={rows} filter={filter} />
+        <CustomerBillingTable rows={rows} filter={filter} renewalNoticeDays={renewalNoticeDays} />
       </div>
     </div>
   );
