@@ -12,14 +12,21 @@ import { NewInvoiceForm } from '@/components/billing/NewInvoiceForm';
 import type { Invoice, InvoiceType, Subscription } from '@/types/billing';
 
 // Invoice history with the work done on it: start a draft, edit it, issue it,
-// void an issued one, discard a draft. One-off charges are an adjustment
-// invoice with free-text lines. Emailing and the PDF are the next step.
+// void an issued one, discard a draft, download the PDF, email it. One-off
+// charges are an adjustment invoice with free-text lines.
 
-type Props = { customerId: string; subscriptions: Subscription[]; invoices: Invoice[]; paymentTermsDays: number; now: number };
+type Props = {
+  customerId: string;
+  customerEmail: string | null;
+  subscriptions: Subscription[];
+  invoices: Invoice[];
+  paymentTermsDays: number;
+  now: number;
+};
 
 const TH = 'px-4 py-3 font-medium sm:px-5';
 
-export function InvoicesSection({ customerId, subscriptions, invoices, paymentTermsDays, now }: Props) {
+export function InvoicesSection({ customerId, customerEmail, subscriptions, invoices, paymentTermsDays, now }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,6 +90,7 @@ export function InvoicesSection({ customerId, subscriptions, invoices, paymentTe
                 <InvoiceRow
                   key={inv.id}
                   invoice={inv}
+                  customerEmail={customerEmail}
                   editing={editingId === inv.id}
                   onEdit={() => { setError(''); setEditingId(inv.id); }}
                   onChanged={() => { setEditingId(null); router.refresh(); }}
