@@ -2,16 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Button, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatMoney, plusDays, todayIso } from '@/lib/format';
 import { round2 } from '@/lib/billing/pricing';
 import type { LineInput } from '@/lib/billing/invoice-lines';
-import { InvoiceQuickAdd } from '@/components/billing/InvoiceQuickAdd';
-import type { BillingSettings, DiscountType, Invoice, InvoiceType, Subscription } from '@/types/billing';
+import type { BillingSettings, DiscountType, Invoice } from '@/types/billing';
 
-// A draft, top to bottom: lines (filled from the plan or typed), the add
+// A draft, top to bottom: typed lines, the add
 // buttons, then discount, issue and due dates, and the totals. Totals shown here are a preview; the stored ones are recomputed by
 // the database on save and are what the PDF prints. Issuing saves first,
 // then numbers the invoice.
@@ -19,8 +18,6 @@ import type { BillingSettings, DiscountType, Invoice, InvoiceType, Subscription 
 type Props = {
   invoice: Invoice;
   settings: BillingSettings;
-  subscriptions: Subscription[];
-  invoices: Invoice[];
   now: number;
 };
 
@@ -37,10 +34,9 @@ const num = (s: string) => { const n = Number.parseFloat(s); return Number.isFin
 const lineAmount = (l: LineDraft) => (l.amount === '' ? round2(num(l.quantity) * num(l.unitAmount)) : num(l.amount));
 const GRID = 'sm:grid-cols-[1fr_5rem_7rem_7rem_2rem]';
 
-export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices, now }: Props) {
+export function InvoiceDraftEditor({ invoice, settings, now }: Props) {
   const router = useRouter();
   const [lines, setLines] = useState<LineDraft[]>(() => invoice.lines.map(l => lineFrom(l)));
-  const [plan, setPlan] = useState<{ subscriptionId: string | null; type: InvoiceType }>({ subscriptionId: invoice.subscriptionId, type: invoice.type });
   const [issuedOn, setIssuedOn] = useState(() => todayIso(now));
   const [dueOn, setDueOn] = useState(() => invoice.dueOn ?? plusDays(todayIso(now), settings.paymentTermsDays));
   const [discountType, setDiscountType] = useState<DiscountType | ''>(invoice.discountType ?? '');
@@ -58,10 +54,9 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
 
   const updateLine = (key: string, patch: Partial<LineDraft>) => { setSaved(false); setLines(ls => ls.map(l => (l.key === key ? { ...l, ...patch } : l))); };
 
-  function addLines(added: LineInput[], fromPlan: { subscriptionId: string; type: InvoiceType } | null) {
+  function addLines(added: LineInput[]) {
     setSaved(false);
     setLines(ls => [...ls, ...added.map(l => lineFrom(l))]);
-    if (fromPlan) setPlan(fromPlan);
   }
 
   // The due date follows the issue date by the payment terms; typing over the
@@ -78,8 +73,6 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
       discountType: discountType || null,
       discountValue: discountType ? discountValue : null,
       discountLabel,
-      type: plan.type,
-      subscriptionId: plan.subscriptionId,
       lines: lines.filter(l => l.description.trim() !== '').map(l => ({
         description: l.description, quantity: num(l.quantity), unitAmount: num(l.unitAmount), amount: l.amount === '' ? undefined : num(l.amount),
       })),
@@ -111,7 +104,7 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
       {lines.length === 0 ? (
         <div className="rounded-inner border border-dashed px-6 py-8 text-center">
           <p className="text-sm text-muted-foreground">No lines yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Add the term from the plan, or type your own below.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Add a line below and type what it is for.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -130,9 +123,11 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
         </div>
       )}
 
-      {/* The add buttons sit under the lines because that is where a new one
-          lands; on an empty draft they are the only thing to do first. */}
-      <InvoiceQuickAdd settings={settings} subscriptions={subscriptions} invoices={invoices} currentInvoiceId={invoice.id} onAdd={addLines} />
+      {/* The add button sits under the lines because that is where a new one
+          lands; on an empty draft it is the only thing to do first. */}
+      <Button variant="ghost" size="sm" onClick={() => addLines([{ description: '', quantity: 1, unitAmount: 0, amount: 0 }])}>
+        <Plus className="size-4" />Blank line
+      </Button>
 
       {lines.length > 0 && (
       <div className="grid gap-4 sm:grid-cols-3">
