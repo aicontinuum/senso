@@ -209,7 +209,8 @@ export type CustomerBillingDetail = {
 
 export type BillingSummary = {
   annualised: number;
-  outstanding: number;
+  /** Every payment ever recorded, across all customers. */
+  totalPaid: number;
   overdueAmount: number;
   overdueCustomers: number;
   renewalsDueCount: number;

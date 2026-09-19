@@ -1,4 +1,4 @@
-// Everything the top-level Billing page shows, from four reads.
+// Everything the top-level Billing page shows, from five reads.
 //
 // The per-customer figures come from `customer_billing_summary`, so the table,
 // the summary strip and the Needs Action lists are all the same numbers and can
@@ -77,7 +77,7 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
 
   const windowEnd = new Date(now + renewalNoticeDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const [summaryRes, invoicesRes, renewalsRes, installed] = await Promise.all([
+  const [summaryRes, invoicesRes, renewalsRes, installed, paymentsRes] = await Promise.all([
     admin.from('customer_billing_summary').select(SUMMARY_COLUMNS).order('name'),
     admin.from('invoices')
       .select('id, number, customer_id, type, total, issued_on, due_on, customers (name)')
@@ -90,10 +90,12 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
       .lte('renewal_date', windowEnd)
       .order('renewal_date'),
     loadInstalledSensorCounts(admin),
+    admin.from('payments').select('amount'),
   ]);
   if (summaryRes.error) throw new Error(`customer_billing_summary: ${summaryRes.error.message}`);
   if (invoicesRes.error) throw new Error(`invoices: ${invoicesRes.error.message}`);
   if (renewalsRes.error) throw new Error(`subscriptions: ${renewalsRes.error.message}`);
+  if (paymentsRes.error) throw new Error(`payments: ${paymentsRes.error.message}`);
 
   const customers = (summaryRes.data as unknown as CustomerBillingSummaryRow[])
     .map(row => toCustomerBilling(row, installed.get(row.customer_id) ?? 0));
@@ -126,7 +128,7 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
 
   const summary: BillingSummary = {
     annualised: customers.reduce((sum, c) => sum + c.annualised, 0),
-    outstanding: customers.reduce((sum, c) => sum + c.outstanding, 0),
+    totalPaid: (paymentsRes.data as { amount: string }[]).reduce((sum, p) => sum + parseMoney(p.amount), 0),
     overdueAmount: customers.reduce((sum, c) => sum + c.overdueAmount, 0),
     overdueCustomers: customers.filter(c => c.overdueAmount > 0).length,
     renewalsDueCount: renewals.length,
