@@ -6,7 +6,9 @@ import { BILLING_STATUSES, BILLING_STATUS_LABEL, TERM_LABEL, TIER_LABEL, billing
 import { BillingStatusBadge } from '@/components/billing/BillingStatusBadge';
 import type { CustomerBilling } from '@/types/billing';
 
-// One row per customer. The filter is a set of links carrying ?status=, so the
+// One row per customer, seven columns so it fits a laptop without a scroll;
+// plan and term share a cell, and the last payment lives on the detail page.
+// The filter is a set of links carrying ?status=, so the
 // page stays a server component and a filtered view has a URL you can send to
 // someone. Rows arrive sorted; this component only draws them.
 
@@ -45,18 +47,16 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
             <th className={TH}>Customer</th>
             <th className={TH}>Plan</th>
             <th className={TH}>Sensors</th>
-            <th className={TH}>Term</th>
             <th className={`${TH} whitespace-nowrap`}>Term rate</th>
             <th className={TH}>Status</th>
             <th className={TH}>Renewal</th>
-            <th className={`${TH} whitespace-nowrap`}>Last payment</th>
             <th className={`${TH} text-right`}>Outstanding</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-hairline">
           {rows.length === 0 && (
             <tr>
-              <td colSpan={9} className="px-6 py-10 text-center text-muted-foreground">
+              <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground">
                 {filter === null ? 'No customers yet.' : `No ${BILLING_STATUS_LABEL[filter].toLowerCase()} customers.`}
               </td>
             </tr>
@@ -70,9 +70,10 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
                   {row.email && <p className="text-xs text-muted-foreground">{row.email}</p>}
                 </td>
                 <td className={`${TD} whitespace-nowrap`}>
-                  {row.tier ? (
+                  {row.tier && row.termMonths ? (
                     <>
                       {TIER_LABEL[row.tier]}
+                      <span className="text-muted-foreground"> · {TERM_LABEL[row.termMonths]}</span>
                       {row.subscriptionCount > 1 && (
                         <span className="ml-1 text-xs text-muted-foreground">×{row.subscriptionCount}</span>
                       )}
@@ -88,7 +89,6 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
                     </span>
                   ) : row.sensorCount}
                 </td>
-                <td className={`${TD} whitespace-nowrap`}>{row.termMonths ? TERM_LABEL[row.termMonths] : <Dash />}</td>
                 <td className={`${TD} whitespace-nowrap tabular-nums`}>
                   {row.termTotal !== null ? formatMoney(row.termTotal) : <Dash />}
                 </td>
@@ -99,9 +99,6 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
                       {formatDate(row.nextRenewal)}
                     </span>
                   ) : <Dash />}
-                </td>
-                <td className={`${TD} whitespace-nowrap text-muted-foreground`}>
-                  {row.lastPaymentOn ? formatDate(row.lastPaymentOn) : <Dash />}
                 </td>
                 <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>
                   {row.outstanding > 0 ? (

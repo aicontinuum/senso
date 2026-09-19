@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import { Card, StatusDot, type StatusTone } from '@senso/ui';
 import { formatDate, formatDaysRelative, formatMoney } from '@/lib/format';
 import { billingDetailHref } from '@/lib/billing/constants';
@@ -32,13 +33,14 @@ function ActionSection({ heading, tone, items }: { heading: string; tone: Status
           <li key={item.key}>
             <Link
               href={item.href}
-              className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3 text-sm transition-colors hover:bg-sunken sm:px-6"
+              className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3 text-sm transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset sm:px-6"
             >
               <span className="font-medium">{item.title}</span>
               <span className="text-muted-foreground">{item.detail}</span>
-              <span className="ml-auto flex items-baseline gap-4 whitespace-nowrap">
+              <span className="ml-auto flex items-center gap-4 whitespace-nowrap">
                 {item.amount !== null && <span className="tabular-nums">{formatMoney(item.amount)}</span>}
                 <span className="text-muted-foreground">{item.when}</span>
+                <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
               </span>
             </Link>
           </li>
