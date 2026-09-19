@@ -4,6 +4,52 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-19 — Billing: data model and the top-level page
+
+Manual invoicing, as SENSO.md has always said: no gateway, no card. The admin
+creates plans, issues invoices, records payments and decides suspensions. One
+rule shaped every column: **the system calculates and suggests, it never
+blocks.** Every price, date and count is a stored value the admin can overwrite
+per customer; the defaults live in `billing_settings` and the arithmetic in the
+app, not in constraints.
+
+### Step 1 — `supabase/migrations/20260919_billing.sql` (applied live)
+
+- `billing_settings` (one row: company, bank, tax rate, terms, pricing defaults),
+  `subscriptions` (several per customer, tier, sensor and add-on counts, 6 or 12
+  month term, stored monthly rate and term total, anniversary dates), `invoices`
+  + `invoice_lines`, `invoice_sequences`, `payments`, `billing_notes`,
+  `billing_events` (append-only change log). All service-role only, RLS on.
+- Invoice states: draft → sent → paid, or → void. Overdue is derived wherever it
+  is shown, never stored. A draft is editable and deletable; anything numbered
+  is frozen by trigger (void and reissue). `issue_invoice()` assigns
+  `BT-YYYY-NNNN` under a row lock, resets per year, and a voided number is never
+  reused. `payments` settle an invoice when they cover its total.
+- `customers.status` pinned to `active | suspended`; `suspended_at` added.
+- `customer_billing_summary` view: one row per customer with status precedence
+  (suspended > overdue > active), outstanding, days overdue, suspension
+  candidate at the threshold, and whether a renewal inside the notice window
+  still needs an invoice.
+- 61 fixture cases in `supabase/tests/billing/` prove all of it; two bugs found
+  and fixed before commit (cascade-delete of a draft tripped the freeze guard;
+  annualised carried repeating decimals).
+
+### Step 2 — `/billing` in the admin app
+
+Summary strip (annualised revenue, outstanding, overdue with customer count,
+renewals in the next 30 days with value, count by status), a Needs Action card
+(suspension candidates, overdue invoices, renewals with no invoice yet,
+onboarding invoices awaiting first payment, sent-not-yet-due), and the customer
+table filtered by `?status=`. Everything reads from the view and two direct
+queries in `lib/billing/overview.ts`; a failed read throws rather than showing
+zero. `/billing/[id]` is the landing point for every row; its blocks come next.
+
+Still to build: customer billing detail (plan/term, invoices, payments, one-off
+charges, notes, suspend/reactivate), invoice PDF + Resend, suspension
+enforcement in the customer app.
+
+---
+
 ## 2026-09-13 — An hour of one sensor's readings lost inside ingest
 
 Sensor 2 was reported offline for an hour while sensor 1, on the same gateway,
