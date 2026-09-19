@@ -60,7 +60,7 @@ export default async function CustomerBillingPage({ params }: { params: Promise<
       <SuspensionControl customerId={customer.customerId} status={customer.status} suspendedAt={customer.suspendedAt} suspensionCandidate={customer.suspensionCandidate} />
 
       <SubscriptionsSection customerId={customer.customerId} settings={settings} subscriptions={subscriptions} installedSensors={customer.installedSensors} now={now} />
-      <InvoicesSection customerId={customer.customerId} customerEmail={customer.email} subscriptions={subscriptions} invoices={invoices} paymentTermsDays={settings.paymentTermsDays} now={now} />
+      <InvoicesSection customerId={customer.customerId} customerEmail={customer.email} settings={settings} subscriptions={subscriptions} invoices={invoices} now={now} />
       <BillingNotesSection customerId={customer.customerId} notes={notes} />
       <BillingEventsSection events={events} />
     </div>

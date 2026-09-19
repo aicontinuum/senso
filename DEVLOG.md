@@ -93,6 +93,26 @@ zero. `/billing/[id]` is the landing point for every row; its blocks come next.
   sent) with an editable recipient list. Settings gained Fawran and the
   payment terms (issue date + N days, default 15) that the draft editor uses.
 
+### Loosening pass (2026-09-22) — a tool, not an enforcer
+
+After walking the flow end to end: the money stays frozen, the words do not.
+
+- **No type gate.** New invoice opens an empty draft at once. Inside it, one
+  button per live plan ("Term from plan") proposes the term lines, plus
+  Installation, Hardware and Blank line. The type (onboarding on a plan's first
+  billed term, renewal after) and the plan are inferred and stored for the
+  summary view; neither is shown, and the Type column and PDF row are gone.
+- **Issued invoices can be reworded.** Migration `20260922_billing_soft_edits`
+  narrows the freeze: line descriptions, due date and discount label may
+  change after issue; amounts, totals, number, type and issue date cannot.
+  Edit on an issued row opens a light editor for exactly those. 4 new fixture
+  cases (65 total).
+- **Void reason optional.** Kept if given.
+- **Mark paid is one click**: balance, today, bank transfer. "Payment
+  details…" opens the panel with amount (part payment when smaller), date,
+  method and reference. Payments are listed under the invoice row.
+- Internal notes dropped from the draft; the customer notes card covers it.
+
 Still to build: suspension enforcement in the customer app (step 5).
 
 ---

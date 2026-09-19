@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, isDenied, readJson, failureResponse, ruleOrThrow } from '@/lib/billing/route-helpers';
-import { loadSettings, SUBSCRIPTION_COLUMNS, toSubscription, type SubscriptionRow } from '@/lib/billing/detail';
-import { parseLines, proposeLines } from '@/lib/billing/invoice-lines';
+import { loadSettings } from '@/lib/billing/detail';
+import { parseLines } from '@/lib/billing/invoice-lines';
 import { optionalDate, optionalUuid, requireInvoiceType, requireUuid } from '@/lib/billing/validate';
 import { plusDays, todayIso } from '@/lib/format';
 
-// Start a draft. Lines come from the body when given (a one-off charge, a
-// mid-term adjustment) and are proposed from the plan otherwise. The due date
-// is proposed as today plus the payment terms; the editor moves it when the
-// issue date is changed. The tax rate is copied from settings at this moment
-// so a later rate change never touches an existing invoice. No event is
+// Start a draft. It opens empty unless the body carries lines (a mid-term
+// adjustment does); the editor fills it from the plan with one click and
+// sets the type and plan then. The due date is proposed as today plus the
+// payment terms and the tax rate is copied from settings at this moment, so
+// a later rate change never touches an existing invoice. No event is
 // written for a draft: it is scratch paper until it is issued.
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,22 +19,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const customerId = requireUuid((await params).id, 'customer');
-    const body = await readJson(request);
-    const type = requireInvoiceType(body.type);
+    const body = await readJson(request).catch(() => ({} as Record<string, unknown>));
+    const type = body.type === undefined ? 'adjustment' : requireInvoiceType(body.type);
     const subscriptionId = optionalUuid(body.subscriptionId, 'subscription');
     const settings = await loadSettings(admin);
 
-    let subscription = null;
     if (subscriptionId) {
-      const { data, error } = await admin.from('subscriptions').select(SUBSCRIPTION_COLUMNS)
+      const { data, error } = await admin.from('subscriptions').select('id')
         .eq('id', subscriptionId).eq('customer_id', customerId).maybeSingle();
       if (error) throw new Error(error.message);
       if (!data) return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
-      subscription = toSubscription(data as unknown as SubscriptionRow);
     }
 
     const dueOn = optionalDate(body.dueOn, 'due date') ?? plusDays(todayIso(), settings.paymentTermsDays);
-    const lines = body.lines === undefined ? proposeLines(settings, type, subscription) : parseLines(body.lines);
+    const lines = body.lines === undefined ? [] : parseLines(body.lines);
 
     const { data: invoice, error } = await admin
       .from('invoices')

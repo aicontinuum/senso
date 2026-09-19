@@ -6,7 +6,6 @@
 
 import { jsPDF } from 'jspdf';
 import { formatDate, formatMoney } from '@/lib/format';
-import { INVOICE_TYPE_LABEL } from '@/lib/billing/constants';
 import { INVOICE_LOGO_ASPECT, INVOICE_LOGO_JPEG_BASE64 } from '@/lib/billing/invoice-logo';
 import type { BillingSettings, Invoice } from '@/types/billing';
 
@@ -69,7 +68,6 @@ export function buildInvoicePdf(invoice: Invoice, customer: InvoiceCustomer, set
   y += 8;
   const meta: [string, string][] = [
     ['Number', invoice.number ?? 'Draft'],
-    ['Type', INVOICE_TYPE_LABEL[invoice.type]],
     ['Issued', formatDate(invoice.issuedOn)],
     ['Due', formatDate(invoice.dueOn)],
   ];
