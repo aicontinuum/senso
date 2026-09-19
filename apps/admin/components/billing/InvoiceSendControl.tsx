@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Input } from '@senso/ui';
+import { Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
+import { InlinePanel } from '@/components/billing/InlinePanel';
 
 // The "send this invoice" confirmation: who it goes to, editable, then one
 // click. Recipients default to the customer's account email. Several can be
 // given, comma-separated.
 
-type Props = { invoiceId: string; label: string; defaultTo: string | null; onSent: () => void; onCancel: () => void };
+type Props = { invoiceId: string; label: string; defaultTo: string | null; resend: boolean; onSent: () => void; onCancel: () => void };
 
-export function InvoiceSendControl({ invoiceId, label, defaultTo, onSent, onCancel }: Props) {
+export function InvoiceSendControl({ invoiceId, label, defaultTo, resend, onSent, onCancel }: Props) {
   const [to, setTo] = useState(defaultTo ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -26,19 +27,25 @@ export function InvoiceSendControl({ invoiceId, label, defaultTo, onSent, onCanc
   }
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+    <InlinePanel
+      title={`${resend ? 'Resend' : 'Email'} ${label}`}
+      description="Sent as a PDF attachment, with the billing email as reply-to. Separate several addresses with commas."
+      error={error}
+      confirmLabel={resend ? 'Resend invoice' : 'Send invoice'}
+      busyLabel="Sending…"
+      busy={busy}
+      disabled={to.trim() === ''}
+      onConfirm={send}
+      onCancel={onCancel}
+    >
       <Input
-        aria-label="Recipients"
+        label="Send to"
         type="text"
         value={to}
         onChange={e => setTo(e.target.value)}
         placeholder="billing@customer.com, owner@customer.com"
-        hint={error ? undefined : `Emails ${label} as a PDF. Separate several addresses with commas.`}
-        error={error || undefined}
         wrapperClassName="sm:max-w-lg"
       />
-      <Button size="sm" className="h-10" onClick={send} disabled={busy || to.trim() === ''}>{busy ? 'Sending…' : `Send ${label}`}</Button>
-      <Button variant="ghost" size="sm" className="h-10" onClick={onCancel} disabled={busy}>Cancel</Button>
-    </div>
+    </InlinePanel>
   );
 }

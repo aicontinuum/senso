@@ -131,10 +131,11 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
             now={now}
             ending={ending === s.id}
             busy={busy}
+            error={ending === s.id ? error : ''}
             onEdit={() => { setError(''); setEditing(s.id); }}
-            onAskEnd={() => setEnding(s.id)}
+            onAskEnd={() => { setError(''); setEnding(s.id); }}
             onConfirmEnd={() => endPlan(s.id)}
-            onCancelEnd={() => setEnding(null)}
+            onCancelEnd={() => { setError(''); setEnding(null); }}
           />
         ))}
       </div>
