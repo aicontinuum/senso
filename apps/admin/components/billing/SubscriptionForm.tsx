@@ -36,7 +36,8 @@ function initial(existing: Subscription | null) {
     monthlyRate: existing ? String(existing.monthlyRate) : '',
     addonMonthlyRate: existing ? String(existing.addonMonthlyRate) : '',
     termTotal: existing ? String(existing.termTotal) : '',
-    renewalDate: existing?.renewalDate ?? '',
+    // A stored plan keeps its date; a new one gets the proposal as soon as a start is typed.
+    renewalDate: existing?.renewalDate ?? (existing?.termStart ? renewalDateFor(existing.termStart, existing.termMonths) : ''),
     reason: '',
   };
 }
@@ -46,6 +47,15 @@ export function SubscriptionForm({ customerId, settings, existing, onDone, onCan
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const set = (key: keyof typeof form) => (value: string) => setForm(f => ({ ...f, [key]: value }));
+
+  // The renewal date follows the term start and the term length; typing over
+  // it afterwards is the override, and it is logged as one.
+  function changeTermStart(value: string) {
+    setForm(f => ({ ...f, termStart: value, renewalDate: value ? renewalDateFor(value, f.termMonths) : f.renewalDate }));
+  }
+  function changeTermMonths(value: TermMonths) {
+    setForm(f => ({ ...f, termMonths: value, renewalDate: f.termStart ? renewalDateFor(f.termStart, value) : f.renewalDate }));
+  }
 
   const addonCount = Number.parseInt(form.addonCount, 10) || 0;
   const sensorCount = Number.parseInt(form.sensorCount, 10) || 0;
@@ -87,18 +97,18 @@ export function SubscriptionForm({ customerId, settings, existing, onDone, onCan
         </Select>
         <Input label="Sensors" type="number" min={0} value={form.sensorCount} onChange={e => set('sensorCount')(e.target.value)} />
         <Input label="Add-on sensors" type="number" min={0} value={form.addonCount} onChange={e => set('addonCount')(e.target.value)} />
-        <Select label="Term" value={String(form.termMonths)} onChange={e => setForm(f => ({ ...f, termMonths: Number(e.target.value) as TermMonths }))}>
+        <Select label="Term" value={String(form.termMonths)} onChange={e => changeTermMonths(Number(e.target.value) as TermMonths)}>
           <option value="12">{TERM_LABEL[12]} (12 months, pays {settings.monthsCharged12})</option>
           <option value="6">{TERM_LABEL[6]} (6 months, pays {settings.monthsCharged6})</option>
         </Select>
-        <Input label="Term start" hint="Installation day. Renewal follows one term later." type="date" value={form.termStart} onChange={e => set('termStart')(e.target.value)} />
+        <Input label="Term start" hint="Installation day. The renewal date fills in one term later." type="date" value={form.termStart} onChange={e => changeTermStart(e.target.value)} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Monthly rate" hint={`Proposed: ${money(proposal.monthlyRate)}`} type="number" step="0.01" value={form.monthlyRate} onChange={e => set('monthlyRate')(e.target.value)} placeholder={proposal.monthlyRate === null ? 'required for Custom' : String(proposal.monthlyRate)} />
         <Input label="Add-on rate, per sensor per month" hint={`Proposed: ${formatMoney(proposal.addonMonthlyRate)}`} type="number" step="0.01" value={form.addonMonthlyRate} onChange={e => set('addonMonthlyRate')(e.target.value)} placeholder={String(proposal.addonMonthlyRate)} />
         <Input label="Term total" hint={`Proposed: ${money(proposedTotal)} for ${proposal.monthsCharged} months charged`} type="number" step="0.01" value={form.termTotal} onChange={e => set('termTotal')(e.target.value)} placeholder={proposedTotal === null ? '' : String(proposedTotal)} />
-        <Input label="Renewal date" hint={proposedRenewal ? `Proposed: ${proposedRenewal}` : 'Set a term start to propose one.'} type="date" value={form.renewalDate} onChange={e => set('renewalDate')(e.target.value)} />
+        <Input label="Renewal date" hint={proposedRenewal ? (form.renewalDate === proposedRenewal ? 'One term after the start. Change it if agreed otherwise.' : `Proposed: ${proposedRenewal}`) : 'Set a term start and this fills in.'} type="date" value={form.renewalDate} onChange={e => set('renewalDate')(e.target.value)} />
       </div>
 
       <Input label="Reason (optional)" hint="Stored in the change log next to anything that differs from the proposal." value={form.reason} onChange={e => set('reason')(e.target.value)} placeholder="e.g. pilot pricing until March" />
