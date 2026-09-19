@@ -15,7 +15,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const { id: customerId, invoiceId } = await params;
   const data = await loadInvoicePage(createAdminClient(), customerId, invoiceId);
   if (!data) notFound();
-  const { now, invoice, customer, settings, subscriptions, invoices, events } = data;
+  const { now, invoice, customer, settings, events } = data;
 
   return (
     <div className="space-y-6">
@@ -25,7 +25,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <Card className="overflow-hidden">
           <CardHeader className="border-b border-hairline"><CardTitle>Draft</CardTitle></CardHeader>
           <div className="px-5 py-4">
-            <InvoiceDraftEditor invoice={invoice} settings={settings} subscriptions={subscriptions} invoices={invoices} now={now} />
+            <InvoiceDraftEditor invoice={invoice} settings={settings} now={now} />
           </div>
         </Card>
       ) : (
