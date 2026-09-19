@@ -74,7 +74,7 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
         {editing === null && (
           <Button size="sm" onClick={() => { setError(''); setEditing('new'); }}>
             <Plus className="size-4" />
-            {live.length === 0 ? 'Add plan' : 'Add another site'}
+            Add plan
           </Button>
         )}
       </CardHeader>
