@@ -16,14 +16,14 @@ type Admin = ReturnType<typeof createAdminClient>;
 type SettingsRow = {
   company_name: string; cr_number: string | null; address: string | null; phone: string | null; billing_email: string | null;
   logo_url: string | null; bank_name: string | null; account_name: string | null; iban: string | null; fawran_alias: string | null;
-  tax_registration_number: string | null; tax_rate: string; invoice_prefix: string; onboarding_due_days: number;
+  tax_registration_number: string | null; tax_rate: string; invoice_prefix: string; payment_terms_days: number;
   renewal_notice_days: number; suspension_after_days: number; starter_monthly: string; standard_monthly: string;
   addon_monthly: string; addon_monthly_custom: string; months_charged_6: number; months_charged_12: number;
 };
 
 export const SETTINGS_COLUMNS =
   'company_name, cr_number, address, phone, billing_email, logo_url, bank_name, account_name, iban, fawran_alias, '
-  + 'tax_registration_number, tax_rate, invoice_prefix, onboarding_due_days, renewal_notice_days, suspension_after_days, '
+  + 'tax_registration_number, tax_rate, invoice_prefix, payment_terms_days, renewal_notice_days, suspension_after_days, '
   + 'starter_monthly, standard_monthly, addon_monthly, addon_monthly_custom, months_charged_6, months_charged_12';
 
 export function toSettings(row: SettingsRow): BillingSettings {
@@ -41,7 +41,7 @@ export function toSettings(row: SettingsRow): BillingSettings {
     taxRegistrationNumber: row.tax_registration_number,
     taxRate: parseMoney(row.tax_rate),
     invoicePrefix: row.invoice_prefix,
-    onboardingDueDays: row.onboarding_due_days,
+    paymentTermsDays: row.payment_terms_days,
     renewalNoticeDays: row.renewal_notice_days,
     suspensionAfterDays: row.suspension_after_days,
     starterMonthly: parseMoney(row.starter_monthly),

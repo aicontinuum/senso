@@ -19,7 +19,7 @@ function formOf(s: BillingSettings): Form {
     billingEmail: s.billingEmail ?? '', logoUrl: s.logoUrl ?? '', bankName: s.bankName ?? '', accountName: s.accountName ?? '',
     iban: s.iban ?? '', fawranAlias: s.fawranAlias ?? '', taxRegistrationNumber: s.taxRegistrationNumber ?? '',
     taxRatePercent: String(s.taxRate * 100), invoicePrefix: s.invoicePrefix,
-    onboardingDueDays: String(s.onboardingDueDays), renewalNoticeDays: String(s.renewalNoticeDays),
+    paymentTermsDays: String(s.paymentTermsDays), renewalNoticeDays: String(s.renewalNoticeDays),
     suspensionAfterDays: String(s.suspensionAfterDays), starterMonthly: String(s.starterMonthly),
     standardMonthly: String(s.standardMonthly), addonMonthly: String(s.addonMonthly),
     addonMonthlyCustom: String(s.addonMonthlyCustom), monthsCharged6: String(s.monthsCharged6), monthsCharged12: String(s.monthsCharged12),
@@ -87,7 +87,7 @@ export function BillingSettingsForm({ settings }: { settings: BillingSettings })
       <Group title="Terms" hint="How the Billing page decides what needs action.">
         {field('invoicePrefix', 'Invoice prefix', { hint: 'Numbers read PREFIX-YYYY-NNNN.', className: 'font-mono uppercase' })}
         {field('taxRatePercent', 'Tax rate', { type: 'number', step: '0.01', min: 0, suffix: '%', hint: '0 prints no tax line.' })}
-        {field('onboardingDueDays', 'Onboarding invoice due after', { type: 'number', min: 0, suffix: 'days', hint: '0 means due on receipt.' })}
+        {field('paymentTermsDays', 'Payment terms', { type: 'number', min: 0, suffix: 'days', hint: 'Due date proposed as issue date plus this.' })}
         {field('renewalNoticeDays', 'Renewal notice window', { type: 'number', min: 0, suffix: 'days' })}
         {field('suspensionAfterDays', 'Suspension candidate after', { type: 'number', min: 0, suffix: 'days overdue' })}
       </Group>

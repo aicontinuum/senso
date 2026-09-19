@@ -100,7 +100,7 @@ export type BillingSettings = {
   taxRegistrationNumber: string | null;
   taxRate: number;
   invoicePrefix: string;
-  onboardingDueDays: number;
+  paymentTermsDays: number;
   renewalNoticeDays: number;
   suspensionAfterDays: number;
   starterMonthly: number;
