@@ -1,20 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { Download } from 'lucide-react';
+import { Ban, Download, Pencil, Trash2 } from 'lucide-react';
 import { Button, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { formatDate, formatMoney, todayIso } from '@/lib/format';
+import { formatDate, formatMoney } from '@/lib/format';
 import { PAYMENT_METHOD_LABEL } from '@/lib/billing/constants';
 import { InvoiceStateBadge } from '@/components/billing/InvoiceStateBadge';
 import { InvoiceSendControl } from '@/components/billing/InvoiceSendControl';
-import { InvoicePaymentControl, balanceOf } from '@/components/billing/InvoicePaymentControl';
+import { InvoicePaymentControl } from '@/components/billing/InvoicePaymentControl';
 import type { Invoice } from '@/types/billing';
 
-// One invoice in the history, with the actions its state allows. Every
-// invoice has a PDF and an Edit. A draft can be discarded; an issued one can
-// be emailed, marked paid in one click (or with details), or voided.
-// Payments and sends are listed under the row. Confirmations open inline.
+// One invoice in the history, with the actions its state allows. Each state
+// has at most one filled button, the thing you most likely came to do: open
+// a draft, or record a payment on an open invoice. Sending is the secondary
+// verb; PDF, Edit and the destructive Discard / Void are icon buttons, the
+// same vocabulary as the Sensors and Gateways cards. Recording a payment
+// always goes through the panel, prefilled with the balance, today and bank
+// transfer, so nothing is assumed out of sight. Payments and sends are
+// listed under the row. Confirmations open inline.
 
 type Props = {
   invoice: Invoice;
@@ -37,14 +41,12 @@ export function InvoiceRow({ invoice, customerId, customerEmail, now, editing, o
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  async function run(action: 'void' | 'delete' | 'paid') {
+  async function run(action: 'void' | 'delete') {
     setBusy(true);
     setError('');
-    const result = action === 'void' ? await callApi(`/api/billing/invoices/${invoice.id}/void`, 'POST', { reason })
-      : action === 'delete' ? await callApi(`/api/billing/invoices/${invoice.id}`, 'DELETE')
-      : await callApi(`/api/billing/customers/${customerId}/payments`, 'POST', {
-          invoiceId: invoice.id, amount: balanceOf(invoice), paidOn: todayIso(now), method: 'bank_transfer',
-        });
+    const result = action === 'void'
+      ? await callApi(`/api/billing/invoices/${invoice.id}/void`, 'POST', { reason })
+      : await callApi(`/api/billing/invoices/${invoice.id}`, 'DELETE');
     setBusy(false);
     if (!result.ok) { setError(result.error); return; }
     setConfirm(null);
@@ -52,8 +54,10 @@ export function InvoiceRow({ invoice, customerId, customerEmail, now, editing, o
   }
 
   const label = invoice.number ?? 'Draft';
+  const draft = invoice.state === 'draft';
   const open = invoice.state === 'sent';
   const issued = open || invoice.state === 'paid';
+  const openPanel = (panel: 'send' | 'payment' | 'void' | 'delete') => () => { setError(''); setReason(''); setConfirm(panel); };
 
   return (
     <>
@@ -72,16 +76,37 @@ export function InvoiceRow({ invoice, customerId, customerEmail, now, editing, o
               <Button variant="ghost" size="sm" onClick={() => setConfirm(null)} disabled={busy}>Cancel</Button>
             </span>
           ) : confirm === null && (
-            <span className="flex justify-end gap-1">
-              <Button asChild variant="ghost" size="sm" title="Download PDF">
-                <a href={`/api/billing/invoices/${invoice.id}/pdf`}><Download className="size-4" />PDF</a>
+            <span className="flex items-center justify-end gap-1">
+              <Button asChild variant="ghost" size="icon" aria-label={`Download ${label} as PDF`} title="Download PDF">
+                <a href={`/api/billing/invoices/${invoice.id}/pdf`}><Download className="size-4" /></a>
               </Button>
-              {invoice.state !== 'void' && !editing && <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>}
-              {invoice.state === 'draft' && !editing && <Button variant="ghost" size="sm" className="hover:text-alert-text" onClick={() => setConfirm('delete')}>Discard</Button>}
-              {issued && <Button variant="secondary" size="sm" onClick={() => { setError(''); setConfirm('send'); }}>{invoice.sentAt ? 'Resend' : 'Send'}</Button>}
-              {open && <Button size="sm" onClick={() => run('paid')} disabled={busy} title="Records the balance as received today by bank transfer">{busy ? 'Recording…' : 'Mark paid'}</Button>}
-              {open && <Button variant="ghost" size="sm" onClick={() => setConfirm('payment')}>Payment details…</Button>}
-              {open && <Button variant="ghost" size="sm" className="hover:text-alert-text" onClick={() => { setReason(''); setConfirm('void'); }}>Void</Button>}
+              {issued && !editing && (
+                <Button variant="ghost" size="icon" aria-label={`Edit ${label}`} title="Edit wording" onClick={onEdit}>
+                  <Pencil className="size-4" />
+                </Button>
+              )}
+              {draft && !editing && (
+                <Button variant="ghost" size="icon" aria-label="Discard this draft" title="Discard" className="hover:text-alert-text" onClick={openPanel('delete')}>
+                  <Trash2 className="size-4" />
+                </Button>
+              )}
+              {open && (
+                <Button variant="ghost" size="icon" aria-label={`Void ${label}`} title="Void" className="hover:text-alert-text" onClick={openPanel('void')}>
+                  <Ban className="size-4" />
+                </Button>
+              )}
+              {issued && (
+                <Button variant={open ? 'secondary' : 'ghost'} size="sm" className="ml-1" onClick={openPanel('send')}>
+                  {invoice.sentAt ? 'Resend' : 'Send'}
+                </Button>
+              )}
+              {open && <Button size="sm" onClick={openPanel('payment')}>Record payment</Button>}
+              {draft && !editing && (
+                <Button variant="secondary" size="sm" className="ml-1" onClick={onEdit}>
+                  <Pencil className="size-4" />
+                  Open draft
+                </Button>
+              )}
             </span>
           )}
         </td>

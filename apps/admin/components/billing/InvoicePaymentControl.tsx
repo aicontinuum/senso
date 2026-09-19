@@ -9,8 +9,9 @@ import { round2 } from '@/lib/billing/pricing';
 import type { Invoice, PaymentMethod } from '@/types/billing';
 
 // Money in, with the details: amount (the balance unless typed over, so a
-// smaller figure is a part payment), date, method and reference. "Mark
-// paid" on the row skips this panel and records the balance straight away.
+// smaller figure is a part payment), date, method and reference. It opens
+// prefilled with the balance, today and bank transfer, so the common case
+// is one click to confirm and every assumption is on screen first.
 
 type Props = { invoice: Invoice; customerId: string; now: number; onDone: () => void; onCancel: () => void };
 
