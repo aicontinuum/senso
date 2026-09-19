@@ -12,8 +12,8 @@ import { NewInvoiceForm } from '@/components/billing/NewInvoiceForm';
 import type { Invoice, InvoiceType, Subscription } from '@/types/billing';
 
 // Invoice history with the work done on it: start a draft, edit it, issue it,
-// void an issued one, discard a draft, download the PDF, email it. One-off
-// charges are an adjustment invoice with free-text lines.
+// void an issued one, discard a draft, download the PDF, email it, mark it
+// paid. One-off charges are an adjustment invoice with free-text lines.
 
 type Props = {
   customerId: string;
@@ -90,7 +90,9 @@ export function InvoicesSection({ customerId, customerEmail, subscriptions, invo
                 <InvoiceRow
                   key={inv.id}
                   invoice={inv}
+                  customerId={customerId}
                   customerEmail={customerEmail}
+                  now={now}
                   editing={editingId === inv.id}
                   onEdit={() => { setError(''); setEditingId(inv.id); }}
                   onChanged={() => { setEditingId(null); router.refresh(); }}
