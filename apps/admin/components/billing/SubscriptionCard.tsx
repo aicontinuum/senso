@@ -3,7 +3,7 @@
 import { Pencil } from 'lucide-react';
 import { Button } from '@senso/ui';
 import { daysUntil, formatDate, formatDaysRelative, formatMoney } from '@/lib/format';
-import { TIER_LABEL } from '@/lib/billing/constants';
+import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
 import { effectiveMonthly, listMonthlyRate } from '@/lib/billing/pricing';
 import type { BillingSettings, Subscription } from '@/types/billing';
 
@@ -65,7 +65,7 @@ export function SubscriptionCard({ subscription: s, settings, now, ending, busy,
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-8">
         <Stat label="Sensors">{s.sensorCount}{s.addonCount > 0 && <span className="text-muted-foreground"> + {s.addonCount} add-on</span>}</Stat>
-        <Stat label="Term">{s.termMonths} months</Stat>
+        <Stat label="Term">{TERM_LABEL[s.termMonths]}</Stat>
         <Stat label="Monthly paid" tone={list !== null && paid < list + s.addonCount * s.addonMonthlyRate ? 'text-warn-text' : undefined}>{formatMoney(paid)}</Stat>
         <Stat label="List rate">{list === null ? '—' : formatMoney(list + s.addonCount * s.addonMonthlyRate)}</Stat>
         <Stat label="Term total">{formatMoney(s.termTotal)}</Stat>

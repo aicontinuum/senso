@@ -4,6 +4,7 @@ import { EVENT_KIND, recordBillingEvent, recordOverrides } from '@/lib/billing/e
 import { loadSettings, SUBSCRIPTION_COLUMNS, toSubscription, type SubscriptionRow } from '@/lib/billing/detail';
 import { parseSubscriptionInput, proposalFor } from '@/lib/billing/subscription-input';
 import { requireUuid } from '@/lib/billing/validate';
+import { TERM_LABEL } from '@/lib/billing/constants';
 
 // Create a plan for a customer. The body carries what the admin typed; the
 // proposal is recomputed here so any figure that differs from it is logged
@@ -42,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     await recordBillingEvent(admin, {
       customerId, actorId, kind: EVENT_KIND.subscriptionCreated, subscriptionId: subscription.id,
-      newValue: `${input.tier} · ${input.termMonths} months · ${input.termTotal}`, reason: input.reason,
+      newValue: `${input.tier} · ${TERM_LABEL[input.termMonths]} · ${input.termTotal}`, reason: input.reason,
     });
     await recordOverrides(
       admin,

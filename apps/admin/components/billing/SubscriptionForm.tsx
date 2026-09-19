@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button, Card, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatMoney } from '@/lib/format';
-import { TIER_LABEL } from '@/lib/billing/constants';
+import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
 import { proposeSubscription, renewalDateFor, suggestTier, round2 } from '@/lib/billing/pricing';
 import type { BillingSettings, BillingTier, Subscription, TermMonths } from '@/types/billing';
 
@@ -88,8 +88,8 @@ export function SubscriptionForm({ customerId, settings, existing, onDone, onCan
         <Input label="Sensors" type="number" min={0} value={form.sensorCount} onChange={e => set('sensorCount')(e.target.value)} />
         <Input label="Add-on sensors" type="number" min={0} value={form.addonCount} onChange={e => set('addonCount')(e.target.value)} />
         <Select label="Term" value={String(form.termMonths)} onChange={e => setForm(f => ({ ...f, termMonths: Number(e.target.value) as TermMonths }))}>
-          <option value="6">6 months (pays {settings.monthsCharged6})</option>
-          <option value="12">12 months (pays {settings.monthsCharged12})</option>
+          <option value="12">{TERM_LABEL[12]} (12 months, pays {settings.monthsCharged12})</option>
+          <option value="6">{TERM_LABEL[6]} (6 months, pays {settings.monthsCharged6})</option>
         </Select>
         <Input label="Term start" hint="Installation day. Renewal follows one term later." type="date" value={form.termStart} onChange={e => set('termStart')(e.target.value)} />
       </div>

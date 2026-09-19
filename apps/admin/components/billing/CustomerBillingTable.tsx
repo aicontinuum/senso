@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { BillingStatus } from '@senso/types';
 import { Card, LinkRow, cn } from '@senso/ui';
 import { formatDate, formatMoney } from '@/lib/format';
-import { BILLING_STATUSES, BILLING_STATUS_LABEL, TIER_LABEL, billingDetailHref } from '@/lib/billing/constants';
+import { BILLING_STATUSES, BILLING_STATUS_LABEL, TERM_LABEL, TIER_LABEL, billingDetailHref } from '@/lib/billing/constants';
 import { BillingStatusBadge } from '@/components/billing/BillingStatusBadge';
 import type { CustomerBilling } from '@/types/billing';
 
@@ -88,7 +88,7 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
                     </span>
                   ) : row.sensorCount}
                 </td>
-                <td className={`${TD} whitespace-nowrap`}>{row.termMonths ? `${row.termMonths} months` : <Dash />}</td>
+                <td className={`${TD} whitespace-nowrap`}>{row.termMonths ? TERM_LABEL[row.termMonths] : <Dash />}</td>
                 <td className={`${TD} whitespace-nowrap tabular-nums`}>
                   {row.termTotal !== null ? formatMoney(row.termTotal) : <Dash />}
                 </td>
