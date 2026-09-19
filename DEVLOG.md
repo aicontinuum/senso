@@ -44,9 +44,38 @@ table filtered by `?status=`. Everything reads from the view and two direct
 queries in `lib/billing/overview.ts`; a failed read throws rather than showing
 zero. `/billing/[id]` is the landing point for every row; its blocks come next.
 
-Still to build: customer billing detail (plan/term, invoices, payments, one-off
-charges, notes, suspend/reactivate), invoice PDF + Resend, suspension
-enforcement in the customer app.
+### Step 3 — `/billing/[id]`, the customer billing detail
+
+- **Plan and term** (`SubscriptionsSection`, `SubscriptionCard`,
+  `SubscriptionForm`): one card per plan, several per customer. The form shows
+  the proposed monthly rate, add-on rate, term total and renewal date next to
+  each field; a blank field takes the proposal, anything typed is the admin's
+  figure. Every figure that differs from the proposal is logged as an
+  `override` event with the optional reason. Editing a plan mid-term returns
+  the suggested adjustment (monthly difference × whole months left); a banner
+  offers to draft it as an adjustment invoice. Ending a plan is logged.
+- **Invoices** (`InvoicesSection`, `NewInvoiceForm`, `InvoiceRow`,
+  `InvoiceDraftEditor`): onboarding and renewal drafts propose their lines from
+  the plan; adjustment (one-off) starts empty. Drafts: free-text lines with an
+  overridable amount, discount as amount or percent with a printed label, due
+  date, internal notes; Issue saves then calls `issue_invoice()`. Issued: void
+  with a required reason. Draft: discard. Overdue is derived per row.
+- **Record payment**: against one open invoice, amount defaulting to what is
+  still owed, date, method, reference. **Notes**: dated, append-only.
+- **Suspend / Reactivate** (`SuspensionControl`): confirmation that says what
+  suspension means, reason required, `status_change` event written.
+- **Change log** (`BillingEventsSection`): every event in plain words.
+- Routes under `app/api/billing/`, all through `requireAdmin()` in
+  `lib/billing/route-helpers.ts`. Input is allowlisted in
+  `lib/billing/validate.ts`; a rule the database refuses (frozen invoice, paid
+  cannot be voided) comes back as 409 in the migration's own words; anything
+  else is a generic 500 with the detail in the server log.
+- Arithmetic lives in `lib/billing/pricing.ts`, pure and asserted against the
+  price list (Starter 2,700 / 4,950; Standard 4,920 / 9,020; add-on 720 /
+  1,320; month-end clamping on renewal dates; whole-months-remaining).
+
+Still to build: invoice PDF with Bloctech's details + Resend email + download
+(step 4), suspension enforcement in the customer app (step 5).
 
 ---
 

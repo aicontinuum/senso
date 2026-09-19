@@ -46,6 +46,11 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   cheque: 'Cheque',
 };
 
+/** How a plan is named in a dropdown: "Standard · Al Sadd · 12 months". */
+export function subscriptionLabel(s: { tier: BillingTier; label: string | null; termMonths: number }): string {
+  return `${TIER_LABEL[s.tier]}${s.label ? ` · ${s.label}` : ''} · ${s.termMonths} months`;
+}
+
 /** Where a customer's billing detail lives. */
 export function billingDetailHref(customerId: string): string {
   return `/billing/${customerId}`;
