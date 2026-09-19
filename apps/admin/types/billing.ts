@@ -108,8 +108,6 @@ export type BillingSettings = {
   standardMonthly: number;
   addonMonthly: number;
   addonMonthlyCustom: number;
-  monthsCharged6: number;
-  monthsCharged12: number;
 };
 
 export type Subscription = {

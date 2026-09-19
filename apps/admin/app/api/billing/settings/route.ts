@@ -48,8 +48,6 @@ export async function PATCH(request: Request) {
       standard_monthly: requireMoney(body.standardMonthly, 'Standard monthly'),
       addon_monthly: requireMoney(body.addonMonthly, 'add-on monthly'),
       addon_monthly_custom: requireMoney(body.addonMonthlyCustom, 'Custom add-on monthly'),
-      months_charged_6: requireCount(body.monthsCharged6, 'months charged on a Semi-Annual term'),
-      months_charged_12: requireCount(body.monthsCharged12, 'months charged on an Annual term'),
       updated_at: new Date().toISOString(),
     }).eq('id', true);
     ruleOrThrow(error);

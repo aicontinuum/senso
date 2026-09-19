@@ -28,15 +28,11 @@ export function listAddonRate(settings: BillingSettings, tier: BillingTier): num
   return tier === 'custom' ? settings.addonMonthlyCustom : settings.addonMonthly;
 }
 
-export function monthsCharged(settings: BillingSettings, termMonths: TermMonths): number {
-  return termMonths === 12 ? settings.monthsCharged12 : settings.monthsCharged6;
-}
-
 export type Proposal = {
   monthlyRate: number | null;
   addonMonthlyRate: number;
-  monthsCharged: number;
-  /** (monthly + addons × addon rate) × months charged; null when monthly is. */
+  /** (monthly + addons × addon rate) × term months; null when monthly is.
+   *  Any term discount is the admin's, applied on the invoice. */
   termTotal: number | null;
 };
 
@@ -48,24 +44,11 @@ export function proposeSubscription(
 ): Proposal {
   const monthlyRate = listMonthlyRate(settings, tier);
   const addonMonthlyRate = listAddonRate(settings, tier);
-  const months = monthsCharged(settings, termMonths);
   return {
     monthlyRate,
     addonMonthlyRate,
-    monthsCharged: months,
-    termTotal: monthlyRate === null ? null : round2((monthlyRate + addonCount * addonMonthlyRate) * months),
+    termTotal: monthlyRate === null ? null : round2((monthlyRate + addonCount * addonMonthlyRate) * termMonths),
   };
-}
-
-/** What a term costs given the rates actually on the subscription. */
-export function termTotalFor(
-  settings: BillingSettings,
-  monthlyRate: number,
-  addonCount: number,
-  addonMonthlyRate: number,
-  termMonths: TermMonths,
-): number {
-  return round2((monthlyRate + addonCount * addonMonthlyRate) * monthsCharged(settings, termMonths));
 }
 
 /** The monthly figure actually paid, for the plan block and the ARR line. */

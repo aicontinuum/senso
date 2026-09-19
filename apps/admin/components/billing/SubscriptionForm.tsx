@@ -65,7 +65,7 @@ export function SubscriptionForm({ customerId, settings, existing, onDone, onCan
   const addonRate = existing?.addonMonthlyRate ?? proposal.addonMonthlyRate;
   const proposedTotal = monthly === null || !Number.isFinite(monthly)
     ? null
-    : round2((monthly + addonCount * addonRate) * proposal.monthsCharged);
+    : round2((monthly + addonCount * addonRate) * form.termMonths);
   const proposedRenewal = form.termStart ? renewalDateFor(form.termStart, form.termMonths) : '';
   const suggested = suggestTier(sensorCount);
 
@@ -99,15 +99,15 @@ export function SubscriptionForm({ customerId, settings, existing, onDone, onCan
         <Input label="Sensors" type="number" min={0} value={form.sensorCount} onChange={e => set('sensorCount')(e.target.value)} />
         <Input label="Add-on sensors" hint={addonCount > 0 ? `${formatMoney(addonRate)} each per month, from Settings.` : undefined} type="number" min={0} value={form.addonCount} onChange={e => set('addonCount')(e.target.value)} />
         <Select label="Term" value={String(form.termMonths)} onChange={e => changeTermMonths(Number(e.target.value) as TermMonths)}>
-          <option value="12">{TERM_LABEL[12]} (12 months, pays {settings.monthsCharged12})</option>
-          <option value="6">{TERM_LABEL[6]} (6 months, pays {settings.monthsCharged6})</option>
+          <option value="12">{TERM_LABEL[12]} (12 months)</option>
+          <option value="6">{TERM_LABEL[6]} (6 months)</option>
         </Select>
         <Input label="Term start" hint="Installation day. The renewal date fills in one term later." type="date" value={form.termStart} onChange={e => changeTermStart(e.target.value)} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Monthly rate" hint={`Proposed: ${money(proposal.monthlyRate)}`} type="number" step="0.01" value={form.monthlyRate} onChange={e => set('monthlyRate')(e.target.value)} placeholder={proposal.monthlyRate === null ? 'required for Custom' : String(proposal.monthlyRate)} />
-        <Input label="Term total" hint={`Proposed: ${money(proposedTotal)} for ${proposal.monthsCharged} months charged`} type="number" step="0.01" value={form.termTotal} onChange={e => set('termTotal')(e.target.value)} placeholder={proposedTotal === null ? '' : String(proposedTotal)} />
+        <Input label="Term total" hint={`Proposed: ${money(proposedTotal)} for ${form.termMonths} months. Any term discount goes on the invoice.`} type="number" step="0.01" value={form.termTotal} onChange={e => set('termTotal')(e.target.value)} placeholder={proposedTotal === null ? '' : String(proposedTotal)} />
         <Input label="Renewal date" hint={proposedRenewal ? (form.renewalDate === proposedRenewal ? 'One term after the start. Change it if agreed otherwise.' : `Proposed: ${proposedRenewal}`) : 'Set a term start and this fills in.'} type="date" value={form.renewalDate} onChange={e => set('renewalDate')(e.target.value)} />
       </div>
 
