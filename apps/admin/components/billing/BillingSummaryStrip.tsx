@@ -14,7 +14,7 @@ export function BillingSummaryStrip({ summary, renewalNoticeDays }: { summary: B
   return (
     <Card className="grid grid-cols-2 overflow-hidden lg:grid-cols-5 [&>*]:border-hairline [&>*:nth-child(even)]:border-l [&>*:nth-child(-n+4)]:border-b lg:[&>*:not(:first-child)]:border-l lg:[&>*]:border-b-0">
       <div className={STAT_TILE}>
-        <p className="text-sm font-medium text-muted-foreground">Annualised revenue</p>
+        <p className="text-sm font-medium text-muted-foreground">Annualised Exp. Rev</p>
         <p className={STAT_VALUE}>{formatMoney(summary.annualised)}</p>
         <p className="mt-2 text-sm text-muted-foreground">from active terms</p>
       </div>
