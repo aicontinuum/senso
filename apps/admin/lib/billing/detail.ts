@@ -5,6 +5,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { daysUntil, parseMoney } from '@/lib/format';
 import { toCustomerBilling } from '@/lib/billing/overview';
+import { loadInstalledSensorCounts } from '@/lib/billing/installed-sensors';
 import type {
   BillingEvent, BillingNote, BillingSettings, CustomerBillingDetail, CustomerBillingSummaryRow,
   Invoice, InvoiceLine, Payment, Subscription, TermMonths,
@@ -165,7 +166,7 @@ export async function loadCustomerBillingDetail(
   customerId: string,
   now: number = Date.now(),
 ): Promise<CustomerBillingDetail | null> {
-  const [summaryRes, settings, subsRes, invRes, notesRes, eventsRes] = await Promise.all([
+  const [summaryRes, settings, subsRes, invRes, notesRes, eventsRes, installed] = await Promise.all([
     admin.from('customer_billing_summary').select('*').eq('customer_id', customerId).maybeSingle(),
     loadSettings(admin),
     admin.from('subscriptions').select(SUBSCRIPTION_COLUMNS).eq('customer_id', customerId).order('created_at'),
@@ -174,6 +175,7 @@ export async function loadCustomerBillingDetail(
     admin.from('billing_events')
       .select('id, kind, field, old_value, new_value, reason, created_at, invoices (number), subscriptions (label)')
       .eq('customer_id', customerId).order('created_at', { ascending: false }),
+    loadInstalledSensorCounts(admin, customerId).then(m => m.get(customerId) ?? 0),
   ]);
   if (summaryRes.error) throw new Error(`customer_billing_summary: ${summaryRes.error.message}`);
   if (!summaryRes.data) return null;
@@ -184,7 +186,7 @@ export async function loadCustomerBillingDetail(
 
   return {
     now,
-    customer: toCustomerBilling(summaryRes.data as unknown as CustomerBillingSummaryRow),
+    customer: toCustomerBilling(summaryRes.data as unknown as CustomerBillingSummaryRow, installed),
     settings,
     subscriptions: (subsRes.data as unknown as SubscriptionRow[]).map(toSubscription),
     invoices: (invRes.data as unknown as InvoiceRow[]).map(r => toInvoice(r, now)),
