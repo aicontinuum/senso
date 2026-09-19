@@ -22,7 +22,7 @@ function formOf(s: BillingSettings): Form {
     paymentTermsDays: String(s.paymentTermsDays), renewalNoticeDays: String(s.renewalNoticeDays),
     suspensionAfterDays: String(s.suspensionAfterDays), starterMonthly: String(s.starterMonthly),
     standardMonthly: String(s.standardMonthly), addonMonthly: String(s.addonMonthly),
-    addonMonthlyCustom: String(s.addonMonthlyCustom), monthsCharged6: String(s.monthsCharged6), monthsCharged12: String(s.monthsCharged12),
+    addonMonthlyCustom: String(s.addonMonthlyCustom),
   };
 }
 
@@ -97,8 +97,6 @@ export function BillingSettingsForm({ settings }: { settings: BillingSettings })
         {field('standardMonthly', 'Standard, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
         {field('addonMonthly', 'Add-on sensor, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
         {field('addonMonthlyCustom', 'Add-on sensor on Custom, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
-        {field('monthsCharged6', 'Months charged on a Semi-Annual term', { type: 'number', min: 0 })}
-        {field('monthsCharged12', 'Months charged on an Annual term', { type: 'number', min: 0, hint: '11 gives one month free.' })}
       </Group>
 
       {error && <p role="alert" className="px-5 pb-5 text-sm text-alert-text">{error}</p>}

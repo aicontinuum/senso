@@ -38,7 +38,7 @@ export function parseSubscriptionInput(body: Record<string, unknown>, settings: 
     ? proposal.addonMonthlyRate
     : requireMoney(body.addonMonthlyRate, 'add-on rate');
   const termTotal = body.termTotal === undefined || body.termTotal === ''
-    ? Math.round((monthlyRate + addonCount * addonMonthlyRate) * proposal.monthsCharged * 100) / 100
+    ? Math.round((monthlyRate + addonCount * addonMonthlyRate) * termMonths * 100) / 100
     : requireMoney(body.termTotal, 'term total');
   const renewalDate = body.renewalDate === undefined || body.renewalDate === ''
     ? (termStart ? renewalDateFor(termStart, termMonths) : null)

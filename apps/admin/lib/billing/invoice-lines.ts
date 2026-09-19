@@ -1,10 +1,6 @@
-// What a new invoice starts with. Term invoices propose one line for the plan
-// and one for the add-ons; a one-off invoice starts empty. All of it is
-// editable while the invoice is a draft.
+// Invoice lines from a request body, checked and shaped for the database.
 
-import type { BillingSettings, InvoiceType, Subscription } from '@/types/billing';
-import { monthsCharged, round2 } from '@/lib/billing/pricing';
-import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
+import { round2 } from '@/lib/billing/pricing';
 import { BillingInputError, requireMoney, requireText, MAX_LABEL } from '@/lib/billing/validate';
 
 export type LineInput = {
@@ -15,27 +11,6 @@ export type LineInput = {
 };
 
 export const MAX_LINES = 50;
-
-export function proposeLines(settings: BillingSettings, type: InvoiceType, subscription: Subscription | null): LineInput[] {
-  if (!subscription || type === 'adjustment') return [];
-  const months = monthsCharged(settings, subscription.termMonths);
-  const term = TERM_LABEL[subscription.termMonths];
-  const lines: LineInput[] = [{
-    description: `${TIER_LABEL[subscription.tier]} plan, ${term} (${subscription.sensorCount} sensors)`,
-    quantity: months,
-    unitAmount: subscription.monthlyRate,
-    amount: round2(subscription.monthlyRate * months),
-  }];
-  if (subscription.addonCount > 0) {
-    lines.push({
-      description: `Add-on sensors × ${subscription.addonCount}, ${term}`,
-      quantity: months,
-      unitAmount: round2(subscription.addonCount * subscription.addonMonthlyRate),
-      amount: round2(subscription.addonCount * subscription.addonMonthlyRate * months),
-    });
-  }
-  return lines;
-}
 
 /** Lines from a request body. `amount` is the stored figure; it defaults to
  *  quantity × unit and may be overridden. Negative amounts are allowed so a
