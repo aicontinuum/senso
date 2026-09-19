@@ -85,9 +85,19 @@ export type UpcomingRenewal = {
   termTotal: number;
 };
 
-/** The defaults row, money parsed. */
+/** The defaults row, money parsed. Every field is editable from Settings. */
 export type BillingSettings = {
   companyName: string;
+  crNumber: string | null;
+  address: string | null;
+  phone: string | null;
+  billingEmail: string | null;
+  logoUrl: string | null;
+  bankName: string | null;
+  accountName: string | null;
+  iban: string | null;
+  fawranAlias: string | null;
+  taxRegistrationNumber: string | null;
   taxRate: number;
   invoicePrefix: string;
   onboardingDueDays: number;

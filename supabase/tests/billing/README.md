@@ -26,6 +26,7 @@ psql -c 'drop database if exists senso_test' -c 'create database senso_test'
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/alerting-v2/fixture.sql
 sed '/── Block 5/,$d' supabase/migrations/20260910_alerting_v2_cutover.sql | psql -d senso_test -v ON_ERROR_STOP=1
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260919_billing.sql
+psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260920_billing_fawran.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/billing/test.sql 2>&1 | grep -E 'PASS|FAIL'
 ```
 
