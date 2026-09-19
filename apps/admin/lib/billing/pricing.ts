@@ -102,3 +102,8 @@ export function midTermAdjustment(oldMonthly: number, newMonthly: number, months
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+/** What is still owed on an invoice: total less payments, never below zero. */
+export function balanceOf(invoice: { total: number; paid: number }): number {
+  return round2(Math.max(0, invoice.total - invoice.paid));
+}

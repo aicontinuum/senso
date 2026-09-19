@@ -1,47 +1,37 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
-import { Button, Card, CardHeader, CardTitle } from '@senso/ui';
+import { ChevronRight, Plus } from 'lucide-react';
+import { Button, Card, CardHeader, CardTitle, LinkRow } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { InvoiceDraftEditor } from '@/components/billing/InvoiceDraftEditor';
-import { IssuedInvoiceEditor } from '@/components/billing/IssuedInvoiceEditor';
-import { InvoiceRow } from '@/components/billing/InvoiceRow';
-import type { BillingSettings, Invoice, Subscription } from '@/types/billing';
+import { formatDate, formatMoney } from '@/lib/format';
+import { invoiceHref } from '@/lib/billing/constants';
+import { InvoiceStateBadge } from '@/components/billing/InvoiceStateBadge';
+import type { Invoice } from '@/types/billing';
 
-// Invoice history and the work done on it. "New invoice" opens an empty
-// draft straight away; the plan fills it with one click inside. Everything
-// else (issue, PDF, send, payments, void, corrections) lives on the row.
+// The customer's invoices, one row each, and nothing else: every row is a
+// link to the invoice's own page, where the editing, sending, paying and
+// history live. "New invoice" opens an empty draft and goes straight there.
 
-type Props = {
-  customerId: string;
-  customerEmail: string | null;
-  settings: BillingSettings;
-  subscriptions: Subscription[];
-  invoices: Invoice[];
-  now: number;
-};
+type Props = { customerId: string; invoices: Invoice[] };
 
 const TH = 'px-4 py-3 font-medium sm:px-5';
+const TD = 'px-4 py-3.5 sm:px-5';
 
-export function InvoicesSection({ customerId, customerEmail, settings, subscriptions, invoices, now }: Props) {
+export function InvoicesSection({ customerId, invoices }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   async function create() {
     setError('');
     setCreating(true);
     const result = await callApi<{ invoiceId: string }>(`/api/billing/customers/${customerId}/invoices`, 'POST', {});
-    setCreating(false);
-    if (!result.ok) { setError(result.error); return; }
-    setEditingId(result.data.invoiceId);
-    router.refresh();
+    if (!result.ok) { setCreating(false); setError(result.error); return; }
+    router.push(invoiceHref(customerId, result.data.invoiceId));
   }
-
-  const close = () => { setEditingId(null); router.refresh(); };
 
   return (
     <Card className="overflow-hidden">
@@ -74,25 +64,26 @@ export function InvoicesSection({ customerId, customerEmail, settings, subscript
                 <th className={`${TH} text-right`}>Amount</th>
                 <th className={`${TH} text-right`}>Paid</th>
                 <th className={TH}>State</th>
-                <th className={`${TH} relative`}><span className="sr-only">Actions</span></th>
+                <th className={`${TH} relative`}><span className="sr-only">Open</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {invoices.map(inv => (
-                <InvoiceRow
-                  key={inv.id}
-                  invoice={inv}
-                  customerId={customerId}
-                  customerEmail={customerEmail}
-                  now={now}
-                  editing={editingId === inv.id}
-                  onEdit={() => { setError(''); setEditingId(inv.id); }}
-                  onChanged={close}
-                  editor={inv.state === 'draft'
-                    ? <InvoiceDraftEditor invoice={inv} settings={settings} subscriptions={subscriptions} invoices={invoices} now={now} onSaved={close} onCancel={() => setEditingId(null)} />
-                    : <IssuedInvoiceEditor invoice={inv} onSaved={close} onCancel={() => setEditingId(null)} />}
-                />
-              ))}
+              {invoices.map(inv => {
+                const href = invoiceHref(customerId, inv.id);
+                return (
+                  <LinkRow key={inv.id} href={href}>
+                    <td className={`${TD} whitespace-nowrap font-medium`}>
+                      <Link href={href} className="hover:underline">{inv.number ?? 'Draft'}</Link>
+                    </td>
+                    <td className={`${TD} whitespace-nowrap text-muted-foreground`}>{formatDate(inv.issuedOn)}</td>
+                    <td className={`${TD} whitespace-nowrap ${inv.overdue ? 'font-medium text-alert-text' : 'text-muted-foreground'}`}>{formatDate(inv.dueOn)}</td>
+                    <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>{formatMoney(inv.total)}</td>
+                    <td className={`${TD} whitespace-nowrap text-right tabular-nums text-muted-foreground`}>{inv.paid > 0 ? formatMoney(inv.paid) : '—'}</td>
+                    <td className={TD}><InvoiceStateBadge invoice={inv} /></td>
+                    <td className={`${TD} text-right`}><ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden /></td>
+                  </LinkRow>
+                );
+              })}
             </tbody>
           </table>
         </div>
