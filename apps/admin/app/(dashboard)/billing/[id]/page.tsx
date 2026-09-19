@@ -8,14 +8,14 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { BillingStatusBadge } from '@/components/billing/BillingStatusBadge';
 import { SubscriptionsSection } from '@/components/billing/SubscriptionsSection';
 import { InvoicesSection } from '@/components/billing/InvoicesSection';
-import { RecordPaymentForm } from '@/components/billing/RecordPaymentForm';
 import { BillingNotesSection } from '@/components/billing/BillingNotesSection';
 import { SuspensionControl } from '@/components/billing/SuspensionControl';
 import { BillingEventsSection } from '@/components/billing/BillingEventsSection';
 
 // One customer's money, top to bottom: the headline figures, whether they are
-// suspended, their plan and term, every invoice, payments in, notes, and the
-// log of who changed what. Each card owns its own editing state.
+// suspended, their plan and term, every invoice (with payments recorded on
+// the row), notes, and the log of who changed what. Each card owns its own
+// editing state.
 
 function Headline({ label, tone, children }: { label: string; tone?: string; children: React.ReactNode }) {
   return (
@@ -61,7 +61,6 @@ export default async function CustomerBillingPage({ params }: { params: Promise<
 
       <SubscriptionsSection customerId={customer.customerId} settings={settings} subscriptions={subscriptions} now={now} />
       <InvoicesSection customerId={customer.customerId} customerEmail={customer.email} subscriptions={subscriptions} invoices={invoices} paymentTermsDays={settings.paymentTermsDays} now={now} />
-      <RecordPaymentForm customerId={customer.customerId} invoices={invoices} now={now} />
       <BillingNotesSection customerId={customer.customerId} notes={notes} />
       <BillingEventsSection events={events} />
     </div>

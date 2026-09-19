@@ -8,15 +8,19 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { INVOICE_TYPE_LABEL } from '@/lib/billing/constants';
 import { InvoiceStateBadge } from '@/components/billing/InvoiceStateBadge';
 import { InvoiceSendControl } from '@/components/billing/InvoiceSendControl';
+import { InvoicePaymentControl } from '@/components/billing/InvoicePaymentControl';
 import type { Invoice } from '@/types/billing';
 
 // One invoice in the history, with the actions its state allows. Every
 // invoice has a PDF. A draft can be edited or discarded; an issued one can
-// be emailed or voided with a reason. Confirmations open inline, under the row.
+// be emailed, marked paid (in full or in part) or voided with a reason.
+// Confirmations open inline, under the row.
 
 type Props = {
   invoice: Invoice;
+  customerId: string;
   customerEmail: string | null;
+  now: number;
   editing: boolean;
   onEdit: () => void;
   onChanged: () => void;
@@ -26,8 +30,8 @@ type Props = {
 const TD = 'px-4 py-3 sm:px-5';
 const COLS = 8;
 
-export function InvoiceRow({ invoice, customerEmail, editing, onEdit, onChanged, editor }: Props) {
-  const [confirm, setConfirm] = useState<'void' | 'delete' | 'send' | null>(null);
+export function InvoiceRow({ invoice, customerId, customerEmail, now, editing, onEdit, onChanged, editor }: Props) {
+  const [confirm, setConfirm] = useState<'void' | 'delete' | 'send' | 'paid' | 'partial' | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -72,11 +76,20 @@ export function InvoiceRow({ invoice, customerEmail, editing, onEdit, onChanged,
               {invoice.state === 'draft' && !editing && <Button variant="secondary" size="sm" onClick={onEdit}>Edit</Button>}
               {invoice.state === 'draft' && !editing && <Button variant="ghost" size="sm" className="hover:text-alert-text" onClick={() => setConfirm('delete')}>Discard</Button>}
               {issued && <Button variant="secondary" size="sm" onClick={() => { setError(''); setConfirm('send'); }}>{invoice.sentAt ? 'Resend' : 'Send'}</Button>}
+              {invoice.state === 'sent' && <Button size="sm" onClick={() => setConfirm('paid')}>Mark paid</Button>}
+              {invoice.state === 'sent' && <Button variant="ghost" size="sm" onClick={() => setConfirm('partial')}>Part payment</Button>}
               {invoice.state === 'sent' && <Button variant="ghost" size="sm" className="hover:text-alert-text" onClick={() => { setReason(''); setConfirm('void'); }}>Void</Button>}
             </span>
           )}
         </td>
       </tr>
+      {(confirm === 'paid' || confirm === 'partial') && (
+        <tr className="bg-sunken">
+          <td colSpan={COLS} className={`${TD} py-3`}>
+            <InvoicePaymentControl invoice={invoice} customerId={customerId} partial={confirm === 'partial'} now={now} onDone={() => { setConfirm(null); onChanged(); }} onCancel={() => setConfirm(null)} />
+          </td>
+        </tr>
+      )}
       {confirm === 'send' && (
         <tr className="bg-sunken">
           <td colSpan={COLS} className={`${TD} py-3`}>
