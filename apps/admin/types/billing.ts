@@ -31,8 +31,6 @@ export type CustomerBillingSummaryRow = {
   overdue_amount: string;
   days_overdue: number;
   suspension_candidate: boolean;
-  awaiting_first_payment: boolean;
-  renewal_needs_invoice: boolean;
   last_payment_on: string | null;
 };
 
@@ -60,8 +58,6 @@ export type CustomerBilling = {
   overdueAmount: number;
   daysOverdue: number;
   suspensionCandidate: boolean;
-  awaitingFirstPayment: boolean;
-  renewalNeedsInvoice: boolean;
   lastPaymentOn: string | null;
 };
 
@@ -224,11 +220,9 @@ export type BillingSummary = {
 };
 
 export type NeedsAction = {
-  renewalsNeedingInvoice: UpcomingRenewal[];
   unpaid: OpenInvoice[];
   overdue: OpenInvoice[];
   suspensionCandidates: CustomerBilling[];
-  awaitingFirstPayment: CustomerBilling[];
   /** Plan sensor count differs from what is installed. */
   sensorMismatches: CustomerBilling[];
 };
