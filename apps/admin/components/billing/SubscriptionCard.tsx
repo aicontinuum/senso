@@ -24,18 +24,23 @@ type Props = {
   onCancelEnd: () => void;
 };
 
-function Stat({ label, children, tone }: { label: string; children: React.ReactNode; tone?: string }) {
+function Stat({ label, children, tone, note }: { label: string; children: React.ReactNode; tone?: string; note?: string }) {
   return (
     <div>
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className={`mt-0.5 text-sm font-medium tabular-nums ${tone ?? ''}`}>{children}</dd>
+      {note && <dd className="text-xs text-muted-foreground">{note}</dd>}
     </div>
   );
 }
 
 export function SubscriptionCard({ subscription: s, settings, now, ending, busy, onEdit, onAskEnd, onConfirmEnd, onCancelEnd }: Props) {
-  const list = listMonthlyRate(settings, s.tier);
-  const paid = effectiveMonthly(s.monthlyRate, s.addonCount, s.addonMonthlyRate);
+  // Monthly is what this customer pays. The list figure only appears when it
+  // differs, as a note: a discount is worth seeing, a match is not.
+  const listBase = listMonthlyRate(settings, s.tier);
+  const list = listBase === null ? null : effectiveMonthly(listBase, s.addonCount, s.addonMonthlyRate);
+  const monthly = effectiveMonthly(s.monthlyRate, s.addonCount, s.addonMonthlyRate);
+  const discounted = list !== null && monthly < list;
   const days = s.renewalDate ? daysUntil(s.renewalDate, now) : null;
   const daysTone = days === null ? undefined
     : days < 0 ? 'text-alert-text'
@@ -63,11 +68,10 @@ export function SubscriptionCard({ subscription: s, settings, now, ending, busy,
           )}
         </span>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-8">
+      <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-7">
         <Stat label="Sensors">{s.sensorCount}{s.addonCount > 0 && <span className="text-muted-foreground"> + {s.addonCount} add-on</span>}</Stat>
         <Stat label="Term">{TERM_LABEL[s.termMonths]}</Stat>
-        <Stat label="Monthly paid" tone={list !== null && paid < list + s.addonCount * s.addonMonthlyRate ? 'text-warn-text' : undefined}>{formatMoney(paid)}</Stat>
-        <Stat label="List rate">{list === null ? '—' : formatMoney(list + s.addonCount * s.addonMonthlyRate)}</Stat>
+        <Stat label="Monthly" tone={discounted ? 'text-warn-text' : undefined} note={discounted && list !== null ? `list ${formatMoney(list)}, on discount` : undefined}>{formatMoney(monthly)}</Stat>
         <Stat label="Term total">{formatMoney(s.termTotal)}</Stat>
         <Stat label="Term start">{formatDate(s.termStart)}</Stat>
         <Stat label="Renewal">{formatDate(s.renewalDate)}</Stat>
