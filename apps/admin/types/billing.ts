@@ -45,7 +45,12 @@ export type CustomerBilling = {
   suspendedAt: string | null;
   tier: BillingTier | null;
   subscriptionCount: number;
+  /** What the plan charges for (sensors plus add-ons). */
   sensorCount: number;
+  /** Live sensors registered to the customer, counted from the device tables. */
+  installedSensors: number;
+  /** A plan exists and its count is not what is installed. */
+  sensorMismatch: boolean;
   termMonths: TermMonths | null;
   termTotal: number | null;
   annualised: number;
@@ -224,4 +229,6 @@ export type NeedsAction = {
   overdue: OpenInvoice[];
   suspensionCandidates: CustomerBilling[];
   awaitingFirstPayment: CustomerBilling[];
+  /** Plan sensor count differs from what is installed. */
+  sensorMismatches: CustomerBilling[];
 };

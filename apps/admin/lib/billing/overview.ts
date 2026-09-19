@@ -12,6 +12,7 @@ import type { BillingStatus } from '@senso/types';
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { daysUntil, parseMoney, todayIso } from '@/lib/format';
 import { BILLING_STATUSES } from '@/lib/billing/constants';
+import { loadInstalledSensorCounts, sensorsMismatch } from '@/lib/billing/installed-sensors';
 import type {
   BillingSummary, CustomerBilling, CustomerBillingSummaryRow, NeedsAction, OpenInvoice,
   TermMonths, UpcomingRenewal, InvoiceType,
@@ -41,7 +42,7 @@ type RenewalRow = {
   customers: { name: string } | null;
 };
 
-export function toCustomerBilling(row: CustomerBillingSummaryRow): CustomerBilling {
+export function toCustomerBilling(row: CustomerBillingSummaryRow, installedSensors: number): CustomerBilling {
   return {
     customerId: row.customer_id,
     name: row.name,
@@ -51,6 +52,8 @@ export function toCustomerBilling(row: CustomerBillingSummaryRow): CustomerBilli
     tier: row.tier,
     subscriptionCount: row.subscription_count ?? 0,
     sensorCount: row.sensor_count,
+    installedSensors,
+    sensorMismatch: sensorsMismatch(row.sensor_count, installedSensors, (row.subscription_count ?? 0) > 0),
     termMonths: row.term_months === 6 || row.term_months === 12 ? (row.term_months as TermMonths) : null,
     termTotal: row.term_total === null ? null : parseMoney(row.term_total),
     annualised: parseMoney(row.annualised),
@@ -76,7 +79,7 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
 
   const windowEnd = new Date(now + renewalNoticeDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const [summaryRes, invoicesRes, renewalsRes] = await Promise.all([
+  const [summaryRes, invoicesRes, renewalsRes, installed] = await Promise.all([
     admin.from('customer_billing_summary').select(SUMMARY_COLUMNS).order('name'),
     admin.from('invoices')
       .select('id, number, customer_id, type, total, issued_on, due_on, customers (name)')
@@ -88,12 +91,14 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
       .gte('renewal_date', today)
       .lte('renewal_date', windowEnd)
       .order('renewal_date'),
+    loadInstalledSensorCounts(admin),
   ]);
   if (summaryRes.error) throw new Error(`customer_billing_summary: ${summaryRes.error.message}`);
   if (invoicesRes.error) throw new Error(`invoices: ${invoicesRes.error.message}`);
   if (renewalsRes.error) throw new Error(`subscriptions: ${renewalsRes.error.message}`);
 
-  const customers = (summaryRes.data as unknown as CustomerBillingSummaryRow[]).map(toCustomerBilling);
+  const customers = (summaryRes.data as unknown as CustomerBillingSummaryRow[])
+    .map(row => toCustomerBilling(row, installed.get(row.customer_id) ?? 0));
   const byId = new Map(customers.map(c => [c.customerId, c]));
 
   const openInvoices: OpenInvoice[] = (invoicesRes.data as unknown as OpenInvoiceRow[]).map(r => ({
@@ -137,6 +142,7 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
     overdue: openInvoices.filter(i => i.daysOverdue > 0).sort((a, b) => b.daysOverdue - a.daysOverdue),
     suspensionCandidates: customers.filter(c => c.suspensionCandidate).sort((a, b) => b.daysOverdue - a.daysOverdue),
     awaitingFirstPayment: customers.filter(c => c.awaitingFirstPayment),
+    sensorMismatches: customers.filter(c => c.sensorMismatch),
   };
 
   return { customers, summary, needsAction, renewalNoticeDays };

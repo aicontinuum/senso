@@ -79,7 +79,15 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
                     </>
                   ) : <Dash />}
                 </td>
-                <td className={`${TD} tabular-nums`}>{row.sensorCount > 0 ? row.sensorCount : <Dash />}</td>
+                <td className={`${TD} whitespace-nowrap tabular-nums`}>
+                  {row.subscriptionCount === 0 ? (
+                    <Dash />
+                  ) : row.sensorMismatch ? (
+                    <span className="font-medium text-warn-text" title="The plan's sensor count is not what is installed">
+                      {row.sensorCount} on plan · {row.installedSensors} installed
+                    </span>
+                  ) : row.sensorCount}
+                </td>
                 <td className={`${TD} whitespace-nowrap`}>{row.termMonths ? `${row.termMonths} months` : <Dash />}</td>
                 <td className={`${TD} whitespace-nowrap tabular-nums`}>
                   {row.termTotal !== null ? formatMoney(row.termTotal) : <Dash />}

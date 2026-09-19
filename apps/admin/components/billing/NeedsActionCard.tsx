@@ -49,9 +49,9 @@ function ActionSection({ heading, tone, items }: { heading: string; tone: Status
 }
 
 export function NeedsActionCard({ needsAction }: { needsAction: NeedsAction }) {
-  const { renewalsNeedingInvoice, unpaid, overdue, suspensionCandidates, awaitingFirstPayment } = needsAction;
+  const { renewalsNeedingInvoice, unpaid, overdue, suspensionCandidates, awaitingFirstPayment, sensorMismatches } = needsAction;
   const total = renewalsNeedingInvoice.length + unpaid.length + overdue.length
-    + suspensionCandidates.length + awaitingFirstPayment.length;
+    + suspensionCandidates.length + awaitingFirstPayment.length + sensorMismatches.length;
 
   return (
     <Card className="overflow-hidden">
@@ -110,6 +110,18 @@ export function NeedsActionCard({ needsAction }: { needsAction: NeedsAction }) {
               detail: 'installation waits on this',
               amount: c.outstanding,
               when: c.daysOverdue > 0 ? `${c.daysOverdue} days overdue` : 'not yet due',
+            }))}
+          />
+          <ActionSection
+            heading="Plan does not match installed sensors"
+            tone="warn"
+            items={sensorMismatches.map(c => ({
+              key: `sensors-${c.customerId}`,
+              href: billingDetailHref(c.customerId),
+              title: c.name,
+              detail: `${c.sensorCount} on plan, ${c.installedSensors} installed`,
+              amount: null,
+              when: c.installedSensors > c.sensorCount ? 'charging for fewer than installed' : 'charging for more than installed',
             }))}
           />
           <ActionSection

@@ -15,9 +15,16 @@ import type { BillingSettings, Subscription } from '@/types/billing';
 // an edit that moves the monthly figure mid-term, a banner offers to draft
 // the adjustment invoice; nothing is invoiced without that click.
 
-type Props = { customerId: string; settings: BillingSettings; subscriptions: Subscription[]; now: number };
+type Props = {
+  customerId: string;
+  settings: BillingSettings;
+  subscriptions: Subscription[];
+  /** Live sensors registered to the customer, for the mismatch banner. */
+  installedSensors: number;
+  now: number;
+};
 
-export function SubscriptionsSection({ customerId, settings, subscriptions, now }: Props) {
+export function SubscriptionsSection({ customerId, settings, subscriptions, installedSensors, now }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState<'new' | string | null>(null);
   const [ending, setEnding] = useState<string | null>(null);
@@ -27,6 +34,8 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, now 
 
   const live = subscriptions.filter(s => s.endedAt === null);
   const ended = subscriptions.filter(s => s.endedAt !== null);
+  const planned = live.reduce((sum, s) => sum + s.sensorCount + s.addonCount, 0);
+  const mismatch = live.length > 0 && planned !== installedSensors;
 
   async function endPlan(id: string) {
     setBusy(true);
@@ -75,6 +84,14 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, now 
           <SubscriptionForm customerId={customerId} settings={settings} existing={null} onCancel={() => setEditing(null)}
             onDone={() => { setEditing(null); router.refresh(); }} />
         </div>
+      )}
+
+      {mismatch && (
+        <p className="border-b border-hairline bg-warn-soft px-5 py-3 text-sm">
+          <span className="font-medium text-warn-text">Plan and site disagree.</span>{' '}
+          The plan charges for {planned} {planned === 1 ? 'sensor' : 'sensors'}; {installedSensors} {installedSensors === 1 ? 'is' : 'are'} installed and live.
+          Edit the plan if the site is right, or check the customer record if the plan is.
+        </p>
       )}
 
       {adjustment && (
