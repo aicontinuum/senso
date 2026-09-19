@@ -7,6 +7,7 @@
 import { jsPDF } from 'jspdf';
 import { formatDate, formatMoney } from '@/lib/format';
 import { INVOICE_TYPE_LABEL } from '@/lib/billing/constants';
+import { INVOICE_LOGO_ASPECT, INVOICE_LOGO_JPEG_BASE64 } from '@/lib/billing/invoice-logo';
 import type { BillingSettings, Invoice } from '@/types/billing';
 
 export type InvoiceCustomer = {
@@ -23,6 +24,8 @@ const INK: [number, number, number] = [24, 24, 32];
 const MUTED: [number, number, number] = [110, 110, 125];
 const RULE: [number, number, number] = [220, 220, 229];
 const STAMP: [number, number, number] = [200, 200, 210];
+/** Wordmark height in mm; width follows the artwork's aspect ratio. */
+const LOGO_H = 9;
 
 function stampFor(invoice: Invoice): string | null {
   if (invoice.state === 'draft') return 'DRAFT';
@@ -47,19 +50,23 @@ export function buildInvoicePdf(invoice: Invoice, customer: InvoiceCustomer, set
   };
   const rule = () => { doc.setDrawColor(...RULE); doc.line(MARGIN, y, MARGIN + CONTENT_W, y); };
 
-  // Header: who is invoicing, and the word INVOICE with its number.
-  text(settings.companyName, MARGIN, 16, { bold: true });
-  text('INVOICE', PAGE_W - MARGIN, 16, { bold: true, align: 'right' });
-  y += 6;
+  // Header: the Senso wordmark top left with the invoicing company in small
+  // under it, and the word INVOICE with its number on the right.
+  const headerTop = y;
+  doc.addImage(INVOICE_LOGO_JPEG_BASE64, 'JPEG', MARGIN, y, LOGO_H * INVOICE_LOGO_ASPECT, LOGO_H);
+  y += LOGO_H + 6;
+  text(settings.companyName, MARGIN, 9, { bold: true });
+  y += 4.5;
   const companyLines = [
     settings.crNumber ? `CR ${settings.crNumber}` : null,
     settings.address, settings.phone, settings.billingEmail,
     settings.taxRegistrationNumber ? `Tax reg. ${settings.taxRegistrationNumber}` : null,
   ].filter((l): l is string => Boolean(l));
-  const headerTop = y;
-  for (const line of companyLines) { text(line, MARGIN, 9, { muted: true }); y += 4.5; }
+  for (const line of companyLines) { text(line, MARGIN, 8, { muted: true }); y += 4; }
   const afterCompany = y;
-  y = headerTop;
+  y = headerTop + 4;
+  text('INVOICE', PAGE_W - MARGIN, 16, { bold: true, align: 'right' });
+  y += 8;
   const meta: [string, string][] = [
     ['Number', invoice.number ?? 'Draft'],
     ['Type', INVOICE_TYPE_LABEL[invoice.type]],
