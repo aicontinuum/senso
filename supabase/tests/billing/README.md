@@ -29,6 +29,7 @@ psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260919_billing.sq
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260920_billing_fawran.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260921_billing_payment_terms.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260922_billing_soft_edits.sql
+psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260923_billing_balance_owed.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/billing/test.sql 2>&1 | grep -E 'PASS|FAIL'
 ```
 
