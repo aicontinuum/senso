@@ -33,6 +33,11 @@ export function todayIso(now: number = Date.now()): string {
   return new Date(now).toISOString().slice(0, 10);
 }
 
+/** A date-only ISO string moved by whole days. */
+export function plusDays(dateIso: string, days: number): string {
+  return new Date(Date.parse(`${dateIso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
 /** Whole days from today to a date-only ISO string; negative once it has passed. */
 export function daysUntil(dateIso: string, now: number = Date.now()): number {
   const target = Date.parse(`${dateIso}T00:00:00Z`);

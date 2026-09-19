@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
       tax_registration_number: optionalText(body.taxRegistrationNumber, 'tax registration number', MAX_LABEL),
       tax_rate: taxRate,
       invoice_prefix: invoicePrefix,
-      onboarding_due_days: requireCount(body.onboardingDueDays, 'onboarding due days'),
+      payment_terms_days: requireCount(body.paymentTermsDays, 'payment terms'),
       renewal_notice_days: requireCount(body.renewalNoticeDays, 'renewal notice days'),
       suspension_after_days: requireCount(body.suspensionAfterDays, 'suspension after days'),
       starter_monthly: requireMoney(body.starterMonthly, 'Starter monthly'),

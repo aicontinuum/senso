@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button, Card, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { formatMoney } from '@/lib/format';
+import { formatMoney, plusDays, todayIso } from '@/lib/format';
 import { round2 } from '@/lib/billing/pricing';
 import type { DiscountType, Invoice } from '@/types/billing';
 
@@ -12,7 +12,14 @@ import type { DiscountType, Invoice } from '@/types/billing';
 // here are a preview; the stored ones are recomputed by the database on save
 // and are what the PDF prints. Issuing saves first, then numbers the invoice.
 
-type Props = { invoice: Invoice; onSaved: () => void; onCancel: () => void };
+type Props = {
+  invoice: Invoice;
+  /** Days from issue date to due date, from settings. */
+  paymentTermsDays: number;
+  now: number;
+  onSaved: () => void;
+  onCancel: () => void;
+};
 
 type LineDraft = { key: string; description: string; quantity: string; unitAmount: string; amount: string };
 
@@ -26,9 +33,10 @@ function lineFrom(l?: Invoice['lines'][number]): LineDraft {
 const num = (s: string) => { const n = Number.parseFloat(s); return Number.isFinite(n) ? n : 0; };
 const lineAmount = (l: LineDraft) => (l.amount === '' ? round2(num(l.quantity) * num(l.unitAmount)) : num(l.amount));
 
-export function InvoiceDraftEditor({ invoice, onSaved, onCancel }: Props) {
+export function InvoiceDraftEditor({ invoice, paymentTermsDays, now, onSaved, onCancel }: Props) {
   const [lines, setLines] = useState<LineDraft[]>(() => invoice.lines.length ? invoice.lines.map(l => lineFrom(l)) : [lineFrom()]);
-  const [dueOn, setDueOn] = useState(invoice.dueOn ?? '');
+  const [issuedOn, setIssuedOn] = useState(() => todayIso(now));
+  const [dueOn, setDueOn] = useState(() => invoice.dueOn ?? plusDays(todayIso(now), paymentTermsDays));
   const [discountType, setDiscountType] = useState<DiscountType | ''>(invoice.discountType ?? '');
   const [discountValue, setDiscountValue] = useState(invoice.discountValue === null ? '' : String(invoice.discountValue));
   const [discountLabel, setDiscountLabel] = useState(invoice.discountLabel ?? '');
@@ -43,6 +51,13 @@ export function InvoiceDraftEditor({ invoice, onSaved, onCancel }: Props) {
   const total = round2(subtotal - discount + tax);
 
   const updateLine = (key: string, patch: Partial<LineDraft>) => setLines(ls => ls.map(l => (l.key === key ? { ...l, ...patch } : l)));
+
+  // The due date follows the issue date by the payment terms; typing over the
+  // due date afterwards is the override.
+  function changeIssuedOn(value: string) {
+    setIssuedOn(value);
+    if (value) setDueOn(plusDays(value, paymentTermsDays));
+  }
 
   async function save(): Promise<boolean> {
     setError('');
@@ -69,7 +84,7 @@ export function InvoiceDraftEditor({ invoice, onSaved, onCancel }: Props) {
   async function onIssue() {
     setBusy('issue');
     if (await save()) {
-      const result = await callApi(`/api/billing/invoices/${invoice.id}/issue`, 'POST', {});
+      const result = await callApi(`/api/billing/invoices/${invoice.id}/issue`, 'POST', { issuedOn });
       if (result.ok) onSaved(); else setError(result.error);
     }
     setBusy(null);
@@ -103,8 +118,9 @@ export function InvoiceDraftEditor({ invoice, onSaved, onCancel }: Props) {
         <Input label="Discount label" hint="Printed on the PDF line." value={discountLabel} onChange={e => setDiscountLabel(e.target.value)} disabled={discountType === ''} placeholder="e.g. Pilot pricing" />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Due date" type="date" value={dueOn} onChange={e => setDueOn(e.target.value)} />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Input label="Issue date" hint="Printed on the invoice; stamped when you issue." type="date" value={issuedOn} onChange={e => changeIssuedOn(e.target.value)} />
+        <Input label="Due date" hint={`Issue date plus ${paymentTermsDays} days. Change it if agreed otherwise.`} type="date" value={dueOn} onChange={e => setDueOn(e.target.value)} />
         <Input label="Internal notes" hint="Never printed." value={notes} onChange={e => setNotes(e.target.value)} />
       </div>
 
@@ -118,7 +134,7 @@ export function InvoiceDraftEditor({ invoice, onSaved, onCancel }: Props) {
       {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={onIssue} disabled={busy !== null || total === 0}>{busy === 'issue' ? 'Issuing…' : 'Issue invoice'}</Button>
+        <Button size="sm" onClick={onIssue} disabled={busy !== null || total === 0 || issuedOn === ''}>{busy === 'issue' ? 'Issuing…' : 'Issue invoice'}</Button>
         <Button variant="secondary" size="sm" onClick={onSave} disabled={busy !== null}>{busy === 'save' ? 'Saving…' : 'Save draft'}</Button>
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={busy !== null}>Cancel</Button>
       </div>

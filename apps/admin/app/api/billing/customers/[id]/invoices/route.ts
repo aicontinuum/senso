@@ -3,19 +3,14 @@ import { requireAdmin, isDenied, readJson, failureResponse, ruleOrThrow } from '
 import { loadSettings, SUBSCRIPTION_COLUMNS, toSubscription, type SubscriptionRow } from '@/lib/billing/detail';
 import { parseLines, proposeLines } from '@/lib/billing/invoice-lines';
 import { optionalDate, optionalUuid, requireInvoiceType, requireUuid } from '@/lib/billing/validate';
-import { todayIso } from '@/lib/format';
+import { plusDays, todayIso } from '@/lib/format';
 
 // Start a draft. Lines come from the body when given (a one-off charge, a
-// mid-term adjustment) and are proposed from the plan otherwise. The tax rate
-// is copied from settings at this moment so a later rate change never touches
-// an existing invoice. No event is written for a draft: it is scratch paper
-// until it is issued.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function plusDays(iso: string, days: number): string {
-  return new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
-}
+// mid-term adjustment) and are proposed from the plan otherwise. The due date
+// is proposed as today plus the payment terms; the editor moves it when the
+// issue date is changed. The tax rate is copied from settings at this moment
+// so a later rate change never touches an existing invoice. No event is
+// written for a draft: it is scratch paper until it is issued.
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireAdmin();
@@ -38,12 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       subscription = toSubscription(data as unknown as SubscriptionRow);
     }
 
-    const today = todayIso();
-    const dueOn = optionalDate(body.dueOn, 'due date') ?? (
-      type === 'onboarding' ? plusDays(today, settings.onboardingDueDays)
-      : type === 'renewal' ? (subscription?.renewalDate ?? today)
-      : today
-    );
+    const dueOn = optionalDate(body.dueOn, 'due date') ?? plusDays(todayIso(), settings.paymentTermsDays);
     const lines = body.lines === undefined ? proposeLines(settings, type, subscription) : parseLines(body.lines);
 
     const { data: invoice, error } = await admin
