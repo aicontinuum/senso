@@ -113,6 +113,21 @@ After walking the flow end to end: the money stays frozen, the words do not.
   method and reference. Payments are listed under the invoice row.
 - Internal notes dropped from the draft; the customer notes card covers it.
 
+### Simplification pass (2026-09-23)
+
+- Terms are named Annual / Semi-Annual; a term total is monthly × months
+  with no "months charged" discount logic, the discount being the admin's on
+  the invoice. The add-on rate field left the plan form (rate from Settings).
+- The renewal date fills in from term start and term; the plan card shows
+  Monthly with the list figure only when the customer is below it.
+- Draft editor: Blank line only; the quick-fill buttons and the type
+  inference behind them are gone, and with them the "renewal needs invoice"
+  and "awaiting first payment" items.
+- `customer_billing_summary` (migration `20260923`) reports balances owed,
+  not invoice totals, so a part-paid invoice counts for what is left.
+- The summary strip shows Total paid (every payment recorded) in place of
+  Outstanding; Outstanding stays per customer.
+
 Still to build: suspension enforcement in the customer app (step 5).
 
 ---
