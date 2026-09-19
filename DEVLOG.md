@@ -4,6 +4,119 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-19 — Billing: data model and the top-level page
+
+Manual invoicing, as SENSO.md has always said: no gateway, no card. The admin
+creates plans, issues invoices, records payments and decides suspensions. One
+rule shaped every column: **the system calculates and suggests, it never
+blocks.** Every price, date and count is a stored value the admin can overwrite
+per customer; the defaults live in `billing_settings` and the arithmetic in the
+app, not in constraints.
+
+### Step 1 — `supabase/migrations/20260919_billing.sql` (applied live)
+
+- `billing_settings` (one row: company, bank, tax rate, terms, pricing defaults),
+  `subscriptions` (several per customer, tier, sensor and add-on counts, 6 or 12
+  month term, stored monthly rate and term total, anniversary dates), `invoices`
+  + `invoice_lines`, `invoice_sequences`, `payments`, `billing_notes`,
+  `billing_events` (append-only change log). All service-role only, RLS on.
+- Invoice states: draft → sent → paid, or → void. Overdue is derived wherever it
+  is shown, never stored. A draft is editable and deletable; anything numbered
+  is frozen by trigger (void and reissue). `issue_invoice()` assigns
+  `BT-YYYY-NNNN` under a row lock, resets per year, and a voided number is never
+  reused. `payments` settle an invoice when they cover its total.
+- `customers.status` pinned to `active | suspended`; `suspended_at` added.
+- `customer_billing_summary` view: one row per customer with status precedence
+  (suspended > overdue > active), outstanding, days overdue, suspension
+  candidate at the threshold, and whether a renewal inside the notice window
+  still needs an invoice.
+- 61 fixture cases in `supabase/tests/billing/` prove all of it; two bugs found
+  and fixed before commit (cascade-delete of a draft tripped the freeze guard;
+  annualised carried repeating decimals).
+
+### Step 2 — `/billing` in the admin app
+
+Summary strip (annualised revenue, outstanding, overdue with customer count,
+renewals in the next 30 days with value, count by status), a Needs Action card
+(suspension candidates, overdue invoices, renewals with no invoice yet,
+onboarding invoices awaiting first payment, sent-not-yet-due), and the customer
+table filtered by `?status=`. Everything reads from the view and two direct
+queries in `lib/billing/overview.ts`; a failed read throws rather than showing
+zero. `/billing/[id]` is the landing point for every row; its blocks come next.
+
+### Step 3 — `/billing/[id]`, the customer billing detail
+
+- **Plan and term** (`SubscriptionsSection`, `SubscriptionCard`,
+  `SubscriptionForm`): one card per plan, several per customer. The form shows
+  the proposed monthly rate, add-on rate, term total and renewal date next to
+  each field; a blank field takes the proposal, anything typed is the admin's
+  figure. Every figure that differs from the proposal is logged as an
+  `override` event with the optional reason. Editing a plan mid-term returns
+  the suggested adjustment (monthly difference × whole months left); a banner
+  offers to draft it as an adjustment invoice. Ending a plan is logged.
+- **Invoices** (`InvoicesSection`, `NewInvoiceForm`, `InvoiceRow`,
+  `InvoiceDraftEditor`): onboarding and renewal drafts propose their lines from
+  the plan; adjustment (one-off) starts empty. Drafts: free-text lines with an
+  overridable amount, discount as amount or percent with a printed label, due
+  date, internal notes; Issue saves then calls `issue_invoice()`. Issued: void
+  with a required reason. Draft: discard. Overdue is derived per row.
+- **Record payment**: against one open invoice, amount defaulting to what is
+  still owed, date, method, reference. **Notes**: dated, append-only.
+- **Suspend / Reactivate** (`SuspensionControl`): confirmation that says what
+  suspension means, reason required, `status_change` event written.
+- **Change log** (`BillingEventsSection`): every event in plain words.
+- Routes under `app/api/billing/`, all through `requireAdmin()` in
+  `lib/billing/route-helpers.ts`. Input is allowlisted in
+  `lib/billing/validate.ts`; a rule the database refuses (frozen invoice, paid
+  cannot be voided) comes back as 409 in the migration's own words; anything
+  else is a generic 500 with the detail in the server log.
+- Arithmetic lives in `lib/billing/pricing.ts`, pure and asserted against the
+  price list (Starter 2,700 / 4,950; Standard 4,920 / 9,020; add-on 720 /
+  1,320; month-end clamping on renewal dates; whole-months-remaining).
+
+### Step 4 — invoice PDF and email
+
+- `lib/billing/invoice-pdf.ts` builds the PDF on the server with jsPDF (the
+  library the customer app already uses for reports; now also a dependency of
+  the admin app). Header with company, CR, address, phone, billing email and
+  tax registration when set; number, type, issued and due; bill-to; lines;
+  subtotal, discount with its label, tax when the rate is non-zero, total,
+  paid and balance; payment details printing whichever of IBAN and Fawran is
+  filled in. DRAFT, PAID and VOID are stamped diagonally.
+- `GET /api/billing/invoices/[id]/pdf` streams it (admin only, never cached).
+  `POST /api/billing/invoices/[id]/send` emails it through Resend with the PDF
+  attached, recipients defaulting to the customer's account email, reply-to the
+  billing email from settings; refuses drafts and voids; records `sent_at` /
+  `sent_to` and an `invoice_sent` event only after the provider accepts.
+  `lib/email/send.ts` gained optional `replyTo` and `attachments`.
+- Every invoice row has a PDF download; issued ones have Send (Resend once
+  sent) with an editable recipient list. Settings gained Fawran and the
+  payment terms (issue date + N days, default 15) that the draft editor uses.
+
+### Loosening pass (2026-09-22) — a tool, not an enforcer
+
+After walking the flow end to end: the money stays frozen, the words do not.
+
+- **No type gate.** New invoice opens an empty draft at once. Inside it, one
+  button per live plan ("Term from plan") proposes the term lines, plus
+  Installation, Hardware and Blank line. The type (onboarding on a plan's first
+  billed term, renewal after) and the plan are inferred and stored for the
+  summary view; neither is shown, and the Type column and PDF row are gone.
+- **Issued invoices can be reworded.** Migration `20260922_billing_soft_edits`
+  narrows the freeze: line descriptions, due date and discount label may
+  change after issue; amounts, totals, number, type and issue date cannot.
+  Edit on an issued row opens a light editor for exactly those. 4 new fixture
+  cases (65 total).
+- **Void reason optional.** Kept if given.
+- **Mark paid is one click**: balance, today, bank transfer. "Payment
+  details…" opens the panel with amount (part payment when smaller), date,
+  method and reference. Payments are listed under the invoice row.
+- Internal notes dropped from the draft; the customer notes card covers it.
+
+Still to build: suspension enforcement in the customer app (step 5).
+
+---
+
 ## 2026-09-13 — An hour of one sensor's readings lost inside ingest
 
 Sensor 2 was reported offline for an hour while sensor 1, on the same gateway,

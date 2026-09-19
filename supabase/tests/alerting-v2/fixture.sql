@@ -8,7 +8,11 @@ create extension if not exists pgcrypto;
 create table customers (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  alert_recipients text[] default '{}'
+  email text,
+  contact_name text,
+  status text not null default 'active',
+  alert_recipients text[] default '{}',
+  created_at timestamptz default now()
 );
 
 create table gateways (

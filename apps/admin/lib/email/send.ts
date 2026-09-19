@@ -16,11 +16,20 @@ export function emailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.ALERT_FROM_EMAIL);
 }
 
+export interface EmailAttachment {
+  filename: string;
+  /** Raw bytes; encoded to base64 for Resend here. */
+  content: Uint8Array;
+}
+
 export async function sendEmail(params: {
   to: string[];
   subject: string;
   text: string;
   html: string;
+  /** Overrides ALERT_REPLY_TO for this message (invoices reply to billing). */
+  replyTo?: string;
+  attachments?: EmailAttachment[];
 }): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.ALERT_FROM_EMAIL;
@@ -47,7 +56,12 @@ export async function sendEmail(params: {
         subject: params.subject,
         text: params.text,
         html: params.html,
-        ...(process.env.ALERT_REPLY_TO ? { reply_to: process.env.ALERT_REPLY_TO } : {}),
+        ...(params.replyTo ?? process.env.ALERT_REPLY_TO
+          ? { reply_to: params.replyTo ?? process.env.ALERT_REPLY_TO }
+          : {}),
+        ...(params.attachments?.length
+          ? { attachments: params.attachments.map(a => ({ filename: a.filename, content: Buffer.from(a.content).toString('base64') })) }
+          : {}),
       }),
       // A hung provider must not hold the cron run open until the platform
       // kills it, which would leave every claimed alert on an expired lease.

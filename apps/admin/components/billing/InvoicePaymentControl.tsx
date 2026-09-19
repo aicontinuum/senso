@@ -1,0 +1,64 @@
+'use client';
+
+import { useState } from 'react';
+import { Button, Input, Select } from '@senso/ui';
+import { callApi } from '@/lib/api-client';
+import { formatMoney, todayIso } from '@/lib/format';
+import { PAYMENT_METHOD_LABEL } from '@/lib/billing/constants';
+import { round2 } from '@/lib/billing/pricing';
+import type { Invoice, PaymentMethod } from '@/types/billing';
+
+// Money in, with the details: amount (the balance unless typed over, so a
+// smaller figure is a part payment), date, method and reference. It opens
+// prefilled with the balance, today and bank transfer, so the common case
+// is one click to confirm and every assumption is on screen first.
+
+type Props = { invoice: Invoice; customerId: string; now: number; onDone: () => void; onCancel: () => void };
+
+const METHODS: PaymentMethod[] = ['bank_transfer', 'cash', 'cheque'];
+
+export function balanceOf(invoice: Invoice): number {
+  return round2(Math.max(0, invoice.total - invoice.paid));
+}
+
+export function InvoicePaymentControl({ invoice, customerId, now, onDone, onCancel }: Props) {
+  const balance = balanceOf(invoice);
+  const [amount, setAmount] = useState(String(balance));
+  const [paidOn, setPaidOn] = useState(todayIso(now));
+  const [method, setMethod] = useState<PaymentMethod>('bank_transfer');
+  const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const partial = Number.parseFloat(amount) < balance;
+
+  async function submit() {
+    setError('');
+    setBusy(true);
+    const result = await callApi(`/api/billing/customers/${customerId}/payments`, 'POST', {
+      invoiceId: invoice.id, amount, paidOn, method, reference,
+    });
+    setBusy(false);
+    if (!result.ok) { setError(result.error); return; }
+    onDone();
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">
+        Balance {formatMoney(balance)}.{partial && ' A smaller amount is a part payment; the invoice stays open for the rest.'}
+      </p>
+      <div className="grid gap-2 sm:grid-cols-[8rem_10rem_10rem_1fr_auto_auto] sm:items-start">
+        <Input aria-label="Amount" type="number" step="0.01" min={0.01} value={amount} onChange={e => setAmount(e.target.value)} />
+        <Input aria-label="Date received" type="date" value={paidOn} onChange={e => setPaidOn(e.target.value)} />
+        <Select aria-label="Method" value={method} onChange={e => setMethod(e.target.value as PaymentMethod)}>
+          {METHODS.map(m => <option key={m} value={m}>{PAYMENT_METHOD_LABEL[m]}</option>)}
+        </Select>
+        <Input aria-label="Reference" value={reference} onChange={e => setReference(e.target.value)} placeholder="Transfer or cheque number (optional)" />
+        <Button size="sm" className="h-10" onClick={submit} disabled={busy || amount === ''}>{busy ? 'Recording…' : 'Record payment'}</Button>
+        <Button variant="ghost" size="sm" className="h-10" onClick={onCancel} disabled={busy}>Cancel</Button>
+      </div>
+      {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
+    </div>
+  );
+}
