@@ -19,4 +19,5 @@ export { Logo } from "./logo";
 export { Sidebar } from "./sidebar";
 export { Header } from "./header";
 export { AppShell } from "./app-shell";
+export { PageTransition } from "./page-transition";
 export type { NavItem } from "./nav";
