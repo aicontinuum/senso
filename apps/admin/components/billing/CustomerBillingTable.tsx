@@ -134,8 +134,8 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
 
             {/* Phone: the same rows as a list. The name alone on the left; on
                 the right the plan and the term rate, and the balance owed
-                when there is one. The renewal date stays on the desktop
-                table and the customer's page. */}
+                when there is one. The renewal date and the sensor mismatch
+                stay on the desktop table and the customer's page. */}
             <ul className="divide-y divide-hairline lg:hidden">
               {rows.map(row => {
                 const href = billingDetailHref(row.customerId);
@@ -154,7 +154,6 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
                           </>
                         )}
                         {row.outstanding > 0 && <p className="mt-0.5 tabular-nums"><OutstandingCell row={row} /> owed</p>}
-                        {row.sensorMismatch && <p className="mt-0.5"><SensorsCell row={row} /></p>}
                       </div>
                       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                     </Link>
