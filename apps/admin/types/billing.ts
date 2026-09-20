@@ -180,12 +180,6 @@ export type Invoice = {
   overdue: boolean;
 };
 
-export type BillingNote = {
-  id: string;
-  body: string;
-  createdAt: string;
-};
-
 export type BillingEvent = {
   id: string;
   kind: string;
@@ -205,7 +199,6 @@ export type CustomerBillingDetail = {
   settings: BillingSettings;
   subscriptions: Subscription[];
   invoices: Invoice[];
-  notes: BillingNote[];
   events: BillingEvent[];
 };
 

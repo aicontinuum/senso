@@ -6,12 +6,11 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { CustomerBillingHeader } from '@/components/billing/CustomerBillingHeader';
 import { SubscriptionsSection } from '@/components/billing/SubscriptionsSection';
 import { InvoicesSection } from '@/components/billing/InvoicesSection';
-import { BillingNotesSection } from '@/components/billing/BillingNotesSection';
 import { BillingEventsSection } from '@/components/billing/BillingEventsSection';
 
 // One customer's money, top to bottom: the header with suspend / reactivate,
 // the headline figures, their plan and term, every invoice (each a link to
-// its own page), notes, and the log of who changed what. Each card
+// its own page), and the log of who changed what. Each card
 // owns its own editing state.
 
 function Headline({ label, tone, children }: { label: string; tone?: string; children: React.ReactNode }) {
@@ -27,7 +26,7 @@ export default async function CustomerBillingPage({ params }: { params: Promise<
   const { id } = await params;
   const detail = await loadCustomerBillingDetail(createAdminClient(), id);
   if (!detail) notFound();
-  const { now, customer, settings, subscriptions, invoices, notes, events } = detail;
+  const { now, customer, settings, subscriptions, invoices, events } = detail;
 
   return (
     <div className="space-y-6">
@@ -44,7 +43,6 @@ export default async function CustomerBillingPage({ params }: { params: Promise<
 
       <SubscriptionsSection customerId={customer.customerId} settings={settings} subscriptions={subscriptions} installedSensors={customer.installedSensors} now={now} />
       <InvoicesSection customerId={customer.customerId} invoices={invoices} />
-      <BillingNotesSection customerId={customer.customerId} notes={notes} />
       <BillingEventsSection events={events} />
     </div>
   );
