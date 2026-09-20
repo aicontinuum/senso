@@ -10,10 +10,10 @@ import { round2 } from '@/lib/billing/pricing';
 import type { LineInput } from '@/lib/billing/invoice-lines';
 import type { BillingSettings, DiscountType, Invoice } from '@/types/billing';
 
-// A draft, top to bottom: typed lines, the add
-// buttons, then discount, issue and due dates, and the totals. Totals shown here are a preview; the stored ones are recomputed by
-// the database on save and are what the PDF prints. Issuing saves first,
-// then numbers the invoice.
+// A draft, top to bottom: typed lines, the add button, then discount, issue
+// and due dates, and the totals. Totals shown here are a preview; the stored
+// ones are recomputed by the database on save and are what the PDF prints.
+// Issuing saves first, then numbers the invoice.
 
 type Props = {
   invoice: Invoice;
