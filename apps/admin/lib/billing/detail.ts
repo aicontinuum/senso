@@ -7,7 +7,7 @@ import { daysUntil, parseMoney } from '@/lib/format';
 import { toCustomerBilling } from '@/lib/billing/overview';
 import { loadInstalledSensorCounts } from '@/lib/billing/installed-sensors';
 import type {
-  BillingEvent, BillingNote, BillingSettings, CustomerBillingDetail, CustomerBillingSummaryRow,
+  BillingEvent, BillingSettings, CustomerBillingDetail, CustomerBillingSummaryRow,
   Invoice, InvoiceLine, Payment, Subscription, TermMonths,
   BillingTier, InvoiceType, InvoiceState, DiscountType, PaymentMethod,
 } from '@/types/billing';
@@ -154,7 +154,6 @@ export function toInvoice(row: InvoiceRow, now: number): Invoice {
   };
 }
 
-type NoteRow = { id: string; body: string; created_at: string };
 type EventRow = {
   id: string; kind: string; field: string | null; old_value: string | null; new_value: string | null;
   reason: string | null; created_at: string; invoices: { number: string | null } | null; subscriptions: { label: string | null } | null;
@@ -165,12 +164,11 @@ export async function loadCustomerBillingDetail(
   customerId: string,
   now: number = Date.now(),
 ): Promise<CustomerBillingDetail | null> {
-  const [summaryRes, settings, subsRes, invRes, notesRes, eventsRes, installed] = await Promise.all([
+  const [summaryRes, settings, subsRes, invRes, eventsRes, installed] = await Promise.all([
     admin.from('customer_billing_summary').select('*').eq('customer_id', customerId).maybeSingle(),
     loadSettings(admin),
     admin.from('subscriptions').select(SUBSCRIPTION_COLUMNS).eq('customer_id', customerId).order('created_at'),
     admin.from('invoices').select(INVOICE_COLUMNS).eq('customer_id', customerId).order('created_at', { ascending: false }),
-    admin.from('billing_notes').select('id, body, created_at').eq('customer_id', customerId).order('created_at', { ascending: false }),
     admin.from('billing_events')
       .select('id, kind, field, old_value, new_value, reason, created_at, invoices (number), subscriptions (label)')
       .eq('customer_id', customerId).order('created_at', { ascending: false }),
@@ -180,7 +178,6 @@ export async function loadCustomerBillingDetail(
   if (!summaryRes.data) return null;
   if (subsRes.error) throw new Error(`subscriptions: ${subsRes.error.message}`);
   if (invRes.error) throw new Error(`invoices: ${invRes.error.message}`);
-  if (notesRes.error) throw new Error(`billing_notes: ${notesRes.error.message}`);
   if (eventsRes.error) throw new Error(`billing_events: ${eventsRes.error.message}`);
 
   return {
@@ -189,7 +186,6 @@ export async function loadCustomerBillingDetail(
     settings,
     subscriptions: (subsRes.data as unknown as SubscriptionRow[]).map(toSubscription),
     invoices: (invRes.data as unknown as InvoiceRow[]).map(r => toInvoice(r, now)),
-    notes: (notesRes.data as NoteRow[]).map((n): BillingNote => ({ id: n.id, body: n.body, createdAt: n.created_at })),
     events: (eventsRes.data as unknown as EventRow[]).map((e): BillingEvent => ({
       id: e.id, kind: e.kind, field: e.field, oldValue: e.old_value, newValue: e.new_value, reason: e.reason,
       createdAt: e.created_at, invoiceNumber: e.invoices?.number ?? null, subscriptionLabel: e.subscriptions?.label ?? null,
