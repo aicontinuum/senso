@@ -41,6 +41,11 @@ export function InvoiceSendControl({ invoiceId, label, defaultTo, resend, onSent
       <Input
         label="Send to"
         type="text"
+        inputMode="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        enterKeyHint="send"
         value={to}
         onChange={e => setTo(e.target.value)}
         placeholder="billing@customer.com, owner@customer.com"

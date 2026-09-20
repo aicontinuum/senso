@@ -32,7 +32,7 @@ export function BillingNotesSection({ customerId, notes }: { customerId: string;
       <CardHeader className="border-b border-hairline"><CardTitle>Notes</CardTitle></CardHeader>
       <div className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-start">
         <Input aria-label="New note" value={body} onChange={e => setBody(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder="e.g. Promised transfer by Thursday" error={error || undefined} />
+          placeholder="e.g. Promised transfer by Thursday" enterKeyHint="send" error={error || undefined} />
         <Button variant="secondary" size="sm" className="h-10 self-start" onClick={add} disabled={busy || body.trim() === ''}>{busy ? 'Adding…' : 'Add note'}</Button>
       </div>
       {notes.length > 0 && (

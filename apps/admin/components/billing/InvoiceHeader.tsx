@@ -60,9 +60,18 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
         <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
           <Link href={backHref}><ChevronLeft className="size-4" />{customer.name}</Link>
         </Button>
+        {/* Title and subtitle are one block so that on a phone, where the
+            actions wrap, they wrap below both rather than between them. */}
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">{label}</h1>
-          <InvoiceStateBadge invoice={invoice} />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{label}</h1>
+              <InvoiceStateBadge invoice={invoice} />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {customer.name}{customer.email ? ` · ${customer.email}` : ''}
+            </p>
+          </div>
           {panel === null && (
             <span className="ml-auto flex items-center gap-1">
               <Button asChild variant="ghost" size="icon" aria-label={`Download ${label} as PDF`} title="Download PDF">
@@ -88,9 +97,6 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
             </span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">
-          {customer.name}{customer.email ? ` · ${customer.email}` : ''}
-        </p>
       </div>
 
       {panel !== null && (

@@ -72,7 +72,7 @@ export function BillingSettingsForm({ settings }: { settings: BillingSettings })
         {field('crNumber', 'CR number')}
         {field('address', 'Address')}
         {field('phone', 'Phone', { type: 'tel' })}
-        {field('billingEmail', 'Billing email', { type: 'email', hint: 'Reply-to on invoice emails.' })}
+        {field('billingEmail', 'Billing email', { type: 'email', autoCapitalize: 'none', autoCorrect: 'off', hint: 'Reply-to on invoice emails.' })}
         {field('taxRegistrationNumber', 'Tax registration number', { hint: 'Blank until registered.' })}
         {field('logoUrl', 'Logo URL', { hint: 'Optional. A public image for the PDF header.' })}
       </Group>
@@ -80,25 +80,25 @@ export function BillingSettingsForm({ settings }: { settings: BillingSettings })
       <Group title="Where the money goes" hint="Whichever of IBAN and Fawran is filled in is printed on the invoice.">
         {field('bankName', 'Bank')}
         {field('accountName', 'Account name')}
-        {field('iban', 'IBAN', { className: 'font-mono' })}
+        {field('iban', 'IBAN', { className: 'font-mono', autoCapitalize: 'characters', autoCorrect: 'off', spellCheck: false })}
         {field('fawranAlias', 'Fawran alias')}
       </Group>
 
       <Group title="Terms" hint="How the Billing page decides what needs action.">
         {field('invoicePrefix', 'Invoice prefix', { hint: 'Numbers read PREFIX-YYYY-NNNN.', className: 'font-mono uppercase' })}
-        {field('taxRatePercent', 'Tax rate', { type: 'number', step: '0.01', min: 0, suffix: '%', hint: '0 prints no tax line.' })}
-        {field('paymentTermsDays', 'Payment terms', { type: 'number', min: 0, suffix: 'days', hint: 'Due date proposed as issue date plus this.' })}
-        {field('renewalNoticeDays', 'Renewal notice window', { type: 'number', min: 0, suffix: 'days' })}
-        {field('suspensionAfterDays', 'Suspension candidate after', { type: 'number', min: 0, suffix: 'days overdue' })}
+        {field('taxRatePercent', 'Tax rate', { type: 'number', inputMode: 'decimal', step: '0.01', min: 0, suffix: '%', hint: '0 prints no tax line.' })}
+        {field('paymentTermsDays', 'Payment terms', { type: 'number', inputMode: 'numeric', min: 0, suffix: 'days', hint: 'Due date proposed as issue date plus this.' })}
+        {field('renewalNoticeDays', 'Renewal notice window', { type: 'number', inputMode: 'numeric', min: 0, suffix: 'days' })}
+        {field('suspensionAfterDays', 'Suspension candidate after', { type: 'number', inputMode: 'numeric', min: 0, suffix: 'days overdue' })}
       </Group>
 
       <Group title="Price list" hint="Proposed for new plans. Existing plans keep their figures.">
-        {field('starterMonthly', 'Starter, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
-        {field('standardMonthly', 'Standard, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
-        {field('addonMonthly', 'Add-on sensor, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
-        {field('addonMonthlyCustom', 'Add-on sensor on Custom, per month', { type: 'number', step: '0.01', min: 0, suffix: 'QAR' })}
-        {field('monthsCharged6', 'Months charged on a Semi-Annual term', { type: 'number', min: 0 })}
-        {field('monthsCharged12', 'Months charged on an Annual term', { type: 'number', min: 0, hint: '11 gives one month free.' })}
+        {field('starterMonthly', 'Starter, per month', { type: 'number', inputMode: 'decimal', step: '0.01', min: 0, suffix: 'QAR' })}
+        {field('standardMonthly', 'Standard, per month', { type: 'number', inputMode: 'decimal', step: '0.01', min: 0, suffix: 'QAR' })}
+        {field('addonMonthly', 'Add-on sensor, per month', { type: 'number', inputMode: 'decimal', step: '0.01', min: 0, suffix: 'QAR' })}
+        {field('addonMonthlyCustom', 'Add-on sensor on Custom, per month', { type: 'number', inputMode: 'decimal', step: '0.01', min: 0, suffix: 'QAR' })}
+        {field('monthsCharged6', 'Months charged on a Semi-Annual term', { type: 'number', inputMode: 'numeric', min: 0 })}
+        {field('monthsCharged12', 'Months charged on an Annual term', { type: 'number', inputMode: 'numeric', min: 0, hint: '11 gives one month free.' })}
       </Group>
 
       {error && <p role="alert" className="px-5 pb-5 text-sm text-alert-text">{error}</p>}

@@ -14,7 +14,13 @@ import type { CustomerBilling } from '@/types/billing';
 
 const TH = 'px-4 py-3 font-medium sm:px-6';
 const TD = 'px-4 py-3.5 sm:px-6';
-const FILTER_BASE = 'rounded-chip border px-3 py-1 text-xs font-semibold transition-colors';
+// The customer stays put while the figures scroll on a phone. The cell
+// inherits the row's background so hover and press tints cover it too; the
+// hairline on its right edge marks the seam and goes once nothing scrolls.
+const STICKY = 'sticky left-0 z-10 bg-inherit border-r border-hairline lg:border-r-0';
+// The same press feel as a Button: a fast ease-out scale on :active, and no
+// scale at all when motion is reduced.
+const FILTER_BASE = 'rounded-chip border px-3 py-1 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-[--dur-fast] ease-[--ease-out] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100';
 const FILTER_ON = 'border-transparent bg-primary text-primary-foreground';
 const FILTER_OFF = 'border-border bg-card text-muted-foreground hover:bg-sunken hover:text-foreground';
 
@@ -43,8 +49,8 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
       </div>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-hairline text-left text-muted-foreground">
-            <th className={TH}>Customer</th>
+          <tr className="border-b border-hairline bg-card text-left text-muted-foreground">
+            <th className={`${TH} ${STICKY}`}>Customer</th>
             <th className={TH}>Plan</th>
             <th className={TH}>Sensors</th>
             <th className={`${TH} whitespace-nowrap`}>Term rate</th>
@@ -64,8 +70,8 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
           {rows.map(row => {
             const href = billingDetailHref(row.customerId);
             return (
-              <LinkRow key={row.customerId} href={href}>
-                <td className={TD}>
+              <LinkRow key={row.customerId} href={href} className="bg-card">
+                <td className={`${TD} ${STICKY}`}>
                   <Link href={href} className="font-medium hover:underline">{row.name}</Link>
                   {row.email && <p className="text-xs text-muted-foreground">{row.email}</p>}
                 </td>

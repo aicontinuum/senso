@@ -35,7 +35,11 @@ function lineFrom(l?: Partial<LineInput> & { id?: string }): LineDraft {
 
 const num = (s: string) => { const n = Number.parseFloat(s); return Number.isFinite(n) ? n : 0; };
 const lineAmount = (l: LineDraft) => (l.amount === '' ? round2(num(l.quantity) * num(l.unitAmount)) : num(l.amount));
-const GRID = 'sm:grid-cols-[1fr_5rem_7rem_7rem_2rem]';
+// One row per line from the tablet breakpoint up. On a phone the description
+// takes the full width and the three numbers share the next row with the
+// delete button, under their own small labels, so a line stays one unit.
+const GRID = 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2rem] sm:grid-cols-[minmax(0,1fr)_5rem_7rem_7rem_2rem]';
+const PHONE_LABELS = 'col-span-4 grid grid-cols-subgrid text-xs font-semibold text-muted-foreground sm:hidden';
 
 export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices, now }: Props) {
   const router = useRouter();
@@ -120,10 +124,11 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
           </div>
           {lines.map(l => (
             <div key={l.key} className={`grid gap-2 ${GRID}`}>
-              <Input aria-label="Description" value={l.description} onChange={e => updateLine(l.key, { description: e.target.value })} placeholder="What this line is for" />
-              <Input aria-label="Quantity" type="number" step="0.01" value={l.quantity} onChange={e => updateLine(l.key, { quantity: e.target.value, amount: '' })} />
-              <Input aria-label="Unit amount" type="number" step="0.01" value={l.unitAmount} onChange={e => updateLine(l.key, { unitAmount: e.target.value, amount: '' })} />
-              <Input aria-label="Line amount" type="number" step="0.01" value={l.amount} onChange={e => updateLine(l.key, { amount: e.target.value })} placeholder={String(lineAmount(l))} />
+              <Input aria-label="Description" wrapperClassName="col-span-4 sm:col-span-1" value={l.description} onChange={e => updateLine(l.key, { description: e.target.value })} placeholder="What this line is for" />
+              <div className={PHONE_LABELS} aria-hidden><span>Qty</span><span>Unit</span><span>Amount</span><span /></div>
+              <Input aria-label="Quantity" type="number" inputMode="decimal" step="0.01" value={l.quantity} onChange={e => updateLine(l.key, { quantity: e.target.value, amount: '' })} />
+              <Input aria-label="Unit amount" type="number" inputMode="decimal" step="0.01" value={l.unitAmount} onChange={e => updateLine(l.key, { unitAmount: e.target.value, amount: '' })} />
+              <Input aria-label="Line amount" type="number" inputMode="decimal" step="0.01" value={l.amount} onChange={e => updateLine(l.key, { amount: e.target.value })} placeholder={String(lineAmount(l))} />
               <Button variant="ghost" size="icon" aria-label="Remove line" onClick={() => setLines(ls => ls.filter(x => x.key !== l.key))}><Trash2 className="size-4" /></Button>
             </div>
           ))}
@@ -141,8 +146,8 @@ export function InvoiceDraftEditor({ invoice, settings, subscriptions, invoices,
           <option value="amount">Amount</option>
           <option value="percent">Percent</option>
         </Select>
-        <Input label={discountType === 'percent' ? 'Percent off' : 'Amount off'} type="number" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)} disabled={discountType === ''} />
-        <Input label="Discount label" hint="Printed on the PDF line." value={discountLabel} onChange={e => setDiscountLabel(e.target.value)} disabled={discountType === ''} placeholder="e.g. Pilot pricing" />
+        <Input label={discountType === 'percent' ? 'Percent off' : 'Amount off'} type="number" inputMode="decimal" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)} disabled={discountType === ''} />
+        <Input label="Discount label" hint="Printed on the PDF line." value={discountLabel} onChange={e => setDiscountLabel(e.target.value)} disabled={discountType === ''} placeholder="e.g. Pilot pricing" enterKeyHint="done" />
       </div>
       )}
 
