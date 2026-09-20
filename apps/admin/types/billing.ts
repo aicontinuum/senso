@@ -31,8 +31,6 @@ export type CustomerBillingSummaryRow = {
   overdue_amount: string;
   days_overdue: number;
   suspension_candidate: boolean;
-  awaiting_first_payment: boolean;
-  renewal_needs_invoice: boolean;
   last_payment_on: string | null;
 };
 
@@ -60,8 +58,6 @@ export type CustomerBilling = {
   overdueAmount: number;
   daysOverdue: number;
   suspensionCandidate: boolean;
-  awaitingFirstPayment: boolean;
-  renewalNeedsInvoice: boolean;
   lastPaymentOn: string | null;
 };
 
@@ -112,8 +108,6 @@ export type BillingSettings = {
   standardMonthly: number;
   addonMonthly: number;
   addonMonthlyCustom: number;
-  monthsCharged6: number;
-  monthsCharged12: number;
 };
 
 export type Subscription = {
@@ -215,7 +209,8 @@ export type CustomerBillingDetail = {
 
 export type BillingSummary = {
   annualised: number;
-  outstanding: number;
+  /** Every payment ever recorded, across all customers. */
+  totalPaid: number;
   overdueAmount: number;
   overdueCustomers: number;
   renewalsDueCount: number;
@@ -224,11 +219,9 @@ export type BillingSummary = {
 };
 
 export type NeedsAction = {
-  renewalsNeedingInvoice: UpcomingRenewal[];
   unpaid: OpenInvoice[];
   overdue: OpenInvoice[];
   suspensionCandidates: CustomerBilling[];
-  awaitingFirstPayment: CustomerBilling[];
   /** Plan sensor count differs from what is installed. */
   sensorMismatches: CustomerBilling[];
 };

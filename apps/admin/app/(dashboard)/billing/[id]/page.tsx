@@ -38,7 +38,7 @@ export default async function CustomerBillingPage({ params }: { params: Promise<
         <Headline label="Overdue" tone={customer.overdueAmount > 0 ? 'text-alert-text' : undefined}>
           {customer.overdueAmount > 0 ? `${formatMoney(customer.overdueAmount)} · ${customer.daysOverdue} days` : '—'}
         </Headline>
-        <Headline label="Annualised">{formatMoney(customer.annualised)}</Headline>
+        <Headline label="Annualised Exp. Rev">{formatMoney(customer.annualised)}</Headline>
         <Headline label="Last payment">{formatDate(customer.lastPaymentOn)}</Headline>
       </Card>
 

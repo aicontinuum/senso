@@ -36,7 +36,9 @@ function Dash() {
   return <span className="text-muted-foreground">—</span>;
 }
 
-export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]; filter: BillingStatus | null }) {
+type Props = { rows: CustomerBilling[]; filter: BillingStatus | null; renewalNoticeDays: number };
+
+export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props) {
   return (
     <Card className="overflow-x-auto">
       <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-4 py-3 sm:px-6">
@@ -101,7 +103,7 @@ export function CustomerBillingTable({ rows, filter }: { rows: CustomerBilling[]
                 <td className={TD}><BillingStatusBadge status={row.status} /></td>
                 <td className={`${TD} whitespace-nowrap`}>
                   {row.nextRenewal ? (
-                    <span className={row.renewalNeedsInvoice ? 'font-medium text-warn-text' : ''}>
+                    <span className={row.daysToRenewal !== null && row.daysToRenewal >= 0 && row.daysToRenewal <= renewalNoticeDays ? 'font-medium text-warn-text' : ''}>
                       {formatDate(row.nextRenewal)}
                     </span>
                   ) : <Dash />}

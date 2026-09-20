@@ -147,6 +147,7 @@ select assert((select issue_invoice('00000000-0000-0000-0000-00000000e005', date
 -- ── Payments ────────────────────────────────────────────────────────────────
 insert into payments (invoice_id, customer_id, amount, method, reference) values ('00000000-0000-0000-0000-00000000e001', '00000000-0000-0000-0000-00000000c001', 5000, 'bank_transfer', 'TRX1');
 select assert((select state = 'sent' from invoices where id = '00000000-0000-0000-0000-00000000e001'), 'partial payment leaves invoice sent');
+select assert((select outstanding = 9820 - 5000 from customer_billing_summary where customer_id = '00000000-0000-0000-0000-00000000c001'), 'summary: outstanding is the balance after a part payment');
 insert into payments (invoice_id, customer_id, amount, method) values ('00000000-0000-0000-0000-00000000e001', '00000000-0000-0000-0000-00000000c001', 4820, 'cash');
 select assert((select state = 'paid' from invoices where id = '00000000-0000-0000-0000-00000000e001'), 'payments covering the total settle the invoice');
 select assert_raises($q$select void_invoice('00000000-0000-0000-0000-00000000e001', 'x')$q$, 'paid cannot be voided');

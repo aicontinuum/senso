@@ -19,13 +19,13 @@ type SettingsRow = {
   logo_url: string | null; bank_name: string | null; account_name: string | null; iban: string | null; fawran_alias: string | null;
   tax_registration_number: string | null; tax_rate: string; invoice_prefix: string; payment_terms_days: number;
   renewal_notice_days: number; suspension_after_days: number; starter_monthly: string; standard_monthly: string;
-  addon_monthly: string; addon_monthly_custom: string; months_charged_6: number; months_charged_12: number;
+  addon_monthly: string; addon_monthly_custom: string;
 };
 
 export const SETTINGS_COLUMNS =
   'company_name, cr_number, address, phone, billing_email, logo_url, bank_name, account_name, iban, fawran_alias, '
   + 'tax_registration_number, tax_rate, invoice_prefix, payment_terms_days, renewal_notice_days, suspension_after_days, '
-  + 'starter_monthly, standard_monthly, addon_monthly, addon_monthly_custom, months_charged_6, months_charged_12';
+  + 'starter_monthly, standard_monthly, addon_monthly, addon_monthly_custom';
 
 export function toSettings(row: SettingsRow): BillingSettings {
   return {
@@ -49,8 +49,6 @@ export function toSettings(row: SettingsRow): BillingSettings {
     standardMonthly: parseMoney(row.standard_monthly),
     addonMonthly: parseMoney(row.addon_monthly),
     addonMonthlyCustom: parseMoney(row.addon_monthly_custom),
-    monthsCharged6: row.months_charged_6,
-    monthsCharged12: row.months_charged_12,
   };
 }
 
