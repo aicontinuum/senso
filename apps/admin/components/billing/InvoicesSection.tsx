@@ -14,7 +14,8 @@ import type { Invoice } from '@/types/billing';
 // The customer's invoices, one row each, and nothing else: every row is a
 // link to the invoice's own page, where the editing, sending, paying and
 // history live. A table from desktop width up, a stacked list below it.
-// "New invoice" opens an empty draft and goes straight there.
+// "New invoice" opens an empty draft and goes straight there. Archived
+// (voided, tidied away) invoices hide behind one link at the foot.
 
 type Props = { customerId: string; invoices: Invoice[] };
 
@@ -30,6 +31,10 @@ export function InvoicesSection({ customerId, invoices }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+
+  const archivedCount = invoices.filter(i => i.archivedAt !== null).length;
+  const visible = showArchived ? invoices : invoices.filter(i => i.archivedAt === null);
 
   async function create() {
     setError('');
@@ -44,7 +49,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
       <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
         <div className="flex items-baseline gap-2">
           <CardTitle>Invoices</CardTitle>
-          <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{invoices.length}</span>
+          <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{visible.length}</span>
         </div>
         <Button size="sm" onClick={create} disabled={creating}>
           <Plus className="size-4" />
@@ -54,9 +59,9 @@ export function InvoicesSection({ customerId, invoices }: Props) {
 
       {error && <p role="alert" className="px-5 pt-4 text-sm text-alert-text">{error}</p>}
 
-      {invoices.length === 0 ? (
+      {visible.length === 0 ? (
         <div className="m-5 rounded-inner border border-dashed px-6 py-10 text-center">
-          <p className="text-sm text-muted-foreground">No invoices yet.</p>
+          <p className="text-sm text-muted-foreground">{archivedCount > 0 ? 'Nothing in the list.' : 'No invoices yet.'}</p>
           <p className="mt-1 text-xs text-muted-foreground">New invoice opens a draft; add lines and issue it from there.</p>
         </div>
       ) : (
@@ -75,7 +80,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-hairline">
-              {invoices.map(inv => {
+              {visible.map(inv => {
                 const href = invoiceHref(customerId, inv.id);
                 return (
                   <LinkRow key={inv.id} href={href}>
@@ -86,7 +91,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
                     <td className={`${TD} whitespace-nowrap`}><DueCell invoice={inv} /></td>
                     <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>{formatMoney(inv.total)}</td>
                     <td className={`${TD} whitespace-nowrap text-right tabular-nums text-muted-foreground`}>{inv.paid > 0 ? formatMoney(inv.paid) : '—'}</td>
-                    <td className={TD}><InvoiceStateBadge invoice={inv} /></td>
+                    <td className={`${TD} whitespace-nowrap`}><InvoiceStateBadge invoice={inv} />{inv.archivedAt && <span className="ml-2 text-xs text-muted-foreground">Archived</span>}</td>
                     <td className={`${TD} text-right`}><ChevronRight className="ml-auto size-4 text-muted-foreground" aria-hidden /></td>
                   </LinkRow>
                 );
@@ -96,7 +101,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
 
           {/* Phone: number and state, the dates under, the money on the right. */}
           <ul className="divide-y divide-hairline lg:hidden">
-            {invoices.map(inv => (
+            {visible.map(inv => (
               <li key={inv.id}>
                 <Link href={invoiceHref(customerId, inv.id)} className={LIST_ROW}>
                   <div className="min-w-0 flex-1 text-sm">
@@ -105,6 +110,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{inv.number ?? 'Draft invoice'}</span>
                       {inv.number && <InvoiceStateBadge invoice={inv} />}
+                      {inv.archivedAt && <span className="text-xs text-muted-foreground">Archived</span>}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {inv.issuedOn ? `Issued ${formatDate(inv.issuedOn)}` : 'Not issued'}
@@ -121,6 +127,14 @@ export function InvoicesSection({ customerId, invoices }: Props) {
             ))}
           </ul>
         </>
+      )}
+
+      {archivedCount > 0 && (
+        <div className="border-t border-hairline px-3 py-2">
+          <Button variant="ghost" size="sm" onClick={() => setShowArchived(v => !v)}>
+            {showArchived ? 'Hide archived' : `Show ${archivedCount} archived`}
+          </Button>
+        </div>
       )}
     </Card>
   );
