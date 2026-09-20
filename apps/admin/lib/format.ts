@@ -19,6 +19,12 @@ export function formatMoney(amount: number): string {
   return `${CURRENCY} ${moneyFormatter.format(amount)}`;
 }
 
+/** "4,950" alone, for a display figure that sets the currency code in its
+ *  own smaller type after the number. */
+export function formatAmount(amount: number): string {
+  return moneyFormatter.format(amount);
+}
+
 /** Postgres numeric arrives as a string; a missing value counts as zero. */
 export function parseMoney(value: string | number | null | undefined): number {
   if (value === null || value === undefined) return 0;

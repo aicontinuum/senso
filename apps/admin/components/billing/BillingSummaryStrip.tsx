@@ -1,5 +1,5 @@
 import { Card, StatusDot } from '@senso/ui';
-import { formatMoney } from '@/lib/format';
+import { CURRENCY, formatAmount, formatMoney } from '@/lib/format';
 import { BILLING_STATUSES, BILLING_STATUS_LABEL, BILLING_STATUS_TONE } from '@/lib/billing/constants';
 import type { BillingSummary } from '@/types/billing';
 
@@ -15,6 +15,18 @@ const TILE = 'rounded-inner bg-sunken px-4 py-3';
 const TILE_LABEL = 'text-xs font-medium text-muted-foreground';
 const TILE_VALUE = 'mt-0.5 font-display text-xl font-bold';
 const TILE_NOTE = 'mt-1 text-xs text-muted-foreground';
+
+// A display figure sets the amount first and the currency code after it in
+// smaller, quieter type: the number is what the eye is scanning for, and
+// "5,400 QAR" never breaks into two lines the way "QAR 5,400" did.
+function Money({ amount, className }: { amount: number; className?: string }) {
+  return (
+    <span className={className}>
+      {formatAmount(amount)}
+      <span className="ml-1 text-[0.5em] font-semibold text-muted-foreground">{CURRENCY}</span>
+    </span>
+  );
+}
 
 // The bar's segments carry the status fills; the legend beside them carries
 // the words, so identity never rests on colour alone.
@@ -64,19 +76,19 @@ export function BillingSummaryStrip({ summary, renewalNoticeDays }: { summary: B
             line and the tiles come into view sooner. */}
         <div>
           <p className="text-sm font-medium text-muted-foreground">Annualised Exp. Rev</p>
-          <p className="mt-1 font-display text-4xl font-bold tracking-tight sm:text-5xl">{formatMoney(summary.annualised)}</p>
+          <p className="mt-1 font-display text-3xl font-bold tracking-tight sm:text-4xl"><Money amount={summary.annualised} /></p>
           <p className="mt-2 text-sm text-muted-foreground">from active terms</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className={TILE}>
             <p className={TILE_LABEL}>Total paid</p>
-            <p className={TILE_VALUE}>{formatMoney(summary.totalPaid)}</p>
+            <p className={TILE_VALUE}><Money amount={summary.totalPaid} /></p>
             <p className={TILE_NOTE}>all customers, all time</p>
           </div>
           <div className={TILE}>
             <p className={TILE_LABEL}>Overdue</p>
-            <p className={`${TILE_VALUE} ${summary.overdueAmount > 0 ? 'text-alert-text' : ''}`}>{formatMoney(summary.overdueAmount)}</p>
+            <p className={`${TILE_VALUE} ${summary.overdueAmount > 0 ? 'text-alert-text' : ''}`}><Money amount={summary.overdueAmount} /></p>
             <p className={TILE_NOTE}>{overdueNote(summary)}</p>
           </div>
           <div className={`${TILE} sm:col-span-2 lg:col-span-1`}>
