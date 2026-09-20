@@ -10,7 +10,8 @@ import type { CustomerBilling } from '@/types/billing';
 // One row per customer, in two forms of the same data: a six-column table
 // from desktop width up, and a stacked list below it, where a table would
 // only scroll sideways. Status is a dot before the name rather than a
-// column; the filter chips and the summary bar carry the words. The filter
+// column; the filter chips and the summary bar carry the words. The row is
+// the business name alone: the email lives on the customer's own page. The filter
 // is a set of links carrying ?status=, so the page stays a server component
 // and a filtered view has a URL you can send to someone. Rows arrive
 // sorted; this component only draws them.
@@ -22,7 +23,7 @@ const TD = 'px-4 py-3.5 sm:px-6';
 const FILTER_BASE = 'rounded-chip border px-3 py-1 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-[--dur-fast] ease-[--ease-out] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100';
 const FILTER_ON = 'border-transparent bg-primary text-primary-foreground';
 const FILTER_OFF = 'border-border bg-card text-muted-foreground hover:bg-sunken hover:text-foreground';
-const LIST_ROW = 'flex items-start gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
+const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
 
 function FilterLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -74,12 +75,9 @@ function OutstandingCell({ row }: { row: CustomerBilling }) {
 
 function NameCell({ row, href }: { row: CustomerBilling; href: string }) {
   return (
-    <div className="flex items-start gap-2">
-      <span className="mt-1.5"><BillingStatusDot status={row.status} /></span>
-      <div className="min-w-0">
-        <Link href={href} className={cn('font-medium hover:underline', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</Link>
-        {row.email && <p className="truncate text-xs text-muted-foreground">{row.email}</p>}
-      </div>
+    <div className="flex items-center gap-2">
+      <BillingStatusDot status={row.status} />
+      <Link href={href} className={cn('font-medium hover:underline', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</Link>
     </div>
   );
 }
@@ -134,34 +132,30 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
               </tbody>
             </table>
 
-            {/* Phone: the same rows as a list. Two fact lines under the name,
-                so nothing has to scroll sideways or hide. */}
+            {/* Phone: the same rows as a list. The name alone on the left; on
+                the right the plan and the term rate, and the balance owed
+                when there is one. The renewal date and the sensor mismatch
+                stay on the desktop table and the customer's page. */}
             <ul className="divide-y divide-hairline lg:hidden">
               {rows.map(row => {
                 const href = billingDetailHref(row.customerId);
                 return (
                   <li key={row.customerId}>
                     <Link href={href} className={LIST_ROW}>
-                      <span className="mt-1.5"><BillingStatusDot status={row.status} /></span>
-                      <div className="min-w-0 flex-1 text-sm">
-                        <p className={cn('font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</p>
-                        {row.email && <p className="truncate text-xs text-muted-foreground">{row.email}</p>}
+                      <BillingStatusDot status={row.status} />
+                      <p className={cn('min-w-0 flex-1 truncate text-sm font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</p>
+                      <div className="shrink-0 text-right text-xs">
                         {row.subscriptionCount === 0 ? (
-                          <div className="mt-2 flex items-baseline justify-between gap-4 text-xs">
-                            <span className="text-muted-foreground">No plan yet</span>
-                            <span className="tabular-nums"><OutstandingCell row={row} /></span>
-                          </div>
+                          <p className="text-muted-foreground">No plan yet</p>
                         ) : (
-                        <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                          <div><dt className="sr-only">Plan</dt><dd><PlanCell row={row} /></dd></div>
-                          <div className="text-right"><dt className="sr-only">Renewal</dt><dd><RenewalCell row={row} renewalNoticeDays={renewalNoticeDays} /></dd></div>
-                          <div className="tabular-nums"><dt className="sr-only">Term rate</dt><dd>{row.termTotal !== null ? `${formatMoney(row.termTotal)} / term` : <Dash />}</dd></div>
-                          <div className="text-right tabular-nums"><dt className="sr-only">Outstanding</dt><dd><OutstandingCell row={row} /></dd></div>
-                        </dl>
+                          <>
+                            <p><PlanCell row={row} /></p>
+                            <p className="mt-0.5 tabular-nums">{row.termTotal !== null ? `${formatMoney(row.termTotal)} / term` : <Dash />}</p>
+                          </>
                         )}
-                        {row.sensorMismatch && <p className="mt-1 text-xs"><SensorsCell row={row} /></p>}
+                        {row.outstanding > 0 && <p className="mt-0.5 tabular-nums"><OutstandingCell row={row} /> owed</p>}
                       </div>
-                      <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                     </Link>
                   </li>
                 );
