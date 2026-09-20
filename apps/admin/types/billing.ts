@@ -169,6 +169,8 @@ export type Invoice = {
   sentTo: string[] | null;
   voidedAt: string | null;
   voidReason: string | null;
+  /** Set on a voided invoice the admin has tidied out of the list. */
+  archivedAt: string | null;
   createdAt: string;
   lines: InvoiceLine[];
   payments: Payment[];

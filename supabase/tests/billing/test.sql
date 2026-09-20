@@ -140,6 +140,8 @@ select assert((select state = 'void' and number = 'BT-2027-0001' and void_reason
 select void_invoice('00000000-0000-0000-0000-00000000e003', 'again');
 select assert((select void_reason = 'wrong amount' from invoices where id = '00000000-0000-0000-0000-00000000e003'), 'voiding twice is a no-op');
 select assert_raises($q$update invoices set state = 'sent' where id = '00000000-0000-0000-0000-00000000e003'$q$, 'void cannot be revived');
+update invoices set archived_at = now() where id = '00000000-0000-0000-0000-00000000e003';
+select assert((select archived_at is not null and state = 'void' and number = 'BT-2027-0001' from invoices where id = '00000000-0000-0000-0000-00000000e003'), 'a void invoice can be archived without touching its record');
 select assert_raises($q$insert into payments (invoice_id, customer_id, amount, method) values ('00000000-0000-0000-0000-00000000e003', '00000000-0000-0000-0000-00000000c002', 10, 'cash')$q$, 'no payment against a void');
 insert into invoices (id, customer_id, type) values ('00000000-0000-0000-0000-00000000e005', '00000000-0000-0000-0000-00000000c002', 'adjustment');
 select assert((select issue_invoice('00000000-0000-0000-0000-00000000e005', date '2027-01-04') = 'BT-2027-0003'), 'a voided number is never reused');

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Ban, ChevronLeft, Download, Send, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Ban, ChevronLeft, Download, Send, Trash2 } from 'lucide-react';
 import { Button, Card } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { billingDetailHref } from '@/lib/billing/constants';
@@ -18,7 +18,9 @@ import type { Invoice } from '@/types/billing';
 // the actions this state allows. Each state has at most one filled button:
 // Record payment on an open invoice; a draft's filled button is Issue, which
 // lives in the editor because it saves the lines first. PDF is on every
-// state. Confirmations open in one inline panel under the header.
+// state. A voided invoice can be archived out of the list (and brought
+// back); the record stays. Confirmations open in one inline panel under the
+// header.
 
 type Props = {
   invoice: Invoice;
@@ -26,7 +28,7 @@ type Props = {
   now: number;
 };
 
-type Panel = 'payment' | 'send' | 'void' | 'delete' | null;
+type Panel = 'payment' | 'send' | 'void' | 'delete' | 'archive' | null;
 
 export function InvoiceHeader({ invoice, customer, now }: Props) {
   const router = useRouter();
@@ -38,11 +40,22 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
   const draft = invoice.state === 'draft';
   const open = invoice.state === 'sent';
   const issued = open || invoice.state === 'paid';
+  const voided = invoice.state === 'void';
+  const archived = invoice.archivedAt !== null;
   const backHref = billingDetailHref(customer.id);
 
   const openPanel = (next: Panel) => () => { setError(''); setPanel(next); };
   const close = () => setPanel(null);
   const done = () => { setPanel(null); router.refresh(); };
+
+  async function setArchived(next: boolean) {
+    setBusy(true);
+    setError('');
+    const result = await callApi(`/api/billing/invoices/${invoice.id}/archive`, 'POST', { archived: next });
+    setBusy(false);
+    if (!result.ok) { setError(result.error); return; }
+    done();
+  }
 
   async function discard() {
     setBusy(true);
@@ -67,6 +80,7 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight">{label}</h1>
               <InvoiceStateBadge invoice={invoice} />
+              {archived && <span className="text-xs font-medium text-muted-foreground">Archived</span>}
             </div>
             <p className="text-sm text-muted-foreground">
               {customer.name}{customer.email ? ` · ${customer.email}` : ''}
@@ -80,6 +94,17 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
               {draft && (
                 <Button variant="ghost" size="icon" aria-label="Discard this draft" title="Discard" className="hover:text-alert-text" onClick={openPanel('delete')}>
                   <Trash2 className="size-4" />
+                </Button>
+              )}
+              {voided && !archived && (
+                <Button variant="ghost" size="icon" aria-label={`Archive ${label}`} title="Archive" onClick={openPanel('archive')}>
+                  <Archive className="size-4" />
+                </Button>
+              )}
+              {archived && (
+                <Button variant="ghost" size="sm" onClick={() => setArchived(false)} disabled={busy}>
+                  <ArchiveRestore className="size-4" />
+                  {busy ? 'Restoring…' : 'Unarchive'}
                 </Button>
               )}
               {open && (
@@ -109,6 +134,18 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
           )}
           {panel === 'void' && (
             <InvoiceVoidControl invoiceId={invoice.id} label={label} onDone={done} onCancel={close} />
+          )}
+          {panel === 'archive' && (
+            <InlinePanel
+              title={`Archive ${label}?`}
+              description="It leaves the customer’s invoice list and the counts. The number, lines, payments and history all stay; it can be found under Show archived and brought back."
+              error={error}
+              confirmLabel="Archive invoice"
+              busyLabel="Archiving…"
+              busy={busy}
+              onConfirm={() => setArchived(true)}
+              onCancel={close}
+            />
           )}
           {panel === 'delete' && (
             <InlinePanel

@@ -96,14 +96,14 @@ export type InvoiceRow = {
   number: string | null; issued_on: string | null; due_on: string | null; discount_label: string | null;
   discount_type: DiscountType | null; discount_value: string | null; subtotal: string; discount_amount: string;
   tax_rate: string; tax_amount: string; total: string; internal_notes: string | null; sent_at: string | null;
-  sent_to: string[] | null; voided_at: string | null; void_reason: string | null; created_at: string;
+  sent_to: string[] | null; voided_at: string | null; void_reason: string | null; archived_at: string | null; created_at: string;
   invoice_lines: LineRow[]; payments: PaymentRow[];
 };
 
 export const INVOICE_COLUMNS =
   'id, customer_id, subscription_id, type, state, number, issued_on, due_on, discount_label, discount_type, '
   + 'discount_value, subtotal, discount_amount, tax_rate, tax_amount, total, internal_notes, sent_at, sent_to, '
-  + 'voided_at, void_reason, created_at, '
+  + 'voided_at, void_reason, archived_at, created_at, '
   + 'invoice_lines (id, position, description, quantity, unit_amount, amount), '
   + 'payments (id, invoice_id, amount, paid_on, method, reference, notes)';
 
@@ -144,6 +144,7 @@ export function toInvoice(row: InvoiceRow, now: number): Invoice {
     sentAt: row.sent_at,
     sentTo: row.sent_to,
     voidedAt: row.voided_at,
+    archivedAt: row.archived_at,
     voidReason: row.void_reason,
     createdAt: row.created_at,
     lines: (row.invoice_lines ?? []).map(toLine).sort((a, b) => a.position - b.position),

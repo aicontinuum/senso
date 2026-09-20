@@ -13,6 +13,8 @@ export const EVENT_KIND = {
   invoiceVoided: 'invoice_voided',
   invoiceDeleted: 'invoice_deleted',
   invoiceSent: 'invoice_sent',
+  invoiceArchived: 'invoice_archived',
+  invoiceUnarchived: 'invoice_unarchived',
   payment: 'payment',
   statusChange: 'status_change',
 } as const;

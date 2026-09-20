@@ -21,6 +21,8 @@ export function describeBillingEvent(e: BillingEvent): string {
     case EVENT_KIND.invoiceVoided: return `Invoice ${e.oldValue ?? ''} voided`;
     case EVENT_KIND.invoiceDeleted: return `Discarded a ${e.oldValue ?? 'draft'}`;
     case EVENT_KIND.invoiceSent: return `Invoice ${e.invoiceNumber ?? ''} emailed${e.newValue ? ` to ${e.newValue}` : ''}`;
+    case EVENT_KIND.invoiceArchived: return `Invoice ${e.invoiceNumber ?? ''} archived`;
+    case EVENT_KIND.invoiceUnarchived: return `Invoice ${e.invoiceNumber ?? ''} unarchived`;
     case EVENT_KIND.payment: return `Payment of ${e.newValue ?? ''} by ${PAYMENT_METHOD_LABEL[e.field as PaymentMethod] ?? e.field ?? ''}${at}`;
     case EVENT_KIND.statusChange: return `Status ${e.oldValue ?? ''} → ${e.newValue ?? ''}`;
     default: return `${e.kind}${at}`;
@@ -34,6 +36,8 @@ export function describeInvoiceEvent(e: BillingEvent): string {
     case EVENT_KIND.invoiceIssued: return `Issued as ${e.newValue ?? ''}`;
     case EVENT_KIND.invoiceVoided: return 'Voided';
     case EVENT_KIND.invoiceSent: return `Emailed${e.newValue ? ` to ${e.newValue}` : ''}`;
+    case EVENT_KIND.invoiceArchived: return 'Archived';
+    case EVENT_KIND.invoiceUnarchived: return 'Unarchived';
     case EVENT_KIND.payment: return `Payment of ${e.newValue ?? ''} by ${(PAYMENT_METHOD_LABEL[e.field as PaymentMethod] ?? e.field ?? '').toLowerCase()}`;
     default: return describeBillingEvent({ ...e, invoiceNumber: null });
   }
