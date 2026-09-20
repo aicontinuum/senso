@@ -10,7 +10,8 @@ import type { CustomerBilling } from '@/types/billing';
 // One row per customer, in two forms of the same data: a six-column table
 // from desktop width up, and a stacked list below it, where a table would
 // only scroll sideways. Status is a dot before the name rather than a
-// column; the filter chips and the summary bar carry the words. The filter
+// column; the filter chips and the summary bar carry the words. The row is
+// the business name alone: the email lives on the customer's own page. The filter
 // is a set of links carrying ?status=, so the page stays a server component
 // and a filtered view has a URL you can send to someone. Rows arrive
 // sorted; this component only draws them.
@@ -74,12 +75,9 @@ function OutstandingCell({ row }: { row: CustomerBilling }) {
 
 function NameCell({ row, href }: { row: CustomerBilling; href: string }) {
   return (
-    <div className="flex items-start gap-2">
-      <span className="mt-1.5"><BillingStatusDot status={row.status} /></span>
-      <div className="min-w-0">
-        <Link href={href} className={cn('font-medium hover:underline', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</Link>
-        {row.email && <p className="truncate text-xs text-muted-foreground">{row.email}</p>}
-      </div>
+    <div className="flex items-center gap-2">
+      <BillingStatusDot status={row.status} />
+      <Link href={href} className={cn('font-medium hover:underline', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</Link>
     </div>
   );
 }
@@ -142,10 +140,9 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
                 return (
                   <li key={row.customerId}>
                     <Link href={href} className={LIST_ROW}>
-                      <span className="mt-1.5"><BillingStatusDot status={row.status} /></span>
+                      <span className="mt-[7px]"><BillingStatusDot status={row.status} /></span>
                       <div className="min-w-0 flex-1 text-sm">
                         <p className={cn('font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</p>
-                        {row.email && <p className="truncate text-xs text-muted-foreground">{row.email}</p>}
                         {row.subscriptionCount === 0 ? (
                           <div className="mt-2 flex items-baseline justify-between gap-4 text-xs">
                             <span className="text-muted-foreground">No plan yet</span>
