@@ -13,15 +13,18 @@ import type { Invoice } from '@/types/billing';
 
 // The customer's invoices, one row each, and nothing else: every row is a
 // link to the invoice's own page, where the editing, sending, paying and
-// history live. "New invoice" opens an empty draft and goes straight there.
+// history live. A table from desktop width up, a stacked list below it.
+// "New invoice" opens an empty draft and goes straight there.
 
 type Props = { customerId: string; invoices: Invoice[] };
 
 const TH = 'px-4 py-3 font-medium sm:px-5';
 const TD = 'px-4 py-3.5 sm:px-5';
-// The number stays put while the figures scroll on a phone; see
-// CustomerBillingTable for the same treatment.
-const STICKY = 'sticky left-0 z-10 bg-inherit border-r border-hairline md:border-r-0';
+const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
+
+function DueCell({ invoice }: { invoice: Invoice }) {
+  return <span className={invoice.overdue ? 'font-medium text-alert-text' : 'text-muted-foreground'}>{formatDate(invoice.dueOn)}</span>;
+}
 
 export function InvoicesSection({ customerId, invoices }: Props) {
   const router = useRouter();
@@ -54,14 +57,15 @@ export function InvoicesSection({ customerId, invoices }: Props) {
       {invoices.length === 0 ? (
         <div className="m-5 rounded-inner border border-dashed px-6 py-10 text-center">
           <p className="text-sm text-muted-foreground">No invoices yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">New invoice opens a draft; one click fills it from the plan.</p>
+          <p className="mt-1 text-xs text-muted-foreground">New invoice opens a draft; add lines and issue it from there.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <>
+          {/* Desktop: the table. */}
+          <table className="hidden w-full text-sm lg:table">
             <thead>
-              <tr className="border-b border-hairline bg-card text-left text-muted-foreground">
-                <th className={`${TH} ${STICKY}`}>Number</th>
+              <tr className="border-b border-hairline text-left text-muted-foreground">
+                <th className={TH}>Number</th>
                 <th className={TH}>Issued</th>
                 <th className={TH}>Due</th>
                 <th className={`${TH} text-right`}>Amount</th>
@@ -74,12 +78,12 @@ export function InvoicesSection({ customerId, invoices }: Props) {
               {invoices.map(inv => {
                 const href = invoiceHref(customerId, inv.id);
                 return (
-                  <LinkRow key={inv.id} href={href} className="bg-card">
-                    <td className={`${TD} ${STICKY} whitespace-nowrap font-medium`}>
+                  <LinkRow key={inv.id} href={href}>
+                    <td className={`${TD} whitespace-nowrap font-medium`}>
                       <Link href={href} className="hover:underline">{inv.number ?? 'Draft'}</Link>
                     </td>
                     <td className={`${TD} whitespace-nowrap text-muted-foreground`}>{formatDate(inv.issuedOn)}</td>
-                    <td className={`${TD} whitespace-nowrap ${inv.overdue ? 'font-medium text-alert-text' : 'text-muted-foreground'}`}>{formatDate(inv.dueOn)}</td>
+                    <td className={`${TD} whitespace-nowrap`}><DueCell invoice={inv} /></td>
                     <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>{formatMoney(inv.total)}</td>
                     <td className={`${TD} whitespace-nowrap text-right tabular-nums text-muted-foreground`}>{inv.paid > 0 ? formatMoney(inv.paid) : '—'}</td>
                     <td className={TD}><InvoiceStateBadge invoice={inv} /></td>
@@ -89,7 +93,34 @@ export function InvoicesSection({ customerId, invoices }: Props) {
               })}
             </tbody>
           </table>
-        </div>
+
+          {/* Phone: number and state, the dates under, the money on the right. */}
+          <ul className="divide-y divide-hairline lg:hidden">
+            {invoices.map(inv => (
+              <li key={inv.id}>
+                <Link href={invoiceHref(customerId, inv.id)} className={LIST_ROW}>
+                  <div className="min-w-0 flex-1 text-sm">
+                    {/* A draft has no number, so its state is its name and the
+                        badge would only say it twice. */}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{inv.number ?? 'Draft invoice'}</span>
+                      {inv.number && <InvoiceStateBadge invoice={inv} />}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {inv.issuedOn ? `Issued ${formatDate(inv.issuedOn)}` : 'Not issued'}
+                      {inv.dueOn && <> · Due <DueCell invoice={inv} /></>}
+                    </p>
+                  </div>
+                  <div className="text-right text-sm tabular-nums">
+                    <p>{formatMoney(inv.total)}</p>
+                    {inv.paid > 0 && <p className="text-xs text-muted-foreground">Paid {formatMoney(inv.paid)}</p>}
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </Card>
   );
