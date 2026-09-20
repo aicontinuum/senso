@@ -1,28 +1,28 @@
 import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 import type { BillingStatus } from '@senso/types';
 import { Card, LinkRow, cn } from '@senso/ui';
 import { formatDate, formatMoney } from '@/lib/format';
 import { BILLING_STATUSES, BILLING_STATUS_LABEL, TERM_LABEL, TIER_LABEL, billingDetailHref } from '@/lib/billing/constants';
-import { BillingStatusBadge } from '@/components/billing/BillingStatusBadge';
+import { BillingStatusDot } from '@/components/billing/BillingStatusDot';
 import type { CustomerBilling } from '@/types/billing';
 
-// One row per customer, seven columns so it fits a laptop without a scroll;
-// plan and term share a cell, and the last payment lives on the detail page.
-// The filter is a set of links carrying ?status=, so the
-// page stays a server component and a filtered view has a URL you can send to
-// someone. Rows arrive sorted; this component only draws them.
+// One row per customer, in two forms of the same data: a six-column table
+// from desktop width up, and a stacked list below it, where a table would
+// only scroll sideways. Status is a dot before the name rather than a
+// column; the filter chips and the summary bar carry the words. The filter
+// is a set of links carrying ?status=, so the page stays a server component
+// and a filtered view has a URL you can send to someone. Rows arrive
+// sorted; this component only draws them.
 
 const TH = 'px-4 py-3 font-medium sm:px-6';
 const TD = 'px-4 py-3.5 sm:px-6';
-// The customer stays put while the figures scroll on a phone. The cell
-// inherits the row's background so hover and press tints cover it too; the
-// hairline on its right edge marks the seam and goes once nothing scrolls.
-const STICKY = 'sticky left-0 z-10 bg-inherit border-r border-hairline lg:border-r-0';
 // The same press feel as a Button: a fast ease-out scale on :active, and no
 // scale at all when motion is reduced.
 const FILTER_BASE = 'rounded-chip border px-3 py-1 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-[--dur-fast] ease-[--ease-out] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100';
 const FILTER_ON = 'border-transparent bg-primary text-primary-foreground';
 const FILTER_OFF = 'border-border bg-card text-muted-foreground hover:bg-sunken hover:text-foreground';
+const LIST_ROW = 'flex items-start gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
 
 function FilterLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -36,12 +36,62 @@ function Dash() {
   return <span className="text-muted-foreground">—</span>;
 }
 
+// The cells, written once so the table and the list never disagree.
+
+function PlanCell({ row }: { row: CustomerBilling }) {
+  if (!row.tier || !row.termMonths) return <Dash />;
+  return (
+    <>
+      {TIER_LABEL[row.tier]}
+      <span className="text-muted-foreground"> · {TERM_LABEL[row.termMonths]}</span>
+      {row.subscriptionCount > 1 && <span className="ml-1 text-xs text-muted-foreground">×{row.subscriptionCount}</span>}
+    </>
+  );
+}
+
+function SensorsCell({ row }: { row: CustomerBilling }) {
+  if (row.subscriptionCount === 0) return <Dash />;
+  if (row.sensorMismatch) {
+    return (
+      <span className="font-medium text-warn-text" title="The plan's sensor count is not what is installed">
+        {row.sensorCount} on plan · {row.installedSensors} installed
+      </span>
+    );
+  }
+  return <>{row.sensorCount}</>;
+}
+
+function RenewalCell({ row, renewalNoticeDays }: { row: CustomerBilling; renewalNoticeDays: number }) {
+  if (!row.nextRenewal) return <Dash />;
+  const soon = row.daysToRenewal !== null && row.daysToRenewal >= 0 && row.daysToRenewal <= renewalNoticeDays;
+  return <span className={soon ? 'font-medium text-warn-text' : ''}>{formatDate(row.nextRenewal)}</span>;
+}
+
+function OutstandingCell({ row }: { row: CustomerBilling }) {
+  if (row.outstanding <= 0) return <Dash />;
+  return <span className={row.overdueAmount > 0 ? 'font-medium text-alert-text' : ''}>{formatMoney(row.outstanding)}</span>;
+}
+
+function NameCell({ row, href }: { row: CustomerBilling; href: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="mt-1.5"><BillingStatusDot status={row.status} /></span>
+      <div className="min-w-0">
+        <Link href={href} className={cn('font-medium hover:underline', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</Link>
+        {row.email && <p className="truncate text-xs text-muted-foreground">{row.email}</p>}
+      </div>
+    </div>
+  );
+}
+
 type Props = { rows: CustomerBilling[]; filter: BillingStatus | null; renewalNoticeDays: number };
 
 export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props) {
+  const empty = filter === null ? 'No customers yet.' : `No ${BILLING_STATUS_LABEL[filter].toLowerCase()} customers.`;
+
   return (
-    <Card className="overflow-x-auto">
-      <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-4 py-3 sm:px-6">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
         <FilterLink href="/billing" active={filter === null}>All</FilterLink>
         {BILLING_STATUSES.map(status => (
           <FilterLink key={status} href={`/billing?status=${status}`} active={filter === status}>
@@ -49,77 +99,77 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
           </FilterLink>
         ))}
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-hairline bg-card text-left text-muted-foreground">
-            <th className={`${TH} ${STICKY}`}>Customer</th>
-            <th className={TH}>Plan</th>
-            <th className={TH}>Sensors</th>
-            <th className={`${TH} whitespace-nowrap`}>Term rate</th>
-            <th className={TH}>Status</th>
-            <th className={TH}>Renewal</th>
-            <th className={`${TH} text-right`}>Outstanding</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-hairline">
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={7} className="px-6 py-10 text-center text-muted-foreground">
-                {filter === null ? 'No customers yet.' : `No ${BILLING_STATUS_LABEL[filter].toLowerCase()} customers.`}
-              </td>
-            </tr>
-          )}
-          {rows.map(row => {
-            const href = billingDetailHref(row.customerId);
-            return (
-              <LinkRow key={row.customerId} href={href} className="bg-card">
-                <td className={`${TD} ${STICKY}`}>
-                  <Link href={href} className="font-medium hover:underline">{row.name}</Link>
-                  {row.email && <p className="text-xs text-muted-foreground">{row.email}</p>}
-                </td>
-                <td className={`${TD} whitespace-nowrap`}>
-                  {row.tier && row.termMonths ? (
-                    <>
-                      {TIER_LABEL[row.tier]}
-                      <span className="text-muted-foreground"> · {TERM_LABEL[row.termMonths]}</span>
-                      {row.subscriptionCount > 1 && (
-                        <span className="ml-1 text-xs text-muted-foreground">×{row.subscriptionCount}</span>
-                      )}
-                    </>
-                  ) : <Dash />}
-                </td>
-                <td className={`${TD} whitespace-nowrap tabular-nums`}>
-                  {row.subscriptionCount === 0 ? (
-                    <Dash />
-                  ) : row.sensorMismatch ? (
-                    <span className="font-medium text-warn-text" title="The plan's sensor count is not what is installed">
-                      {row.sensorCount} on plan · {row.installedSensors} installed
-                    </span>
-                  ) : row.sensorCount}
-                </td>
-                <td className={`${TD} whitespace-nowrap tabular-nums`}>
-                  {row.termTotal !== null ? formatMoney(row.termTotal) : <Dash />}
-                </td>
-                <td className={TD}><BillingStatusBadge status={row.status} /></td>
-                <td className={`${TD} whitespace-nowrap`}>
-                  {row.nextRenewal ? (
-                    <span className={row.daysToRenewal !== null && row.daysToRenewal >= 0 && row.daysToRenewal <= renewalNoticeDays ? 'font-medium text-warn-text' : ''}>
-                      {formatDate(row.nextRenewal)}
-                    </span>
-                  ) : <Dash />}
-                </td>
-                <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>
-                  {row.outstanding > 0 ? (
-                    <span className={row.overdueAmount > 0 ? 'font-medium text-alert-text' : ''}>
-                      {formatMoney(row.outstanding)}
-                    </span>
-                  ) : <Dash />}
-                </td>
-              </LinkRow>
-            );
-          })}
-        </tbody>
-      </table>
-    </Card>
+
+      <Card className="overflow-hidden">
+        {rows.length === 0 ? (
+          <p className="px-6 py-10 text-center text-sm text-muted-foreground">{empty}</p>
+        ) : (
+          <>
+            {/* Desktop: the table. */}
+            <table className="hidden w-full text-sm lg:table">
+              <thead>
+                <tr className="border-b border-hairline text-left text-muted-foreground">
+                  <th className={TH}>Customer</th>
+                  <th className={TH}>Plan</th>
+                  <th className={TH}>Sensors</th>
+                  <th className={`${TH} whitespace-nowrap`}>Term rate</th>
+                  <th className={TH}>Renewal</th>
+                  <th className={`${TH} text-right`}>Outstanding</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline">
+                {rows.map(row => {
+                  const href = billingDetailHref(row.customerId);
+                  return (
+                    <LinkRow key={row.customerId} href={href}>
+                      <td className={TD}><NameCell row={row} href={href} /></td>
+                      <td className={`${TD} whitespace-nowrap`}><PlanCell row={row} /></td>
+                      <td className={`${TD} whitespace-nowrap tabular-nums`}><SensorsCell row={row} /></td>
+                      <td className={`${TD} whitespace-nowrap tabular-nums`}>{row.termTotal !== null ? formatMoney(row.termTotal) : <Dash />}</td>
+                      <td className={`${TD} whitespace-nowrap`}><RenewalCell row={row} renewalNoticeDays={renewalNoticeDays} /></td>
+                      <td className={`${TD} whitespace-nowrap text-right tabular-nums`}><OutstandingCell row={row} /></td>
+                    </LinkRow>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Phone: the same rows as a list. Two fact lines under the name,
+                so nothing has to scroll sideways or hide. */}
+            <ul className="divide-y divide-hairline lg:hidden">
+              {rows.map(row => {
+                const href = billingDetailHref(row.customerId);
+                return (
+                  <li key={row.customerId}>
+                    <Link href={href} className={LIST_ROW}>
+                      <span className="mt-1.5"><BillingStatusDot status={row.status} /></span>
+                      <div className="min-w-0 flex-1 text-sm">
+                        <p className={cn('font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</p>
+                        {row.email && <p className="truncate text-xs text-muted-foreground">{row.email}</p>}
+                        {row.subscriptionCount === 0 ? (
+                          <div className="mt-2 flex items-baseline justify-between gap-4 text-xs">
+                            <span className="text-muted-foreground">No plan yet</span>
+                            <span className="tabular-nums"><OutstandingCell row={row} /></span>
+                          </div>
+                        ) : (
+                        <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          <div><dt className="sr-only">Plan</dt><dd><PlanCell row={row} /></dd></div>
+                          <div className="text-right"><dt className="sr-only">Renewal</dt><dd><RenewalCell row={row} renewalNoticeDays={renewalNoticeDays} /></dd></div>
+                          <div className="tabular-nums"><dt className="sr-only">Term rate</dt><dd>{row.termTotal !== null ? `${formatMoney(row.termTotal)} / term` : <Dash />}</dd></div>
+                          <div className="text-right tabular-nums"><dt className="sr-only">Outstanding</dt><dd><OutstandingCell row={row} /></dd></div>
+                        </dl>
+                        )}
+                        {row.sensorMismatch && <p className="mt-1 text-xs"><SensorsCell row={row} /></p>}
+                      </div>
+                      <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </Card>
+    </div>
   );
 }
