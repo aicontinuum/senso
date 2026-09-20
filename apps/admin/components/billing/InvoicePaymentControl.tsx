@@ -55,12 +55,12 @@ export function InvoicePaymentControl({ invoice, customerId, now, onDone, onCanc
       onCancel={onCancel}
     >
       <div className="grid gap-3 sm:grid-cols-[8rem_10rem_10rem_1fr]">
-        <Input label="Amount" type="number" step="0.01" min={0.01} value={amount} onChange={e => setAmount(e.target.value)} />
+        <Input label="Amount" type="number" inputMode="decimal" step="0.01" min={0.01} value={amount} onChange={e => setAmount(e.target.value)} />
         <Input label="Received on" type="date" value={paidOn} onChange={e => setPaidOn(e.target.value)} />
         <Select label="Method" value={method} onChange={e => setMethod(e.target.value as PaymentMethod)}>
           {METHODS.map(m => <option key={m} value={m}>{PAYMENT_METHOD_LABEL[m]}</option>)}
         </Select>
-        <Input label="Reference (optional)" value={reference} onChange={e => setReference(e.target.value)} placeholder="Transfer or cheque number" />
+        <Input label="Reference (optional)" value={reference} onChange={e => setReference(e.target.value)} placeholder="Transfer or cheque number" autoCapitalize="characters" autoCorrect="off" enterKeyHint="done" />
       </div>
     </InlinePanel>
   );

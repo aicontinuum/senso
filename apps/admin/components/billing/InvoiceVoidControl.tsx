@@ -37,7 +37,7 @@ export function InvoiceVoidControl({ invoiceId, label, onDone, onCancel }: Props
       onConfirm={submit}
       onCancel={onCancel}
     >
-      <Input label="Reason (optional)" hint="Kept in the change log." value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Wrong sensor count" wrapperClassName="sm:max-w-md" />
+      <Input label="Reason (optional)" hint="Kept in the change log." value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Wrong sensor count" enterKeyHint="done" wrapperClassName="sm:max-w-md" />
     </InlinePanel>
   );
 }

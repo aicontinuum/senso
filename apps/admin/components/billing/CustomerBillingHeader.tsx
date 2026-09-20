@@ -53,9 +53,16 @@ export function CustomerBillingHeader({ customer }: Props) {
         <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
           <Link href="/billing"><ChevronLeft className="size-4" />Billing</Link>
         </Button>
+        {/* Title and subtitle are one block so that on a phone, where the
+            actions wrap, they wrap below both rather than between them. */}
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
-          <BillingStatusBadge status={customer.status} />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
+              <BillingStatusBadge status={customer.status} />
+            </div>
+            {customer.email && <p className="text-sm text-muted-foreground">{customer.email}</p>}
+          </div>
           <span className="ml-auto flex items-center gap-2">
             <Button asChild variant="secondary" size="sm">
               <Link href={`/customers/${customer.customerId}`}><UserRound className="size-4" />Customer record</Link>
@@ -71,7 +78,6 @@ export function CustomerBillingHeader({ customer }: Props) {
             ))}
           </span>
         </div>
-        {customer.email && <p className="text-sm text-muted-foreground">{customer.email}</p>}
       </div>
 
       {(banner || open) && (
@@ -93,7 +99,7 @@ export function CustomerBillingHeader({ customer }: Props) {
                 onConfirm={apply}
                 onCancel={() => { setOpen(false); setError(''); }}
               >
-                <Input label="Reason" hint="Kept in the change log." value={reason} onChange={e => setReason(e.target.value)} placeholder={suspended ? 'e.g. Transfer received' : 'e.g. 60 days overdue, no reply'} wrapperClassName="sm:max-w-md" />
+                <Input label="Reason" hint="Kept in the change log." value={reason} onChange={e => setReason(e.target.value)} placeholder={suspended ? 'e.g. Transfer received' : 'e.g. 60 days overdue, no reply'} enterKeyHint="done" wrapperClassName="sm:max-w-md" />
               </InlinePanel>
             </div>
           )}

@@ -19,6 +19,9 @@ type Props = { customerId: string; invoices: Invoice[] };
 
 const TH = 'px-4 py-3 font-medium sm:px-5';
 const TD = 'px-4 py-3.5 sm:px-5';
+// The number stays put while the figures scroll on a phone; see
+// CustomerBillingTable for the same treatment.
+const STICKY = 'sticky left-0 z-10 bg-inherit border-r border-hairline md:border-r-0';
 
 export function InvoicesSection({ customerId, invoices }: Props) {
   const router = useRouter();
@@ -57,8 +60,8 @@ export function InvoicesSection({ customerId, invoices }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-hairline text-left text-muted-foreground">
-                <th className={TH}>Number</th>
+              <tr className="border-b border-hairline bg-card text-left text-muted-foreground">
+                <th className={`${TH} ${STICKY}`}>Number</th>
                 <th className={TH}>Issued</th>
                 <th className={TH}>Due</th>
                 <th className={`${TH} text-right`}>Amount</th>
@@ -71,8 +74,8 @@ export function InvoicesSection({ customerId, invoices }: Props) {
               {invoices.map(inv => {
                 const href = invoiceHref(customerId, inv.id);
                 return (
-                  <LinkRow key={inv.id} href={href}>
-                    <td className={`${TD} whitespace-nowrap font-medium`}>
+                  <LinkRow key={inv.id} href={href} className="bg-card">
+                    <td className={`${TD} ${STICKY} whitespace-nowrap font-medium`}>
                       <Link href={href} className="hover:underline">{inv.number ?? 'Draft'}</Link>
                     </td>
                     <td className={`${TD} whitespace-nowrap text-muted-foreground`}>{formatDate(inv.issuedOn)}</td>
