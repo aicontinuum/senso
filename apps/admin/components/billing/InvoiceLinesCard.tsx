@@ -41,7 +41,6 @@ export function InvoiceLinesCard({ invoice }: { invoice: Invoice }) {
             <tr className="border-b border-hairline text-left text-muted-foreground">
               <th className={TH}>Description</th>
               <th className={`${TH} text-right`}>Qty</th>
-              <th className={`${TH} text-right`}>Unit</th>
               <th className={`${TH} text-right`}>Amount</th>
             </tr>
           </thead>
@@ -50,7 +49,6 @@ export function InvoiceLinesCard({ invoice }: { invoice: Invoice }) {
               <tr key={l.id}>
                 <td className={TD}>{l.description}</td>
                 <td className={`${TD} whitespace-nowrap text-right tabular-nums text-muted-foreground`}>{l.quantity}</td>
-                <td className={`${TD} whitespace-nowrap text-right tabular-nums text-muted-foreground`}>{formatMoney(l.unitAmount)}</td>
                 <td className={`${TD} whitespace-nowrap text-right tabular-nums`}>{formatMoney(l.amount)}</td>
               </tr>
             ))}

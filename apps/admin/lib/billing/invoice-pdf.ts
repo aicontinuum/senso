@@ -91,17 +91,16 @@ export function buildInvoicePdf(invoice: Invoice, customer: InvoiceCustomer, set
   y += 6;
 
   // Lines.
-  const colQty = MARGIN + 118, colUnit = MARGIN + 146, colAmt = PAGE_W - MARGIN;
+  // The quantity column doubles as the right edge of the totals' labels.
+  const colQty = MARGIN + 130, colAmt = PAGE_W - MARGIN;
   text('Description', MARGIN, 8, { muted: true, bold: true });
   text('Qty', colQty, 8, { muted: true, bold: true, align: 'right' });
-  text('Unit', colUnit, 8, { muted: true, bold: true, align: 'right' });
   text('Amount', colAmt, 8, { muted: true, bold: true, align: 'right' });
   y += 2.5; rule(); y += 5.5;
   for (const line of invoice.lines) {
-    const wrapped = doc.splitTextToSize(line.description, 100) as string[];
+    const wrapped = doc.splitTextToSize(line.description, 115) as string[];
     text(wrapped[0], MARGIN, 10);
     text(String(line.quantity), colQty, 10, { align: 'right' });
-    text(formatMoney(line.unitAmount), colUnit, 10, { align: 'right' });
     text(formatMoney(line.amount), colAmt, 10, { align: 'right' });
     for (const extra of wrapped.slice(1)) { y += 4.5; text(extra, MARGIN, 10); }
     y += 6.5;
@@ -119,7 +118,7 @@ export function buildInvoicePdf(invoice: Invoice, customer: InvoiceCustomer, set
     totals.push(['Balance', formatMoney(Math.max(0, invoice.total - invoice.paid)), true]);
   }
   for (const [k, v, bold] of totals) {
-    text(k, colUnit, bold ? 11 : 10, { muted: !bold, bold, align: 'right' });
+    text(k, colQty, bold ? 11 : 10, { muted: !bold, bold, align: 'right' });
     text(v, colAmt, bold ? 11 : 10, { bold, align: 'right' });
     y += bold ? 7 : 5.5;
   }

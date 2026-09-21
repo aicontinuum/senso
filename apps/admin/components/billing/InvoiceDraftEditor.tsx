@@ -21,22 +21,23 @@ type Props = {
   now: number;
 };
 
-type LineDraft = { key: string; description: string; quantity: string; unitAmount: string; amount: string };
+// Amount is the line total, typed as one figure. Qty is only a count the
+// customer sees beside it on the PDF; it never multiplies anything.
+type LineDraft = { key: string; description: string; quantity: string; amount: string };
 
 function lineFrom(l?: Partial<LineInput> & { id?: string }): LineDraft {
   return {
     key: l?.id ?? crypto.randomUUID(), description: l?.description ?? '',
-    quantity: String(l?.quantity ?? 1), unitAmount: String(l?.unitAmount ?? 0), amount: l?.amount === undefined ? '' : String(l.amount),
+    quantity: String(l?.quantity ?? 1), amount: String(l?.amount ?? 0),
   };
 }
 
 const num = (s: string) => { const n = Number.parseFloat(s); return Number.isFinite(n) ? n : 0; };
-const lineAmount = (l: LineDraft) => (l.amount === '' ? round2(num(l.quantity) * num(l.unitAmount)) : num(l.amount));
 // One row per line from the tablet breakpoint up. On a phone the description
-// takes the full width and the three numbers share the next row with the
+// takes the full width and the two numbers share the next row with the
 // delete button, under their own small labels, so a line stays one unit.
-const GRID = 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2rem] sm:grid-cols-[minmax(0,1fr)_5rem_7rem_7rem_2rem]';
-const PHONE_LABELS = 'col-span-4 grid grid-cols-subgrid text-xs font-semibold text-muted-foreground sm:hidden';
+const GRID = 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem] sm:grid-cols-[minmax(0,1fr)_5rem_8rem_2rem]';
+const PHONE_LABELS = 'col-span-3 grid grid-cols-subgrid text-xs font-semibold text-muted-foreground sm:hidden';
 
 export function InvoiceDraftEditor({ invoice, settings, now }: Props) {
   const router = useRouter();
@@ -50,7 +51,7 @@ export function InvoiceDraftEditor({ invoice, settings, now }: Props) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
-  const subtotal = round2(lines.reduce((sum, l) => sum + lineAmount(l), 0));
+  const subtotal = round2(lines.reduce((sum, l) => sum + num(l.amount), 0));
   const discount = discountType === 'amount' ? Math.min(num(discountValue), subtotal)
     : discountType === 'percent' ? round2(subtotal * num(discountValue) / 100) : 0;
   const tax = round2((subtotal - discount) * invoice.taxRate);
@@ -78,7 +79,7 @@ export function InvoiceDraftEditor({ invoice, settings, now }: Props) {
       discountValue: discountType ? discountValue : null,
       discountLabel,
       lines: lines.filter(l => l.description.trim() !== '').map(l => ({
-        description: l.description, quantity: num(l.quantity), unitAmount: num(l.unitAmount), amount: l.amount === '' ? undefined : num(l.amount),
+        description: l.description, quantity: num(l.quantity), amount: num(l.amount),
       })),
     });
     if (!result.ok) setError(result.error);
@@ -113,15 +114,14 @@ export function InvoiceDraftEditor({ invoice, settings, now }: Props) {
       ) : (
         <div className="space-y-2">
           <div className={`hidden gap-2 text-xs font-semibold text-muted-foreground sm:grid ${GRID}`}>
-            <span>Description</span><span>Qty</span><span>Unit</span><span>Amount</span><span />
+            <span>Description</span><span>Qty</span><span>Amount</span><span />
           </div>
           {lines.map(l => (
             <div key={l.key} className={`grid gap-2 ${GRID}`}>
-              <Input aria-label="Description" wrapperClassName="col-span-4 sm:col-span-1" value={l.description} onChange={e => updateLine(l.key, { description: e.target.value })} placeholder="What this line is for" />
-              <div className={PHONE_LABELS} aria-hidden><span>Qty</span><span>Unit</span><span>Amount</span><span /></div>
-              <Input aria-label="Quantity" type="number" inputMode="decimal" step="0.01" value={l.quantity} onChange={e => updateLine(l.key, { quantity: e.target.value, amount: '' })} />
-              <Input aria-label="Unit amount" type="number" inputMode="decimal" step="0.01" value={l.unitAmount} onChange={e => updateLine(l.key, { unitAmount: e.target.value, amount: '' })} />
-              <Input aria-label="Line amount" type="number" inputMode="decimal" step="0.01" value={l.amount} onChange={e => updateLine(l.key, { amount: e.target.value })} placeholder={String(lineAmount(l))} />
+              <Input aria-label="Description" wrapperClassName="col-span-3 sm:col-span-1" value={l.description} onChange={e => updateLine(l.key, { description: e.target.value })} placeholder="What this line is for" />
+              <div className={PHONE_LABELS} aria-hidden><span>Qty</span><span>Amount</span><span /></div>
+              <Input aria-label="Quantity" type="number" inputMode="decimal" step="0.01" value={l.quantity} onChange={e => updateLine(l.key, { quantity: e.target.value })} />
+              <Input aria-label="Line amount" type="number" inputMode="decimal" step="0.01" value={l.amount} onChange={e => updateLine(l.key, { amount: e.target.value })} />
               <Button variant="ghost" size="icon" aria-label="Remove line" onClick={() => setLines(ls => ls.filter(x => x.key !== l.key))}><Trash2 className="size-4" /></Button>
             </div>
           ))}
@@ -130,7 +130,7 @@ export function InvoiceDraftEditor({ invoice, settings, now }: Props) {
 
       {/* The add button sits under the lines because that is where a new one
           lands; on an empty draft it is the only thing to do first. */}
-      <Button variant="ghost" size="sm" onClick={() => addLines([{ description: '', quantity: 1, unitAmount: 0, amount: 0 }])}>
+      <Button variant="ghost" size="sm" onClick={() => addLines([{ description: '', quantity: 1, amount: 0 }])}>
         <Plus className="size-4" />Blank line
       </Button>
 

@@ -57,7 +57,6 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
       lines: [{
         description: `Mid-term ${sign}: ${formatMoney(Math.abs(suggestion.monthlyDifference))}/month × ${suggestion.monthsRemaining} months remaining`,
         quantity: suggestion.monthsRemaining,
-        unitAmount: suggestion.monthlyDifference,
         amount: suggestion.amount,
       }],
     });
