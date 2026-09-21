@@ -132,7 +132,7 @@ export type InvoiceLine = {
   position: number;
   description: string;
   quantity: number;
-  unitAmount: number;
+  /** The line total; what is summed and printed. */
   amount: number;
 };
 

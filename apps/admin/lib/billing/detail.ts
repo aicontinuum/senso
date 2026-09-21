@@ -87,7 +87,7 @@ export function toSubscription(row: SubscriptionRow): Subscription {
   };
 }
 
-type LineRow = { id: string; position: number; description: string; quantity: string; unit_amount: string; amount: string };
+type LineRow = { id: string; position: number; description: string; quantity: string; amount: string };
 type PaymentRow = {
   id: string; invoice_id: string; amount: string; paid_on: string; method: PaymentMethod; reference: string | null; notes: string | null;
 };
@@ -104,13 +104,13 @@ export const INVOICE_COLUMNS =
   'id, customer_id, subscription_id, type, state, number, issued_on, due_on, discount_label, discount_type, '
   + 'discount_value, subtotal, discount_amount, tax_rate, tax_amount, total, internal_notes, sent_at, sent_to, '
   + 'voided_at, void_reason, archived_at, created_at, '
-  + 'invoice_lines (id, position, description, quantity, unit_amount, amount), '
+  + 'invoice_lines (id, position, description, quantity, amount), '
   + 'payments (id, invoice_id, amount, paid_on, method, reference, notes)';
 
 function toLine(row: LineRow): InvoiceLine {
   return {
     id: row.id, position: row.position, description: row.description,
-    quantity: parseMoney(row.quantity), unitAmount: parseMoney(row.unit_amount), amount: parseMoney(row.amount),
+    quantity: parseMoney(row.quantity), amount: parseMoney(row.amount),
   };
 }
 
