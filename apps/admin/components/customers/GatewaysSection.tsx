@@ -3,18 +3,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Unlink } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, CardTitle, Input } from '@senso/ui';
-import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import { Badge, Button, Card, CardHeader, CardTitle, Select } from '@senso/ui';
+import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
+import { LinkGatewayForm } from '@/components/customers/LinkGatewayForm';
+import type { Branch } from '@/types/branches';
 
-// The customer's gateways, with the technician's two jobs on them: link a new
-// one by its EUI, and unlink one that is being removed. Unlinking is a soft
-// delete on the server that also retires every sensor on the gateway; their
-// readings stay for the compliance record, and the confirmation says so.
+// The customer's gateways, with the technician's jobs on them: link a new
+// one by its EUI, move one to another branch, and unlink one that is being
+// removed. Unlinking is a soft delete on the server that also retires every
+// sensor on the gateway; their readings stay for the compliance record, and
+// the confirmation says so. The Branch column exists only once the customer
+// has a second branch.
 
 export type GatewayRow = {
   id: string;
   name: string | null;
+  branch_id: string;
   is_online: boolean;
   firmware_version: string | null;
   last_seen_at: string | null;
@@ -25,6 +30,7 @@ type LinkedSensor = { gateway_id: string; name: string };
 
 interface GatewaysSectionProps {
   customerId: string;
+  branches: Branch[];
   gateways: GatewayRow[];
   /** Live sensors, so the unlink confirmation can name what goes with the gateway. */
   sensors: LinkedSensor[];
@@ -40,69 +46,32 @@ function unlinkWarning(linked: LinkedSensor[]): string {
   return `Unlinking retires ${linked.length} sensor${linked.length > 1 ? 's' : ''} (${names}). Readings are kept.`;
 }
 
-export function GatewaysSection({ customerId, gateways, sensors, now }: GatewaysSectionProps) {
+export function GatewaysSection({ customerId, branches, gateways, sensors, now }: GatewaysSectionProps) {
   const router = useRouter();
-
   const [adding, setAdding] = useState(false);
-  const [eui, setEui] = useState('');
-  const [name, setName] = useState('');
-  const [formError, setFormError] = useState('');
-  const [linking, setLinking] = useState(false);
-
   const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
-  const [unlinking, setUnlinking] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const multiBranch = branches.length > 1;
 
-  function resetForm() {
-    setEui('');
-    setName('');
-    setFormError('');
-  }
-
-  async function linkGateway() {
-    setFormError('');
-    const normalised = normaliseIdentifier(eui);
-    if (!isValidGatewayId(normalised)) {
-      setFormError('Invalid Gateway EUI — expected 16 hex characters, e.g. 2cf7f11081400088');
-      return;
-    }
-    if (!name.trim()) {
-      setFormError('Gateway name is required');
-      return;
-    }
-    setLinking(true);
-    try {
-      const res = await fetch(`/api/customers/${customerId}/gateways`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ macAddress: normalised, name }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFormError(data.error ?? 'Failed to link gateway');
-        return;
-      }
-      resetForm();
-      setAdding(false);
-      router.refresh();
-    } finally {
-      setLinking(false);
-    }
+  async function moveGateway(gatewayId: string, branchId: string) {
+    setError('');
+    setBusyId(gatewayId);
+    const result = await callApi(`/api/customers/${customerId}/gateways/${gatewayId}`, 'PATCH', { branchId });
+    setBusyId(null);
+    if (!result.ok) { setError(result.error); return; }
+    router.refresh();
   }
 
   async function unlinkGateway(gatewayId: string) {
-    setUnlinking(true);
-    try {
-      const res = await fetch(`/api/customers/${customerId}/gateways/${gatewayId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setConfirmUnlinkId(null);
-        router.refresh();
-      }
-    } finally {
-      setUnlinking(false);
-    }
+    setError('');
+    setBusyId(gatewayId);
+    const result = await callApi(`/api/customers/${customerId}/gateways/${gatewayId}`, 'DELETE');
+    setBusyId(null);
+    if (!result.ok) { setError(result.error); return; }
+    setConfirmUnlinkId(null);
+    router.refresh();
   }
-
-  const canSubmit = !linking && eui.trim() !== '' && name.trim() !== '';
 
   return (
     <Card className="overflow-hidden">
@@ -112,47 +81,16 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
           <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{gateways.length}</span>
         </div>
         {!adding && (
-          <Button size="sm" onClick={() => { resetForm(); setAdding(true); }}>
+          <Button size="sm" onClick={() => setAdding(true)}>
             <Plus className="size-4" />
             Link gateway
           </Button>
         )}
       </CardHeader>
 
-      {/* The form opens where the click landed, under the header. */}
       {adding && (
         <div className="border-b border-hairline px-5 py-4">
-          <Card tone="sunken" className="space-y-4 p-4 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]">
-            <p className="text-sm font-semibold">Link a gateway</p>
-
-            <Input
-              label="Gateway EUI"
-              hint="From the label on the gateway."
-              value={eui}
-              onChange={e => { setEui(e.target.value); setFormError(''); }}
-              onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="2cf7f11081400088"
-              className="font-mono"
-              error={formError || undefined}
-            />
-
-            <Input
-              label="Name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && linkGateway()}
-              placeholder="e.g. Kitchen gateway"
-            />
-
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={linkGateway} disabled={!canSubmit}>
-                {linking ? 'Linking…' : 'Link gateway'}
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => { setAdding(false); resetForm(); }}>
-                Cancel
-              </Button>
-            </div>
-          </Card>
+          <LinkGatewayForm customerId={customerId} branches={branches} onDone={() => { setAdding(false); router.refresh(); }} onCancel={() => setAdding(false)} />
         </div>
       )}
 
@@ -167,6 +105,7 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Name</th>
+                {multiBranch && <th className={TH}>Branch</th>}
                 <th className={TH}>EUI</th>
                 <th className={TH}>Firmware</th>
                 <th className={`${TH} whitespace-nowrap`}>Last seen</th>
@@ -177,39 +116,32 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
             <tbody className="divide-y divide-hairline">
               {gateways.map(g => {
                 const linked = sensors.filter(s => s.gateway_id === g.id);
+                const busy = busyId === g.id;
                 return (
                   <tr key={g.id}>
                     <td className={`${TD} whitespace-nowrap font-medium`}>{g.name ?? g.id}</td>
+                    {multiBranch && (
+                      <td className={TD}>
+                        <Select aria-label={`Branch of ${g.name ?? g.id}`} value={g.branch_id} onChange={e => moveGateway(g.id, e.target.value)} disabled={busy} wrapperClassName="w-44">
+                          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </Select>
+                      </td>
+                    )}
                     <td className={`${TD} font-mono text-xs text-muted-foreground`}>{g.mac_address ?? '—'}</td>
                     <td className={`${TD} text-muted-foreground`}>{g.firmware_version ?? '—'}</td>
                     <td className={`${TD} whitespace-nowrap text-muted-foreground`}>{formatAgo(g.last_seen_at, now)}</td>
                     <td className={TD}>
-                      <Badge variant={g.is_online ? 'ok' : 'offline'} dot>
-                        {g.is_online ? 'Online' : 'Offline'}
-                      </Badge>
+                      <Badge variant={g.is_online ? 'ok' : 'offline'} dot>{g.is_online ? 'Online' : 'Offline'}</Badge>
                     </td>
                     <td className={`${TD} text-right`}>
                       {confirmUnlinkId === g.id ? (
-                        // The "are you sure" step, inline where the click landed,
-                        // naming the sensors that go with the gateway.
                         <span className="flex items-center justify-end gap-2">
                           <span className="max-w-xs text-right text-xs text-muted-foreground">{unlinkWarning(linked)}</span>
-                          <Button variant="danger" size="sm" onClick={() => unlinkGateway(g.id)} disabled={unlinking}>
-                            {unlinking ? 'Unlinking…' : 'Unlink'}
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setConfirmUnlinkId(null)} disabled={unlinking}>
-                            Cancel
-                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => unlinkGateway(g.id)} disabled={busy}>{busy ? 'Unlinking…' : 'Unlink'}</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setConfirmUnlinkId(null)} disabled={busy}>Cancel</Button>
                         </span>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Unlink ${g.name ?? g.id}`}
-                          title="Unlink"
-                          className="hover:text-alert-text"
-                          onClick={() => setConfirmUnlinkId(g.id)}
-                        >
+                        <Button variant="ghost" size="icon" aria-label={`Unlink ${g.name ?? g.id}`} title="Unlink" className="hover:text-alert-text" onClick={() => setConfirmUnlinkId(g.id)}>
                           <Unlink className="size-4" />
                         </Button>
                       )}
@@ -221,7 +153,7 @@ export function GatewaysSection({ customerId, gateways, sensors, now }: Gateways
           </table>
         </div>
       )}
-
+      {error && <p role="alert" className="px-5 pb-4 text-sm text-alert-text">{error}</p>}
     </Card>
   );
 }

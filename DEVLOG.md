@@ -35,9 +35,32 @@ inserts gateways, and it had to change before the migration goes live.
 **Tests.** `supabase/tests/branches/` — 21 cases on PostgreSQL 16, including
 RLS as a signed-in customer through a stub `auth.uid()`.
 
-Next: phase 2, the admin UI (add and rename branches, assign a gateway).
 Phases 3 and 4 (customer app grouping, per-branch recipients and address)
 wait for a real two-site customer.
+
+## 2026-09-23 — Branches, phase 2: the admin side
+
+**Customer page.** A Branches card between Account and Gateways: each row
+is the name, the address (or "No address") and how many live gateways sit
+there, with Edit inline and Remove only where the database would allow it
+(not the last branch, not one that has ever had a gateway). Add branch opens
+the same form under the header. `BranchForm` serves both add and edit.
+
+**Gateways card.** The link form (`LinkGatewayForm`, split out of the
+section, which was over size) shows a Branch picker only when the customer
+has more than one branch. The table gains a Branch column under the same
+condition, and that cell is a select: changing it moves the gateway. With
+one branch the card is pixel-for-pixel what it was.
+
+**Routes.** `POST /api/customers/[id]/branches`, `PATCH` and `DELETE`
+`…/branches/[branchId]`, `PATCH …/gateways/[gatewayId]` (`{ branchId }`).
+All admin-only through the shared `requireAdmin`; a duplicate name comes
+back 409 in words; the branch lookup is scoped to the customer, so another
+customer's id is a 404. The database guards remain the last word.
+
+Flagged, not touched: `customers/[id]/page.tsx` calls `Date.now()` in the
+component body, which the React compiler lint refuses. Predates this work;
+the billing loader's fix (return `now` from the loader) is the pattern.
 
 ---
 
