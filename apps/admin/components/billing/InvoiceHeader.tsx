@@ -87,7 +87,7 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
             </p>
           </div>
           {panel === null && (
-            <span className="ml-auto flex items-center gap-1">
+            <span className="flex w-full items-center gap-1 sm:ml-auto sm:w-auto">
               <Button asChild variant="ghost" size="icon" aria-label={`Download ${label} as PDF`} title="Download PDF">
                 <a href={`/api/billing/invoices/${invoice.id}/pdf`}><Download className="size-4" /></a>
               </Button>
@@ -113,12 +113,12 @@ export function InvoiceHeader({ invoice, customer, now }: Props) {
                 </Button>
               )}
               {issued && (
-                <Button variant={open ? 'secondary' : 'ghost'} size="sm" className="ml-1" onClick={openPanel('send')}>
+                <Button variant={open ? 'secondary' : 'ghost'} size="sm" className="ml-1 flex-1 sm:flex-none" onClick={openPanel('send')}>
                   <Send className="size-4" />
                   {invoice.sentAt ? 'Resend' : 'Send'}
                 </Button>
               )}
-              {open && <Button size="sm" onClick={openPanel('payment')}>Record payment</Button>}
+              {open && <Button size="sm" className="flex-1 sm:flex-none" onClick={openPanel('payment')}>Record payment</Button>}
             </span>
           )}
         </div>
