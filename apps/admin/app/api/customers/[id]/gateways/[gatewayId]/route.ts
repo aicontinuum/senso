@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing/route-helpers';
+import { requireUuid } from '@/lib/billing/validate';
+import { findCustomerBranch } from '@/lib/branches/load';
 
 export async function DELETE(
   _request: Request,
@@ -56,4 +59,36 @@ export async function DELETE(
   }
 
   return NextResponse.json({ success: true });
+}
+
+/** Move a live gateway to another of the customer's branches. The database
+ *  refuses a branch of another customer; the lookup here says so in words. */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string; gatewayId: string }> },
+) {
+  const ctx = await requireAdmin();
+  if (isDenied(ctx)) return ctx.response;
+  try {
+    const { id, gatewayId } = await params;
+    const customerId = requireUuid(id, 'customer');
+    const body = await readJson(request);
+    const branch = await findCustomerBranch(ctx.admin, customerId, requireUuid(body.branchId, 'branch'));
+    if (!branch) return NextResponse.json({ error: 'Branch not found' }, { status: 404 });
+
+    const { data, error } = await ctx.admin
+      .from('gateways')
+      .update({ branch_id: branch.id })
+      .eq('id', requireUuid(gatewayId, 'gateway'))
+      .eq('customer_id', customerId)
+      .is('decommissioned_at', null)
+      .select('id')
+      .maybeSingle();
+    if (error) throw new Error(`${error.code} ${error.message}`);
+    if (!data) return NextResponse.json({ error: 'Gateway not found' }, { status: 404 });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return failureResponse('move gateway', error);
+  }
 }

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
+import { loadBranches } from '@/lib/branches/load';
 import { CustomerDetailClient } from './CustomerDetailClient';
 
 export default async function CustomerDetailPage({
@@ -20,12 +21,15 @@ export default async function CustomerDetailPage({
 
   if (!customer) notFound();
 
-  const { data: gateways } = await admin
-    .from('gateways')
-    .select('id, name, is_online, firmware_version, last_seen_at, mac_address')
-    .eq('customer_id', id)
-    .is('decommissioned_at', null)
-    .order('created_at', { ascending: true });
+  const [branches, { data: gateways }] = await Promise.all([
+    loadBranches(admin, id),
+    admin
+      .from('gateways')
+      .select('id, name, branch_id, is_online, firmware_version, last_seen_at, mac_address')
+      .eq('customer_id', id)
+      .is('decommissioned_at', null)
+      .order('created_at', { ascending: true }),
+  ]);
 
   const gatewayIds = (gateways ?? []).map(g => g.id);
 
@@ -82,6 +86,7 @@ export default async function CustomerDetailPage({
   return (
     <CustomerDetailClient
       customer={customer}
+      branches={branches}
       gateways={gatewayRows}
       sensors={sensorRows}
       now={now}
