@@ -3,31 +3,36 @@ import { Plus } from "lucide-react";
 import { Button, Card, StatusDot } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
-import { SensorCard } from "@/components/dashboard/SensorCard";
+import { SensorGrid } from "@/components/dashboard/SensorGrid";
+import { BranchFilter } from "@/components/dashboard/BranchFilter";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
+import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, loadBranches, selectedBranch } from "@/lib/branches";
 import type { Sensor, AlertConfig } from "@senso/types";
 
-// The design system fixes the sensor tile floor at 268px: below that a tile
-// cannot hold a reading and its supporting rows side by side.
-const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]";
+// With one branch the page is a summary bar and a grid of tiles. With more,
+// a filter sits above the grid and, on All, the tiles are grouped under a
+// heading per branch; the summary bar counts whatever is shown.
 
-// Tiles cascade in rather than all landing at once. The step stays short and
-// caps early: a fleet of forty fridges must not take two seconds to appear.
-const TILE_STAGGER_MS = 40;
-const TILE_STAGGER_MAX = 8;
-
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const customer = await requireCustomer();
   const now = Date.now();
 
   const supabase = await createClient();
 
-  const { data: gateways } = await supabase
-    .from("gateways")
-    .select("id, name, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at)")
-    .eq("customer_id", customer.id)
-    .is("decommissioned_at", null);
+  const [branches, { data: allGateways }, params] = await Promise.all([
+    loadBranches(supabase, customer.id),
+    supabase
+      .from("gateways")
+      .select("id, name, branch_id, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at)")
+      .eq("customer_id", customer.id)
+      .is("decommissioned_at", null),
+    searchParams,
+  ]);
+  const multiBranch = hasBranches(branches);
+  const branch = selectedBranch(params[BRANCH_PARAM], branches);
+  // Everything below is scoped to the chosen branch, the summary bar included.
+  const gateways = (allGateways ?? []).filter((g) => branch === ALL_BRANCHES || g.branch_id === branch);
 
   // Retired sensors keep their readings for the compliance record but must not
   // appear as live devices.
@@ -43,6 +48,7 @@ export default async function DashboardPage() {
       }) => ({
         ...s,
         gatewayId: g.id,
+        branchId: g.branch_id as string,
       })),
   );
   const sensorIds = allSensors.map((s) => s.id);
@@ -92,8 +98,8 @@ export default async function DashboardPage() {
   const pendingCount = allSensors.length - inServiceSensors.length;
   const onlineCount = inServiceSensors.filter((s) => sensorOnlineById.get(s.id)).length;
   const offlineCount = inServiceSensors.length - onlineCount;
-  const hasGateway = (gateways ?? []).length > 0;
-  const gatewayOnline = (gateways ?? []).some((g) => isGatewayOnline(g.is_online, g.last_seen_at));
+  const gatewayCount = gateways.length;
+  const gatewaysOnline = gateways.filter((g) => isGatewayOnline(g.is_online, g.last_seen_at)).length;
 
   
   const configMap = new Map<string, AlertConfig>();
@@ -112,6 +118,7 @@ export default async function DashboardPage() {
     }
   }
 
+  const branchOfSensor = new Map(allSensors.map((s) => [s.id, s.branchId]));
   const sensors: Sensor[] = allSensors.map((s) => {
     const lr = lastReadingBySensor.get(s.id);
     return {
@@ -125,6 +132,10 @@ export default async function DashboardPage() {
       lastReading: lr ? { id: lr.id, sensorId: s.id, temperature: lr.temperature, recordedAt: lr.recorded_at } : undefined,
     };
   });
+
+  const grid = (items: Sensor[]) => (
+    <SensorGrid sensors={items} configBySensor={configMap} activeAlertSensorIds={activeAlertSensorIds} timezone={customer.timezone} now={now} />
+  );
 
   return (
     <div>
@@ -142,13 +153,17 @@ export default async function DashboardPage() {
       {/* One card, hairline-divided into three, so the summary reads as a
           single instrument rather than three boxes. */}
       <Card className="mb-6 grid grid-cols-3 divide-x divide-hairline overflow-hidden">
-        <SummaryItem label="Gateway">
-          {!hasGateway ? (
+        <SummaryItem label={gatewayCount > 1 ? "Gateways" : "Gateway"}>
+          {gatewayCount === 0 ? (
             <span className="text-sm text-muted-foreground">None</span>
           ) : (
+            // One gateway is online or offline. Several are counted, so one
+            // dark site is never hidden behind another that is fine.
             <span className="flex items-center gap-1.5 text-sm font-medium">
-              <StatusDot status={gatewayOnline ? "ok" : "offline"} className="size-2" />
-              {gatewayOnline ? "Online" : "Offline"}
+              <StatusDot status={gatewaysOnline === gatewayCount ? "ok" : "offline"} className="size-2" />
+              {gatewayCount === 1
+                ? (gatewaysOnline === 1 ? "Online" : "Offline")
+                : `${gatewaysOnline} of ${gatewayCount} online`}
             </span>
           )}
         </SummaryItem>
@@ -176,31 +191,35 @@ export default async function DashboardPage() {
         </SummaryItem>
       </Card>
 
-      <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
+      {multiBranch ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Sensors</h2>
+          <BranchFilter branches={branches} selected={branch} />
+        </div>
+      ) : (
+        <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
+      )}
 
       {sensors.length === 0 ? (
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">No sensors yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">Add a gateway and sensors to start monitoring.</p>
         </div>
-      ) : (
-        <div className={SENSOR_GRID}>
-          {sensors.map((sensor, i) => (
-            <div
-              key={sensor.id}
-              className="animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]"
-              style={{ animationDelay: `${Math.min(i, TILE_STAGGER_MAX) * TILE_STAGGER_MS}ms` }}
-            >
-              <SensorCard
-                sensor={sensor}
-                alertConfig={configMap.get(sensor.id)}
-                hasActiveAlert={activeAlertSensorIds.has(sensor.id)}
-                timezone={customer.timezone}
-                now={now}
-              />
-            </div>
+      ) : multiBranch && branch === ALL_BRANCHES ? (
+        // Every branch, each under its own heading, so the eye finds a site
+        // before it finds a fridge.
+        <div className="space-y-8">
+          {groupByBranch(branches, sensors, (s) => branchOfSensor.get(s.id) ?? "").map(({ branch: b, items }) => (
+            <section key={b.id} aria-label={b.name}>
+              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{b.name}</h3>
+              {items.length === 0
+                ? <p className="text-sm text-muted-foreground">No sensors at this branch.</p>
+                : grid(items)}
+            </section>
           ))}
         </div>
+      ) : (
+        grid(sensors)
       )}
     </div>
   );
