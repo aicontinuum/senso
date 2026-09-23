@@ -1,4 +1,4 @@
-# Senso — Project Bible
+# Senso — Project Reference
 
 ## What is Senso?
 

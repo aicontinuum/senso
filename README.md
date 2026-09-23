@@ -138,7 +138,7 @@ Two open risks worth knowing on day one:
 
 | File | What it is |
 |---|---|
-| `SENSO.md` | Project bible — business model, both sites, data model, vocabulary |
+| `SENSO.md` | Project reference — business model, both sites, data model, vocabulary |
 | `CLAUDE.md` | Working rules for anyone (or anything) writing code here |
 | `DEVLOG.md` | What was built each session, and the reasoning. Most recent first. |
 | `TODO.md` | Open work, ranked. Includes decisions deliberately closed. |
