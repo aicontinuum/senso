@@ -154,7 +154,6 @@ Do not build any of the following unless explicitly instructed:
 - Payment processing or automated billing
 - SMS or push notifications
 - Mobile app or native code
-- Multi-location support per customer
 - Additional sensor types beyond temperature
 - Customer self-signup flows
 - A separate technician login or role

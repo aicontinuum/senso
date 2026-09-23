@@ -19,7 +19,7 @@ export async function POST(
   }
 
   const { id: customerId } = await params;
-  const { macAddress, name } = await request.json();
+  const { macAddress, name, branchId } = await request.json();
 
   if (!macAddress || typeof macAddress !== 'string') {
     return NextResponse.json({ error: 'Gateway EUI is required' }, { status: 400 });
@@ -47,10 +47,28 @@ export async function POST(
     return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
   }
 
+  // Every gateway sits in a branch. A customer with one branch never has to
+  // say which; with several, the caller must. The lookup is scoped to the
+  // customer, so a branch id from another customer is simply not found.
+  const { data: branches, error: branchesError } = await admin
+    .from('branches')
+    .select('id')
+    .eq('customer_id', customerId);
+  if (branchesError) {
+    return NextResponse.json({ error: 'Could not load branches' }, { status: 500 });
+  }
+  const branch = typeof branchId === 'string'
+    ? branches.find(b => b.id === branchId)
+    : branches.length === 1 ? branches[0] : undefined;
+  if (!branch) {
+    return NextResponse.json({ error: 'Choose which branch this gateway is installed at' }, { status: 400 });
+  }
+
   const { data: gateway, error: insertError } = await admin
     .from('gateways')
     .insert({
       customer_id: customerId,
+      branch_id: branch.id,
       mac_address: normalised,
       name: name?.trim() || null,
       is_online: false,

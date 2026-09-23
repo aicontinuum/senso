@@ -4,6 +4,43 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-23 — Branches, phase 1: the schema
+
+Multi-location support, taken off the out-of-scope list by decision today. The
+plan is four phases; this is the first and is invisible to every customer.
+
+**What a branch is.** A row in `branches` (`customer_id`, `name`, optional
+`address`) and a required `branch_id` on `gateways`. It is a grouping on the
+gateway, not a security boundary: ownership still resolves sensor → gateway →
+customer, so `customer_owns_sensor()` and every existing policy are untouched.
+Customers read their own branches through one select policy; writes are
+service-role only.
+
+**Every customer has one.** The migration creates a branch per existing
+customer named after the business and points their gateway at it; a trigger
+on `customers` does the same for every customer created from here on. So the
+invariant "a gateway is always in a branch" holds without the admin create
+route knowing about branches at all.
+
+**Guards.** A gateway's branch must belong to the gateway's customer (checked
+on insert and on any change of branch or customer); a branch never moves
+between customers; a branch with a gateway cannot be deleted; names are
+unique per customer ignoring case and spacing.
+
+**Admin route.** `POST /api/customers/[id]/gateways` now resolves the branch:
+the customer's only one when there is one, otherwise a `branchId` from the
+body that must be one of the customer's own. That is the one code path that
+inserts gateways, and it had to change before the migration goes live.
+
+**Tests.** `supabase/tests/branches/` — 21 cases on PostgreSQL 16, including
+RLS as a signed-in customer through a stub `auth.uid()`.
+
+Next: phase 2, the admin UI (add and rename branches, assign a gateway).
+Phases 3 and 4 (customer app grouping, per-branch recipients and address)
+wait for a real two-site customer.
+
+---
+
 ## 2026-09-19 — Billing: data model and the top-level page
 
 Manual invoicing, as SENSO.md has always said: no gateway, no card. The admin
