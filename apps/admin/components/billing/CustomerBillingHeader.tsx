@@ -54,7 +54,9 @@ export function CustomerBillingHeader({ customer }: Props) {
           <Link href="/billing"><ChevronLeft className="size-4" />Billing</Link>
         </Button>
         {/* Title and subtitle are one block so that on a phone, where the
-            actions wrap, they wrap below both rather than between them. */}
+            actions wrap, they wrap below both rather than between them, and
+            there they take the full width as an even pair rather than
+            hanging off the right edge. */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
@@ -63,16 +65,16 @@ export function CustomerBillingHeader({ customer }: Props) {
             </div>
             {customer.email && <p className="text-sm text-muted-foreground">{customer.email}</p>}
           </div>
-          <span className="ml-auto flex items-center gap-2">
-            <Button asChild variant="secondary" size="sm">
+          <span className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+            <Button asChild variant="secondary" size="sm" className="flex-1 sm:flex-none">
               <Link href={`/customers/${customer.customerId}`}><UserRound className="size-4" />Customer record</Link>
             </Button>
             {!open && (suspended ? (
-              <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+              <Button variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => setOpen(true)}>
                 <RotateCcw className="size-4" />Reactivate
               </Button>
             ) : (
-              <Button variant="ghost" size="sm" className="hover:text-alert-text" onClick={() => setOpen(true)}>
+              <Button variant="secondary" size="sm" className="flex-1 hover:text-alert-text sm:flex-none" onClick={() => setOpen(true)}>
                 <Ban className="size-4" />Suspend
               </Button>
             ))}
