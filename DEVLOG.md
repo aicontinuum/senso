@@ -61,6 +61,36 @@ customer's id is a 404. The database guards remain the last word.
 Flagged, not touched: `customers/[id]/page.tsx` calls `Date.now()` in the
 component body, which the React compiler lint refuses. Predates this work;
 the billing loader's fix (return `now` from the loader) is the pattern.
+(Fixed later the same day: the page now loads through `lib/customers/detail.ts`.)
+
+## 2026-09-23 — Branches, phase 3a: the customer dashboard
+
+Brought forward from "when a two-site customer exists" because the home
+account is now one, for testing.
+
+**One branch: unchanged.** `hasBranches()` is the gate everywhere; it is
+true only from the second branch on.
+
+**Two or more.** A segmented filter (All branches, then each branch) sits
+beside the Sensors heading; the choice is `?branch=` in the URL, so the
+page stays a server component and a filtered view is a link. On All, tiles
+are grouped under a heading per branch, empty branches included, so a site
+with nothing installed yet is still visible. On one branch, that branch's
+tiles alone. The summary bar counts what is shown.
+
+**Gateway tile.** With several gateways it now reads "1 of 2 online" rather
+than "Online", so one dark site is not hidden behind another that is fine.
+This holds for any customer with two gateways, branches or not.
+
+Split out of the page: `SensorGrid` (the tiles and their stagger) and
+`BranchFilter` (the segmented control writing to the URL). The branch
+helpers live in `lib/branches.ts` for the pages that follow.
+
+Flagged, not touched: `dashboard/page.tsx` has the same `Date.now()` in
+the component body as the admin page had. Same fix applies.
+
+Next: branch name on the sensor and alert pages, the branch picker on
+Reports, grouping in Settings.
 
 ---
 
