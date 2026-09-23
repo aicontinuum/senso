@@ -175,8 +175,12 @@ Platform (no customer)
 
 - `readings.temperature` is **`TempC_DS`**, the external probe — *not* `TempC_SHT`, which
   is the unit's internal sensor reading room temperature outside the fridge.
-- A **`sites`/`branches`** layer (`customers → sites → gateways`) is anticipated for
-  multi-branch customers, mirroring ChirpStack's tenant/application split. Not built yet.
+- **Branches** (`customers → branches → gateways`, `20260925_branches.sql`) are a
+  customer's locations. A branch is a grouping on the gateway, not a security
+  boundary: ownership still resolves sensor → gateway → customer and no policy
+  changed. Every customer has at least one, created with the customer and named
+  after it, so a single-site customer sees nothing new; the branch UI appears only
+  once a second branch exists. Admin creates branches; customers do not.
 
 ---
 
@@ -308,7 +312,6 @@ producible after equipment is replaced.
 
 - Payment processing or billing automation
 - SMS or push notifications
-- Multi-location support per customer account
 - Mobile app
 - Additional sensor types beyond temperature
 - Customer self-signup (onboarding is always manual)
