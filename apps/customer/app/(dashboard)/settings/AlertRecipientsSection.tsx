@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
-import { Button, Card, Input, Select } from "@senso/ui";
+import { Badge, Button, Card, Input, Select } from "@senso/ui";
 import { isValidRecipient, normaliseRecipient } from "@senso/recipients";
 import { SettingsCard } from "./SettingsCard";
 import { ALL_BRANCHES, hasBranches, type BranchOption } from "@/lib/branches";
@@ -100,13 +100,14 @@ export function AlertRecipientsSection({ initialEmails, branches }: Props) {
         ) : (
           <Card tone="sunken" className="divide-y divide-hairline overflow-hidden">
             {rows.map(({ scope, email }) => (
-              <div key={`${scope}:${email}`} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                  <span className="truncate font-medium">{email}</span>
-                  {multiBranch && (
-                    <span className={scope === ALL_BRANCHES ? "text-xs font-medium" : "text-xs text-muted-foreground"}>{nameOf(scope)}</span>
-                  )}
-                </span>
+              <div key={`${scope}:${email}`} className="flex items-center gap-3 py-2 pl-4 pr-2 text-sm">
+                <span className="min-w-0 flex-1 truncate font-medium">{email}</span>
+                {/* The chip is the rule made visible: the all-branches chip
+                    is filled and the branch chip is only outlined, so the
+                    wider reach is the heavier mark. */}
+                {multiBranch && (
+                  <Badge variant="outline" className={scope === ALL_BRANCHES ? "shrink-0 bg-card" : "shrink-0 text-muted-foreground"}>{nameOf(scope)}</Badge>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -114,7 +115,7 @@ export function AlertRecipientsSection({ initialEmails, branches }: Props) {
                   disabled={saving}
                   aria-label={`Remove ${email} from ${nameOf(scope)}`}
                   title="Remove"
-                  className="size-7 shrink-0"
+                  className="size-8 shrink-0 text-muted-foreground"
                 >
                   <X className="size-4" />
                 </Button>
@@ -123,7 +124,9 @@ export function AlertRecipientsSection({ initialEmails, branches }: Props) {
           </Card>
         )}
 
-        {/* Address, then which branch, then Add. Stacks on a phone. */}
+        {/* Address, then which branch, then Add. The address is what gets
+            typed, so it takes the room; the branch is a pick from a short
+            list and stays narrow. Stacks on a phone. */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
           <Input
             aria-label="Email address to add"
@@ -136,17 +139,17 @@ export function AlertRecipientsSection({ initialEmails, branches }: Props) {
             value={newEmail}
             onChange={(e) => { setNewEmail(e.target.value); setEmailError(""); }}
             onKeyDown={(e) => e.key === "Enter" && addEmail()}
-            placeholder="name@example.com"
+            placeholder="Email address"
             error={emailError || undefined}
             wrapperClassName="min-w-0 flex-1"
           />
           {multiBranch && (
-            <Select aria-label="Branch the address is for" value={newScope} onChange={(e) => setNewScope(e.target.value)} wrapperClassName="sm:w-44">
+            <Select aria-label="Branch the address is for" value={newScope} onChange={(e) => setNewScope(e.target.value)} wrapperClassName="sm:w-36">
               <option value={ALL_BRANCHES}>{ALL_LABEL}</option>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           )}
-          <Button variant="secondary" onClick={addEmail} disabled={saving || newEmail.trim() === ""} className="self-start">
+          <Button variant="secondary" onClick={addEmail} disabled={saving || newEmail.trim() === ""} className="w-full shrink-0 sm:w-auto">
             <Plus className="size-4" />
             Add
           </Button>
