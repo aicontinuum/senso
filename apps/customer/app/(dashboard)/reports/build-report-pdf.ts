@@ -12,7 +12,7 @@ import { commissionedNote } from "@/lib/commissioning";
 import { commentForReading } from "@/lib/alert-comments";
 import { COMMENT_PDF_MAX_LINES } from "@/lib/constants";
 import { STATUS_TEXT_RGB, NEUTRAL_RGB } from "@/lib/status-colors";
-import { retiredNote, type ReportSensor } from "./report-model";
+import { reportSubject, retiredNote, type ReportSensor } from "./report-model";
 
 export async function buildReportPDF(
   sensors: ReportSensor[],
@@ -20,8 +20,6 @@ export async function buildReportPDF(
   now: number,
   customerName: string,
   timezone: string,
-  /** The premises the report covers, when the branch has one on record. */
-  address: string | null,
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -61,7 +59,7 @@ export async function buildReportPDF(
   };
 
   let isFirst = true;
-  for (const { sensor, history, readings, notes } of sensors) {
+  for (const { sensor, address, history, readings, notes } of sensors) {
     if (!isFirst) doc.addPage();
     isFirst = false;
     let y = margin;
@@ -88,7 +86,9 @@ export async function buildReportPDF(
     y += 6;
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(customerName, margin, y);
+    // Each page names its own premises, so a report spanning branches still
+    // says where every sensor is.
+    doc.text(reportSubject(customerName, sensor.branchName), margin, y);
     y += 5;
     if (address) {
       doc.text(address, margin, y);

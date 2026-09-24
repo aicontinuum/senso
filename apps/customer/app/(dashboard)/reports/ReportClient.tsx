@@ -16,7 +16,7 @@ import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
 import type { AlertNote } from "@/lib/alert-comments";
 import { REPORT_ALERT_LOOKBACK } from "@/lib/constants";
-import { hasBranches, type BranchOption } from "@/lib/branches";
+import { ALL_BRANCHES, hasBranches, type BranchOption } from "@/lib/branches";
 import { buildReportPDF } from "./build-report-pdf";
 import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
@@ -28,6 +28,7 @@ import {
   VIEW_PARAM,
   rangeOption,
   reportFileName,
+  reportSubject as subjectOf,
   retiredNote,
   type RangeValue,
   type ReadingShape,
@@ -56,18 +57,18 @@ interface Props {
 }
 
 export function ReportClient({ customerName, branches, sensors: allSensors, timezone }: Props) {
-  // A report covers one branch: it is a record for one premises, with one
-  // address, and an inspector asks for one location. With a single branch
-  // the choice does not exist and the whole account is the branch.
-  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
-  const sensors = hasBranches(branches) ? allSensors.filter((s) => s.branchId === branchId) : allSensors;
-  const branch = branches.find((b) => b.id === branchId);
-  const branchName = hasBranches(branches) ? branch?.name ?? null : null;
-  // What the report is about, as its header, file and share text say it. The
-  // address prints whenever there is one, single branch or not: a premises
-  // on record belongs on the record.
-  const reportSubject = branchName ? `${customerName} — ${branchName}` : customerName;
-  const reportAddress = branch?.address ?? null;
+  // A report covers all branches or one, as the dashboard does, and starts
+  // on all. Each sensor's section names its own branch and address, so a
+  // report across branches still says where every sensor is, and an
+  // inspector asking for one location picks that branch. With a single
+  // branch the choice does not exist and the whole account is the branch.
+  const multiBranch = hasBranches(branches);
+  const [branchId, setBranchId] = useState(ALL_BRANCHES);
+  const sensorsOf = (id: string) => (multiBranch && id !== ALL_BRANCHES ? allSensors.filter((s) => s.branchId === id) : allSensors);
+  const sensors = sensorsOf(branchId);
+  const addressOf = (s: SensorShape) => branches.find((b) => b.id === s.branchId)?.address ?? null;
+  // What the report as a whole is about, as its file and share text say it.
+  const reportSubject = subjectOf(customerName, multiBranch && branchId !== ALL_BRANCHES ? branches.find((b) => b.id === branchId)?.name ?? null : null);
 
   // A sensor that was never commissioned has no reportable history at all — only
   // readings taken before it was installed — so it cannot be selected. Retired
@@ -133,10 +134,10 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
   }
 
   // A new branch means a new sensor list, so the selection starts over with
-  // that branch's live sensors, as the page did on first load.
+  // its live sensors, as the page did on first load.
   function changeBranch(next: string) {
     setBranchId(next);
-    setSelectedIds(new Set(allSensors.filter((s) => s.branchId === next && s.commissionedAt !== null && s.decommissionedAt === null).map((s) => s.id)));
+    setSelectedIds(new Set(sensorsOf(next).filter((s) => s.commissionedAt !== null && s.decommissionedAt === null).map((s) => s.id)));
     setGenerated(false);
   }
 
@@ -280,6 +281,7 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
     .filter((s) => selectedIds.has(s.id))
     .map((s) => ({
       sensor: s,
+      address: addressOf(s),
       history: historyBySensor.get(s.id) ?? [],
       readings: inServiceReadings(s.commissionedAt, readingsBySensor.get(s.id) ?? []),
       notes: notesBySensor.get(s.id) ?? [],
@@ -290,12 +292,12 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
   const mailtoHref = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareText)}`;
 
   async function handlePrint() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone, reportAddress);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
     doc.output("dataurlnewwindow");
   }
 
   async function handleShare() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone, reportAddress);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
     const blob = doc.output("blob");
     const file = new File([blob], reportFileName("pdf", now), { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
@@ -318,8 +320,11 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
     // row of an episode makes it worse at that job — while also being the one
     // place customer-typed text could carry a spreadsheet formula. The PDF is
     // the compliance document, and it carries them.
-    for (const { sensor, history, readings } of reportSensors) {
+    for (const { sensor, address, history, readings } of reportSensors) {
       lines.push(`"${sensor.name}"`);
+      // Where the sensor is, for an extract that may span branches.
+      if (sensor.branchName) lines.push(`"Branch: ${sensor.branchName}"`);
+      if (address) lines.push(`"${address}"`);
       const csvDeviceId = formatDevEui(sensor.hardwareId);
       if (csvDeviceId) lines.push(`"Device ID: ${csvDeviceId}"`);
       const csvCommissioned = commissionedNote(sensor.commissionedAt, periodStart, timezone);
@@ -348,7 +353,7 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
   }
 
   async function downloadPDF() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone, reportAddress);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
     doc.save(reportFileName("pdf", now));
   }
 
@@ -397,8 +402,7 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
       {showReport && (
         <ReportPreview
           sensors={reportSensors}
-          customerName={reportSubject}
-          address={reportAddress}
+          customerName={customerName}
           timezone={timezone}
           periodStart={periodStart}
           now={now}

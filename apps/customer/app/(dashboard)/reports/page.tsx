@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { ReportClient } from "./ReportClient";
-import { loadBranches } from "@/lib/branches";
+import { hasBranches, loadBranches } from "@/lib/branches";
 
 export default async function ReportsPage() {
   const customer = await requireCustomer();
@@ -24,7 +24,12 @@ export default async function ReportsPage() {
       .eq("customer_id", customer.id),
   ]);
 
-  const sensors = (gateways ?? []).flatMap(
+  const multiBranch = hasBranches(branches);
+  const branchNameOf = (id: string) => (multiBranch ? branches.find((b) => b.id === id)?.name ?? null : null);
+  // Gateways come back in no particular order; listing sensors branch by
+  // branch keeps an all-branches picker readable in one pass.
+  const branchRank = new Map(branches.map((b, i) => [b.id, i]));
+  const sensors = (gateways ?? []).sort((a, b) => (branchRank.get(a.branch_id as string) ?? 0) - (branchRank.get(b.branch_id as string) ?? 0)).flatMap(
     (g) => ((g.sensors ?? []) as {
       id: string;
       name: string;
@@ -36,6 +41,7 @@ export default async function ReportsPage() {
         id: s.id,
         name: s.name,
         branchId: g.branch_id as string,
+        branchName: branchNameOf(g.branch_id as string),
         hardwareId: s.hardware_id,
         decommissionedAt: s.decommissioned_at,
         commissionedAt: s.commissioned_at,
