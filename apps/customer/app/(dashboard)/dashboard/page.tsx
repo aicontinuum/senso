@@ -1,6 +1,4 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
-import { Button, Card, StatusDot } from "@senso/ui";
+import { Card, StatusDot } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorGrid } from "@/components/dashboard/SensorGrid";
@@ -12,7 +10,7 @@ import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, loadBranches, s
 import type { Sensor, AlertConfig } from "@senso/types";
 
 // With one branch the page is a summary bar and a grid of tiles. With more,
-// a branch dropdown sits beside the Sensors heading and, on All, the tiles
+// a branch dropdown sits beside the page title and, on All, the tiles
 // are grouped under a heading per branch that carries the site's own
 // counts, sites with trouble first; the summary bar counts whatever is
 // shown.
@@ -155,14 +153,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <div>
       <AutoRefresh />
-      <div className="mb-6 flex items-center justify-between">
+      {/* The branch dropdown takes the page's action slot: it is the one
+          control on the page, and it scopes everything under it, the
+          summary bar included. Adding devices is the technician's job. */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button asChild size="sm">
-          <Link href="/setup">
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">Add device</span>
-          </Link>
-        </Button>
+        {multiBranch && <BranchFilter branches={branches} selected={branch} className="w-full sm:w-64" />}
       </div>
 
       {/* One card, hairline-divided into three, so the summary reads as a
@@ -206,14 +202,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </SummaryItem>
       </Card>
 
-      {multiBranch ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">Sensors</h2>
-          <BranchFilter branches={branches} selected={branch} className="w-full sm:w-64" />
-        </div>
-      ) : (
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
-      )}
+      <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
 
       {sensors.length === 0 ? (
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
