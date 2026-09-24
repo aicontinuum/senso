@@ -50,3 +50,15 @@ export function effectiveRecipients(branch: BranchOption | undefined, accountRec
 export function groupByBranch<T>(branches: BranchOption[], items: T[], branchOf: (item: T) => string): { branch: BranchOption; items: T[] }[] {
   return branches.map(branch => ({ branch, items: items.filter(item => branchOf(item) === branch.id) }));
 }
+
+/** What a branch heading says beside the name, so a dozen sites can be
+ *  scanned for the one with a problem without reading every tile. */
+export type BranchTally = { online: number; offline: number; alerts: number };
+
+/** Branches that need attention first (an active alert, then an offline
+ *  sensor), the rest in the order they were created. Stable, so two quiet
+ *  sites keep their order between refreshes. */
+export function sortBranchesByAttention<T extends { branch: BranchOption }>(groups: T[], tallyOf: (group: T) => BranchTally): T[] {
+  const rank = (g: T) => { const t = tallyOf(g); return t.alerts > 0 ? 2 : t.offline > 0 ? 1 : 0; };
+  return [...groups].sort((a, b) => rank(b) - rank(a));
+}

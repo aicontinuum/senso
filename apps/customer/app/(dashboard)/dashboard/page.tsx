@@ -5,14 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorGrid } from "@/components/dashboard/SensorGrid";
 import { BranchFilter } from "@/components/dashboard/BranchFilter";
+import { BranchHeading } from "@/components/dashboard/BranchHeading";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
-import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, loadBranches, selectedBranch } from "@/lib/branches";
+import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, loadBranches, selectedBranch, sortBranchesByAttention, type BranchTally } from "@/lib/branches";
 import type { Sensor, AlertConfig } from "@senso/types";
 
 // With one branch the page is a summary bar and a grid of tiles. With more,
-// a filter sits above the grid and, on All, the tiles are grouped under a
-// heading per branch; the summary bar counts whatever is shown.
+// a branch dropdown sits beside the Sensors heading and, on All, the tiles
+// are grouped under a heading per branch that carries the site's own
+// counts, sites with trouble first; the summary bar counts whatever is
+// shown.
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const customer = await requireCustomer();
@@ -137,6 +140,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <SensorGrid sensors={items} configBySensor={configMap} activeAlertSensorIds={activeAlertSensorIds} timezone={customer.timezone} now={now} />
   );
 
+  // Per-branch counts for the headings on All: the same rules as the summary
+  // bar, so a heading never disagrees with the bar above it.
+  const tallyOf = (items: Sensor[]): BranchTally => {
+    const inService = items.filter((s) => s.commissionedAt !== null);
+    const online = inService.filter((s) => s.status === "online").length;
+    return { online, offline: inService.length - online, alerts: items.filter((s) => activeAlertSensorIds.has(s.id)).length };
+  };
+  const branchGroups = sortBranchesByAttention(
+    groupByBranch(branches, sensors, (s) => branchOfSensor.get(s.id) ?? "").map((g) => ({ ...g, tally: tallyOf(g.items) })),
+    (g) => g.tally,
+  );
+
   return (
     <div>
       <AutoRefresh />
@@ -194,7 +209,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {multiBranch ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold tracking-tight">Sensors</h2>
-          <BranchFilter branches={branches} selected={branch} />
+          <BranchFilter branches={branches} selected={branch} className="w-full sm:w-64" />
         </div>
       ) : (
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
@@ -206,12 +221,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <p className="mt-1 text-xs text-muted-foreground">Add a gateway and sensors to start monitoring.</p>
         </div>
       ) : multiBranch && branch === ALL_BRANCHES ? (
-        // Every branch, each under its own heading, so the eye finds a site
-        // before it finds a fridge.
+        // Every branch, each under its own heading with its own counts, sites
+        // with trouble first, so the eye finds a site before it finds a fridge.
         <div className="space-y-8">
-          {groupByBranch(branches, sensors, (s) => branchOfSensor.get(s.id) ?? "").map(({ branch: b, items }) => (
+          {branchGroups.map(({ branch: b, items, tally }) => (
             <section key={b.id} aria-label={b.name}>
-              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{b.name}</h3>
+              <BranchHeading name={b.name} tally={tally} />
               {items.length === 0
                 ? <p className="text-sm text-muted-foreground">No sensors at this branch.</p>
                 : grid(items)}
