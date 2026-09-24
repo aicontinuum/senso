@@ -114,7 +114,24 @@ as the page does on first load. The header, the PDF, the CSV's first line,
 the file's share title and the mail text all read "Customer — Branch".
 With one branch nothing changes. The address on the header is phase 4.
 
-Next: grouping in Settings.
+## 2026-09-24 — Branches, phase 3d: Settings, and phase 3 closes
+
+The Sensors and Gateways cards on the customer's Settings page list their
+rows under a heading per branch once there is more than one, an empty
+branch included ("No sensors at this branch."). `BranchGroups` does the
+splitting for both cards; a single unnamed group draws no heading, so a
+single-branch customer's page is unchanged. The Gateways description
+reads "at each branch" for a multi-branch customer.
+
+Phase 3 is complete: dashboard, sensor page, alerts list and detail,
+reports, settings. Everything is gated on `hasBranches()`; no SQL was
+needed beyond phase 1. Phase 4 (per-branch alert recipients and the
+address on the report header) is the remaining piece and needs a
+migration.
+
+Still flagged, not touched: `Date.now()` in the body of the customer
+dashboard, settings and reports pages, and `setState` in an effect in
+`TemperatureChart`. All predate branches.
 
 ---
 
