@@ -7,6 +7,7 @@ import { AlertRecipientsSection } from "./AlertRecipientsSection";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { TimezoneSection } from "./TimezoneSection";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
+import { groupByBranch, hasBranches, loadBranches } from "@/lib/branches";
 import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {
@@ -22,11 +23,15 @@ export default async function SettingsPage() {
     .single();
   const initialAlertEmails = (customerData?.alert_recipients as string[]) ?? [];
 
-  const { data: gateways } = await supabase
-    .from("gateways")
-    .select("id, name, is_online, firmware_version, last_seen_at, sensors (id, name, status, decommissioned_at)")
-    .eq("customer_id", customer.id)
-    .is("decommissioned_at", null);
+  const [branches, { data: gateways }] = await Promise.all([
+    loadBranches(supabase, customer.id),
+    supabase
+      .from("gateways")
+      .select("id, name, branch_id, is_online, firmware_version, last_seen_at, sensors (id, name, status, decommissioned_at)")
+      .eq("customer_id", customer.id)
+      .is("decommissioned_at", null),
+  ]);
+  const branchOfGateway = new Map((gateways ?? []).map((g) => [g.id, g.branch_id as string]));
 
   const allSensors = (gateways ?? []).flatMap(
     (g) => (g.sensors ?? [])
@@ -74,13 +79,22 @@ export default async function SettingsPage() {
     firmwareVersion: g.firmware_version ?? "—",
   }));
 
+  // Under a heading per branch once there is more than one; otherwise one
+  // unnamed group, and the cards look as they always did.
+  const sensorGroups = hasBranches(branches)
+    ? groupByBranch(branches, sensorShapes, (s) => branchOfGateway.get(s.gatewayId) ?? "").map((g) => ({ name: g.branch.name, sensors: g.items }))
+    : [{ name: null, sensors: sensorShapes }];
+  const gatewayGroups = hasBranches(branches)
+    ? groupByBranch(branches, gatewayShapes, (g) => branchOfGateway.get(g.id) ?? "").map((g) => ({ name: g.branch.name, gateways: g.items }))
+    : [{ name: null, gateways: gatewayShapes }];
+
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
       <AccountInfoSection customer={customerShape} />
       <TimezoneSection initialTimezone={customer.timezone} />
-      <SensorsSection sensors={sensorShapes} />
-      <GatewaysSection gateways={gatewayShapes} timezone={customer.timezone} now={now} />
+      <SensorsSection groups={sensorGroups} />
+      <GatewaysSection groups={gatewayGroups} timezone={customer.timezone} now={now} />
       <AlertRecipientsSection initialEmails={initialAlertEmails} />
       <ChangePasswordSection />
     </div>
