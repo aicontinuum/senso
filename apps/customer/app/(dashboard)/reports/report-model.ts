@@ -8,8 +8,11 @@ import type { AlertNote } from "@/lib/alert-comments";
 export type SensorShape = {
   id: string;
   name: string;
-  /** The branch of the sensor's gateway. A report covers one branch. */
+  /** The branch of the sensor's gateway. */
   branchId: string;
+  /** Its name, or null for a customer with one branch, where the word is
+   *  never shown: no chip in the picker, no branch line on the report. */
+  branchName: string | null;
   hardwareId: string | null;
   decommissionedAt: string | null;
   /** Null means never installed — bench readings only, nothing reportable. */
@@ -20,6 +23,9 @@ export type ReadingShape = { id: string; temperature: number; recordedAt: string
 
 export type ReportSensor = {
   sensor: SensorShape;
+  /** The premises this sensor's section is a record for, when its branch
+   *  has one. Per sensor, because a report may span branches. */
+  address: string | null;
   history: ThresholdVersion[];
   readings: ReadingShape[];
   /** Supervisor notes on this sensor's alerts, for the Comment column. */
@@ -65,6 +71,12 @@ export const REPORT_VIEW = "report";
 export function retiredNote(sensor: SensorShape, timezone: string): string | null {
   if (!sensor.decommissionedAt) return null;
   return `Sensor retired ${formatDateTimeLong(sensor.decommissionedAt, timezone)} — no readings recorded after this time.`;
+}
+
+/** What a report, or one sensor's section of it, is about: the customer,
+ *  and the branch when there is more than one to tell apart. */
+export function reportSubject(customerName: string, branchName: string | null): string {
+  return branchName ? `${customerName} — ${branchName}` : customerName;
 }
 
 export function reportFileName(format: ReportFormat, now: number): string {

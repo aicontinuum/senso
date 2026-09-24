@@ -4,13 +4,11 @@ import { rangeAt, formatRange, isOutOfRangeAt, hasRange, thresholdSummary } from
 import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote } from "@/lib/commissioning";
 import { commentForReading } from "@/lib/alert-comments";
-import { retiredNote, type ReportSensor } from "./report-model";
+import { reportSubject, retiredNote, type ReportSensor } from "./report-model";
 
 interface ReportPreviewProps {
   sensors: ReportSensor[];
   customerName: string;
-  /** The premises the report covers, when the branch has one on record. */
-  address: string | null;
   timezone: string;
   periodStart: number;
   now: number;
@@ -27,7 +25,6 @@ const TD = "whitespace-nowrap py-1.5 pr-6";
 export function ReportPreview({
   sensors,
   customerName,
-  address,
   timezone,
   periodStart,
   now,
@@ -36,7 +33,7 @@ export function ReportPreview({
 }: ReportPreviewProps) {
   return (
     <div>
-      {sensors.map(({ sensor, history, readings, notes }, i) => {
+      {sensors.map(({ sensor, address, history, readings, notes }, i) => {
         const commissioned = commissionedNote(sensor.commissionedAt, periodStart, timezone);
         const retired = retiredNote(sensor, timezone);
         const summary = thresholdSummary(history, readings);
@@ -49,7 +46,10 @@ export function ReportPreview({
                 <p className="font-mono text-xs text-muted-foreground">Device ID: {deviceId}</p>
               )}
               <h3 className="mt-1 text-base font-semibold">Monitoring Report</h3>
-              <p className="mt-0.5 text-sm text-muted-foreground">{customerName}</p>
+              {/* Each section names its own premises: the branch and its
+                  address, so a report that spans branches still says
+                  where every sensor is. */}
+              <p className="mt-0.5 text-sm text-muted-foreground">{reportSubject(customerName, sensor.branchName)}</p>
               {address && <p className="text-sm text-muted-foreground">{address}</p>}
               <p className="text-sm text-muted-foreground">Period: {periodLabel}</p>
               <p className="text-sm text-muted-foreground">Generated: {formatDateTimeLong(now, timezone)}</p>
