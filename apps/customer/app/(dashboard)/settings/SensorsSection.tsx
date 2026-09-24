@@ -18,6 +18,15 @@ export function SensorsSection({ groups }: { groups: { name: string | null; sens
         groups={groups.map((g) => ({ name: g.name, items: g.sensors }))}
         empty="No sensors installed yet."
         emptyInBranch="No sensors at this branch."
+        summary={(sensors) => {
+          const offline = sensors.filter((s) => s.status !== "online").length;
+          return (
+            <>
+              <span className="text-ok-text">{sensors.length - offline} online</span>
+              {offline > 0 && <> · <span className="text-offline-text">{offline} offline</span></>}
+            </>
+          );
+        }}
         renderList={(sensors) => (
           <div className="-mx-2 divide-y divide-hairline">
             {sensors.map((sensor) => (
