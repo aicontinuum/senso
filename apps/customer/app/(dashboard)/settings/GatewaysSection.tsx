@@ -29,6 +29,12 @@ export function GatewaysSection({
         groups={groups.map((g) => ({ name: g.name, items: g.gateways }))}
         empty="No gateway installed yet."
         emptyInBranch="No gateway at this branch."
+        summary={(gateways) => {
+          const online = gateways.filter((g) => g.status === "online").length;
+          return gateways.length === 1
+            ? <span className={online === 1 ? "text-ok-text" : "text-offline-text"}>{online === 1 ? "Online" : "Offline"}</span>
+            : <span className={online === gateways.length ? "text-ok-text" : "text-offline-text"}>{online} of {gateways.length} online</span>;
+        }}
         renderList={(gateways) => (
           <div className="divide-y divide-hairline">
             {gateways.map((gw) => {

@@ -105,8 +105,10 @@ export default async function AlertsPage() {
           </p>
         </div>
       ) : (
-        <Card className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <Card className="overflow-hidden">
+          {/* Desktop: the table. Below it, a list: a table with a Branch
+              column only scrolls sideways on a phone. */}
+          <table className="hidden w-full text-sm lg:table">
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Sensor</th>
@@ -158,6 +160,32 @@ export default async function AlertsPage() {
               })}
             </tbody>
           </table>
+
+          <ul className="divide-y divide-hairline lg:hidden">
+            {alertRows.map((alert) => {
+              const sensorId = alert.sensorId;
+              const branchName = multiBranch && sensorId ? branchNameBySensor.get(sensorId) : undefined;
+              return (
+                <li key={alert.id}>
+                  <Link href={`/alerts/${alert.id}`} className="flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset">
+                    <div className="min-w-0 flex-1 text-sm">
+                      <p className="truncate font-medium">{sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : "—"}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {branchName && <>{branchName} · </>}
+                        {alert.kind === "threshold" ? "Out of range" : "No readings"} · {formatDateTimeLong(alert.triggeredAt, customer.timezone)}
+                      </p>
+                    </div>
+                    {alert.isResolved ? (
+                      <Badge variant="offline" dot className="shrink-0">Resolved</Badge>
+                    ) : (
+                      <Badge variant="alert" dot className="shrink-0">Active</Badge>
+                    )}
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </Card>
       )}
     </div>

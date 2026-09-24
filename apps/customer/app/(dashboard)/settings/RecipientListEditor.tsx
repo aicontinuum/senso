@@ -16,9 +16,11 @@ interface Props {
   emptyMessage: string;
   /** Names the list for assistive tech when several sit on one page. */
   label: string;
+  /** Called with the new list once a save has landed. */
+  onChange?: (emails: string[]) => void;
 }
 
-export function RecipientListEditor({ initialEmails, persist, emptyMessage, label }: Props) {
+export function RecipientListEditor({ initialEmails, persist, emptyMessage, label, onChange }: Props) {
   const [emails, setEmails] = useState<string[]>(initialEmails);
   const [newEmail, setNewEmail] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -32,6 +34,7 @@ export function RecipientListEditor({ initialEmails, persist, emptyMessage, labe
     setSaving(false);
     if (!result.ok) { setSaveError(result.error); return false; }
     setEmails(updated);
+    onChange?.(updated);
     return true;
   }
 
