@@ -104,7 +104,17 @@ Each page loads the branch through the gateway join (`branches (name)`)
 and the customer's branch list, and names the branch only when
 `hasBranches()` is true. Single-branch customers see no change.
 
-Next: the branch picker on Reports, grouping in Settings.
+## 2026-09-24 — Branches, phase 3c: reports are per branch
+
+A Monitoring Report is a record for one premises, so with two or more
+branches the settings card gains a Branch choice (segmented, no "All")
+above the sensor list. The list shows only that branch's sensors, and
+choosing another branch starts the selection over with its live sensors,
+as the page does on first load. The header, the PDF, the CSV's first line,
+the file's share title and the mail text all read "Customer — Branch".
+With one branch nothing changes. The address on the header is phase 4.
+
+Next: grouping in Settings.
 
 ---
 

@@ -8,6 +8,8 @@ import type { AlertNote } from "@/lib/alert-comments";
 export type SensorShape = {
   id: string;
   name: string;
+  /** The branch of the sensor's gateway. A report covers one branch. */
+  branchId: string;
   hardwareId: string | null;
   decommissionedAt: string | null;
   /** Null means never installed — bench readings only, nothing reportable. */
