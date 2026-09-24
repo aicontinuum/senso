@@ -95,8 +95,7 @@ export default async function SensorDetailPage({
     firmwareVersion: gw.firmware_version ?? "—",
   };
 
-  // Who is emailed about this sensor: the branch's own list when it has one,
-  // otherwise the account's.
+  // Who is emailed about this sensor: the account list plus the branch's own.
   const accountRecipients = effectiveRecipients(
     branches.find((b) => b.id === gw.branch_id),
     (customerData?.alert_recipients as string[]) ?? [],
