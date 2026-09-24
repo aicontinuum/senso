@@ -3,10 +3,14 @@
 import { useState } from 'react';
 import { Button, Card, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
+import { EmailRecipientsEditor } from '@/components/EmailRecipientsEditor';
 import type { Branch } from '@/types/branches';
 
 // One form for adding a branch and for editing one. Name is required; the
-// address is free text that the branch's reports will print.
+// address is free text that the branch's reports print; the recipients,
+// when set, replace the account list for this branch's alerts.
+
+const RECIPIENTS_EMPTY = 'None of its own — this branch uses the account list.';
 
 type Props = {
   customerId: string;
@@ -19,6 +23,7 @@ type Props = {
 export function BranchForm({ customerId, branch, onDone, onCancel }: Props) {
   const [name, setName] = useState(branch?.name ?? '');
   const [address, setAddress] = useState(branch?.address ?? '');
+  const [recipients, setRecipients] = useState<string[]>(branch?.alertRecipients ?? []);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -26,8 +31,8 @@ export function BranchForm({ customerId, branch, onDone, onCancel }: Props) {
     setError('');
     setSaving(true);
     const result = branch
-      ? await callApi(`/api/customers/${customerId}/branches/${branch.id}`, 'PATCH', { name, address })
-      : await callApi(`/api/customers/${customerId}/branches`, 'POST', { name, address });
+      ? await callApi(`/api/customers/${customerId}/branches/${branch.id}`, 'PATCH', { name, address, alertRecipients: recipients })
+      : await callApi(`/api/customers/${customerId}/branches`, 'POST', { name, address, alertRecipients: recipients });
     setSaving(false);
     if (!result.ok) { setError(result.error); return; }
     onDone();
@@ -55,6 +60,11 @@ export function BranchForm({ customerId, branch, onDone, onCancel }: Props) {
         onKeyDown={e => e.key === 'Enter' && canSubmit && save()}
         placeholder="e.g. Marina Promenade, Lusail"
       />
+      <div>
+        <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Alert recipients</p>
+        <p className="mb-3 text-xs text-muted-foreground">Emailed about this branch&apos;s sensors instead of the account list. Leave empty to use the account list.</p>
+        <EmailRecipientsEditor emails={recipients} onChange={async next => { setRecipients(next); return true; }} emptyMessage={RECIPIENTS_EMPTY} />
+      </div>
       <div className="flex gap-2 pt-1">
         <Button size="sm" onClick={save} disabled={!canSubmit}>{saving ? 'Saving…' : branch ? 'Save' : 'Add branch'}</Button>
         <Button variant="secondary" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>

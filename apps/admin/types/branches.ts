@@ -6,6 +6,7 @@ export type BranchRow = {
   customer_id: string;
   name: string;
   address: string | null;
+  alert_recipients: string[];
   created_at: string;
 };
 
@@ -14,11 +15,13 @@ export type Branch = {
   customerId: string;
   name: string;
   address: string | null;
+  /** Empty means the account list is used for this branch's alerts. */
+  alertRecipients: string[];
   createdAt: string;
 };
 
-export const BRANCH_COLUMNS = 'id, customer_id, name, address, created_at';
+export const BRANCH_COLUMNS = 'id, customer_id, name, address, alert_recipients, created_at';
 
 export function toBranch(row: BranchRow): Branch {
-  return { id: row.id, customerId: row.customer_id, name: row.name, address: row.address, createdAt: row.created_at };
+  return { id: row.id, customerId: row.customer_id, name: row.name, address: row.address, alertRecipients: row.alert_recipients ?? [], createdAt: row.created_at };
 }

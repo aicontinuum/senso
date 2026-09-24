@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const { data, error } = await ctx.admin
       .from('branches')
-      .update({ name: input.name, address: input.address })
+      .update({ name: input.name, address: input.address, alert_recipients: input.alertRecipients })
       .eq('id', branchId)
       .eq('customer_id', customerId)
       .select(BRANCH_COLUMNS)

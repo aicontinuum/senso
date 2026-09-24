@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
 import { isValidTimezone } from '@/lib/timezones';
-import { validateRecipients, RECIPIENTS_MESSAGES } from '@/lib/recipients';
+import { validateRecipients, RECIPIENTS_MESSAGES } from '@senso/recipients';
 
 export async function GET() {
   const customer = await getCustomer();

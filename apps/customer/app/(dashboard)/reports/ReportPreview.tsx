@@ -9,6 +9,8 @@ import { retiredNote, type ReportSensor } from "./report-model";
 interface ReportPreviewProps {
   sensors: ReportSensor[];
   customerName: string;
+  /** The premises the report covers, when the branch has one on record. */
+  address: string | null;
   timezone: string;
   periodStart: number;
   now: number;
@@ -25,6 +27,7 @@ const TD = "whitespace-nowrap py-1.5 pr-6";
 export function ReportPreview({
   sensors,
   customerName,
+  address,
   timezone,
   periodStart,
   now,
@@ -47,6 +50,7 @@ export function ReportPreview({
               )}
               <h3 className="mt-1 text-base font-semibold">Monitoring Report</h3>
               <p className="mt-0.5 text-sm text-muted-foreground">{customerName}</p>
+              {address && <p className="text-sm text-muted-foreground">{address}</p>}
               <p className="text-sm text-muted-foreground">Period: {periodLabel}</p>
               <p className="text-sm text-muted-foreground">Generated: {formatDateTimeLong(now, timezone)}</p>
               <p className="text-sm text-muted-foreground">{tzNote}</p>

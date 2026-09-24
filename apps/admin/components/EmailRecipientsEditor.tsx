@@ -12,12 +12,16 @@ interface Props {
   onChange: (emails: string[]) => Promise<boolean>;
   /** Disables the controls while a save is in flight. */
   saving?: boolean;
+  /** What an empty list means here. */
+  emptyMessage?: string;
 }
+
+const DEFAULT_EMPTY = "None set — nobody will be emailed about this account's alerts.";
 
 // A list of addresses with an add row underneath. Each change is handed up to
 // the caller to save; the list shown is always the caller's, so an address is
 // never shown as gone, or added, while the database still says otherwise.
-export function EmailRecipientsEditor({ emails, onChange, saving = false }: Props) {
+export function EmailRecipientsEditor({ emails, onChange, saving = false, emptyMessage = DEFAULT_EMPTY }: Props) {
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState('');
 
@@ -36,7 +40,7 @@ export function EmailRecipientsEditor({ emails, onChange, saving = false }: Prop
   return (
     <div className="space-y-4">
       {emails.length === 0 ? (
-        <p className="text-sm text-muted-foreground">None set — nobody will be emailed about this account&apos;s alerts.</p>
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
         <Card tone="sunken" className="divide-y divide-hairline overflow-hidden">
           {emails.map(email => (

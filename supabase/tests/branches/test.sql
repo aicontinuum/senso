@@ -61,13 +61,20 @@ select assert((select count(*) = 1 from branches where customer_id = '00000000-0
 
 -- ── Access ──────────────────────────────────────────────────────────────────
 select assert(has_table_privilege('authenticated', 'branches', 'select'), 'customers can read branches');
-select assert(not has_table_privilege('authenticated', 'branches', 'insert') and not has_table_privilege('authenticated', 'branches', 'update') and not has_table_privilege('authenticated', 'branches', 'delete'), 'customers cannot write branches');
+select assert(not has_table_privilege('authenticated', 'branches', 'insert') and not has_table_privilege('authenticated', 'branches', 'delete'), 'customers cannot add or remove branches');
+select assert(has_column_privilege('authenticated', 'branches', 'alert_recipients', 'update'), 'customers can edit a branch''s recipients');
+select assert(not has_column_privilege('authenticated', 'branches', 'name', 'update') and not has_column_privilege('authenticated', 'branches', 'address', 'update') and not has_column_privilege('authenticated', 'branches', 'customer_id', 'update'), 'and nothing else on a branch');
+select assert((select alert_recipients = '{}' from branches where customer_id = '00000000-0000-0000-0000-00000000c0a2'), 'a branch starts with no recipients of its own');
 select assert(has_table_privilege('service_role', 'branches', 'delete'), 'service_role can manage branches');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
 select assert((select count(*) = 2 from branches), 'a signed-in customer sees only their own branches');
 select assert((select bool_and(customer_id = '00000000-0000-0000-0000-00000000c0a1') from branches), 'and never another customer''s');
+update branches set alert_recipients = '{lusail@fresh.example}' where name = 'Lusail';
+select assert((select alert_recipients = '{lusail@fresh.example}' from branches where name = 'Lusail'), 'a signed-in customer can set their branch''s recipients');
+update branches set alert_recipients = '{x@y.example}' where customer_id = '00000000-0000-0000-0000-00000000c0a2';
 reset role;
+select assert((select alert_recipients = '{}' from branches where customer_id = '00000000-0000-0000-0000-00000000c0a2'), 'but not another customer''s (the row is invisible, so the update touches nothing)');
 
 rollback;

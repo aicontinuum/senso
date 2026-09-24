@@ -193,22 +193,27 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
 
   const context = await loadContext(admin, alerts);
 
-  // One email per customer, listing everything open for them. This is what makes
-  // gateway rollup unnecessary: a dark site raises one alert per silent sensor
-  // and they arrive as a single email naming each of them.
-  const byCustomer = new Map<string, ClaimedAlert[]>();
+  // One email per customer per branch, listing everything open there. This is
+  // what makes gateway rollup unnecessary: a dark site raises one alert per
+  // silent sensor and they arrive as a single email naming each of them. A
+  // branch with its own recipients is told alone; one without shares the
+  // account list, and two such branches still get separate emails, each
+  // naming its site.
+  const byBranch = new Map<string, ClaimedAlert[]>();
   for (const alert of alerts) {
-    const customerId = context.customerIdByAlert.get(alert.id);
-    if (!customerId) continue;
-    byCustomer.set(customerId, [...(byCustomer.get(customerId) ?? []), alert]);
+    const branchId = context.branchIdByAlert.get(alert.id);
+    if (!branchId) continue;
+    byBranch.set(branchId, [...(byBranch.get(branchId) ?? []), alert]);
   }
 
   const sentIds: string[] = [];
   const failedIds: string[] = [];
 
-  for (const [customerId, customerAlerts] of byCustomer) {
-    const customer = context.customers.get(customerId);
-    const recipients = context.recipientsByCustomer.get(customerId) ?? [];
+  for (const [branchId, customerAlerts] of byBranch) {
+    const branch = context.branches.get(branchId);
+    const customerId = branch?.customer_id;
+    const customer = customerId ? context.customers.get(customerId) : undefined;
+    const recipients = context.recipientsByBranch.get(branchId) ?? [];
 
     // No recipients is a configuration state, not a failure. Counting the send
     // stops it being retried every five minutes forever.
@@ -229,6 +234,8 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
 
     const payload = {
       customerName: customer.name,
+      // Named only when the customer has more than one branch to tell apart.
+      branchName: context.branchNameByAlert.get(customerAlerts[0].id) ?? null,
       // Explicit, from the customer's own row. This process runs in UTC.
       timezone: customer.timezone,
       alerts: lines,
@@ -237,7 +244,7 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
 
     const result = await sendEmail({
       to: recipients,
-      subject: alertEmailSubject(lines, customer.name),
+      subject: alertEmailSubject(lines, customer.name, payload.branchName),
       text: alertEmailText(payload),
       html: alertEmailHtml(payload),
     });
@@ -287,8 +294,8 @@ async function sendDueAlerts(admin: ReturnType<typeof createAdminClient>): Promi
 
 // ── Context lookup ──────────────────────────────────────────────────────────
 //
-// Resolves each claimed alert to the customer it belongs to and the details the
-// email needs. Batched by id rather than queried per alert.
+// Resolves each claimed alert to the branch and customer it belongs to and the
+// details the email needs. Batched by id rather than queried per alert.
 
 async function loadContext(
   admin: ReturnType<typeof createAdminClient>,
@@ -320,28 +327,42 @@ async function loadContext(
   const { data: sensorRows } = sensorIds.length
     ? await admin
         .from('sensors')
-        .select('id, name, hardware_id, gateway_id, gateways!inner (customer_id)')
+        .select('id, name, hardware_id, gateway_id, gateways!inner (customer_id, branch_id)')
         .in('id', sensorIds)
     : { data: [] };
 
   const sensors = new Map(
     ((sensorRows ?? []) as unknown as {
       id: string; name: string; hardware_id: string | null;
-      gateways: { customer_id: string };
+      gateways: { customer_id: string; branch_id: string };
     }[]).map((s) => [s.id, s]),
   );
 
   const customerIds = [...new Set([...sensors.values()].map((s) => s.gateways.customer_id))];
 
-  const { data: customerRows } = customerIds.length
-    ? await admin.from('customers').select('id, name, timezone, alert_recipients').in('id', customerIds)
-    : { data: [] };
+  // Every branch of every customer involved, not only the ones with alerts:
+  // whether a branch is named in the email depends on how many the customer has.
+  const [{ data: customerRows }, { data: branchRows }] = customerIds.length
+    ? await Promise.all([
+        admin.from('customers').select('id, name, timezone, alert_recipients').in('id', customerIds),
+        admin.from('branches').select('id, customer_id, name, alert_recipients').in('customer_id', customerIds),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const customers = new Map(
     ((customerRows ?? []) as {
       id: string; name: string; timezone: string; alert_recipients: unknown;
     }[]).map((c) => [c.id, c]),
   );
+  const branches = new Map(
+    ((branchRows ?? []) as {
+      id: string; customer_id: string; name: string; alert_recipients: unknown;
+    }[]).map((b) => [b.id, b]),
+  );
+  const branchCountByCustomer = new Map<string, number>();
+  for (const b of branches.values()) {
+    branchCountByCustomer.set(b.customer_id, (branchCountByCustomer.get(b.customer_id) ?? 0) + 1);
+  }
 
   // One list per customer: `customers.alert_recipients`.
   //
@@ -361,15 +382,22 @@ async function loadContext(
   //
   // A single list resolved per customer cannot vary with batch composition, so
   // collapsing the two *is* the fix, not a step towards it.
-  const recipientsByCustomer = new Map<string, string[]>();
-  for (const [id, customer] of customers) {
-    const accountWide = Array.isArray(customer.alert_recipients)
-      ? (customer.alert_recipients as string[])
-      : [];
-    recipientsByCustomer.set(id, [...new Set(accountWide.map((e) => e.toLowerCase()))]);
+  //
+  // Branches (2026-09-24) add one level, and keep that property: a branch's
+  // list replaces the account's for that branch, it is never unioned with it,
+  // and it is resolved from the branch row alone. An empty branch list means
+  // the account list, so a customer who never touches branches is emailed
+  // exactly as before.
+  const asList = (value: unknown): string[] =>
+    Array.isArray(value) ? [...new Set((value as string[]).map((e) => e.toLowerCase()))] : [];
+  const recipientsByBranch = new Map<string, string[]>();
+  for (const [id, branch] of branches) {
+    const own = asList(branch.alert_recipients);
+    recipientsByBranch.set(id, own.length > 0 ? own : asList(customers.get(branch.customer_id)?.alert_recipients));
   }
 
-  const customerIdByAlert = new Map<string, string>();
+  const branchIdByAlert = new Map<string, string>();
+  const branchNameByAlert = new Map<string, string>();
   const subjectByAlert = new Map<string, string>();
   const hardwareIdByAlert = new Map<string, string | null>();
   const readingByAlert = new Map<string, string | null>();
@@ -383,7 +411,11 @@ async function loadContext(
     const sensor = sensors.get(sensorId);
     if (!sensor) continue;
 
-    customerIdByAlert.set(alert.id, sensor.gateways.customer_id);
+    branchIdByAlert.set(alert.id, sensor.gateways.branch_id);
+    const branch = branches.get(sensor.gateways.branch_id);
+    if (branch && (branchCountByCustomer.get(branch.customer_id) ?? 0) > 1) {
+      branchNameByAlert.set(alert.id, branch.name);
+    }
     subjectByAlert.set(alert.id, sensor.name);
     hardwareIdByAlert.set(alert.id, sensor.hardware_id);
 
@@ -404,8 +436,10 @@ async function loadContext(
 
   return {
     customers,
-    recipientsByCustomer,
-    customerIdByAlert,
+    branches,
+    recipientsByBranch,
+    branchIdByAlert,
+    branchNameByAlert,
     subjectByAlert,
     hardwareIdByAlert,
     readingByAlert,

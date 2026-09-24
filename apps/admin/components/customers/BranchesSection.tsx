@@ -86,8 +86,10 @@ export function BranchesSection({ customerId, branches, gateways }: Props) {
                   <p className="truncate text-sm font-medium">{b.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{b.address ?? 'No address'}</p>
                 </div>
-                <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
                   {gatewayCount(b.id)} {gatewayCount(b.id) === 1 ? 'gateway' : 'gateways'}
+                  <br />
+                  {b.alertRecipients.length === 0 ? 'account recipients' : `${b.alertRecipients.length} own ${b.alertRecipients.length === 1 ? 'recipient' : 'recipients'}`}
                 </p>
                 {confirmDeleteId === b.id ? (
                   <span className="flex items-center gap-2">

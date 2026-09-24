@@ -61,9 +61,13 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
   // the choice does not exist and the whole account is the branch.
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const sensors = hasBranches(branches) ? allSensors.filter((s) => s.branchId === branchId) : allSensors;
-  const branchName = hasBranches(branches) ? branches.find((b) => b.id === branchId)?.name ?? null : null;
-  // What the report is about, as its header, file and share text say it.
+  const branch = branches.find((b) => b.id === branchId);
+  const branchName = hasBranches(branches) ? branch?.name ?? null : null;
+  // What the report is about, as its header, file and share text say it. The
+  // address prints whenever there is one, single branch or not: a premises
+  // on record belongs on the record.
   const reportSubject = branchName ? `${customerName} — ${branchName}` : customerName;
+  const reportAddress = branch?.address ?? null;
 
   // A sensor that was never commissioned has no reportable history at all — only
   // readings taken before it was installed — so it cannot be selected. Retired
@@ -286,12 +290,12 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
   const mailtoHref = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareText)}`;
 
   async function handlePrint() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone, reportAddress);
     doc.output("dataurlnewwindow");
   }
 
   async function handleShare() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone, reportAddress);
     const blob = doc.output("blob");
     const file = new File([blob], reportFileName("pdf", now), { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
@@ -344,7 +348,7 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
   }
 
   async function downloadPDF() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone, reportAddress);
     doc.save(reportFileName("pdf", now));
   }
 
@@ -394,6 +398,7 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
         <ReportPreview
           sensors={reportSensors}
           customerName={reportSubject}
+          address={reportAddress}
           timezone={timezone}
           periodStart={periodStart}
           now={now}

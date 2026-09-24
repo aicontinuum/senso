@@ -114,6 +114,47 @@ as the page does on first load. The header, the PDF, the CSV's first line,
 the file's share title and the mail text all read "Customer — Branch".
 With one branch nothing changes. The address on the header is phase 4.
 
+## 2026-09-24 — Branches, phase 4: recipients and address per branch
+
+The last piece, and the only one after the schema that touches delivery.
+
+**Recipients.** `branches.alert_recipients` (`20260926_branch_recipients.sql`),
+empty by default. The rule is replacement, never union: a branch with a
+list is emailed there and nowhere else; a branch without one uses the
+account list. So a customer who never touches branches is emailed exactly
+as before, head office stays on the account list and hears about every
+site, and a branch manager put on their branch hears about their fridges
+only. The customer may edit this one column of their own branches
+(column grant plus an update policy); admin edits it on the branch form.
+
+**The alert job** groups claimed alerts by branch rather than by customer.
+Each group resolves its list from the branch row alone, so recipients can
+never depend on what else broke in the same five-minute run, which was
+the property the 2026-09 collapse to one list bought and this keeps. Two
+branches on the account list still get separate emails, each naming its
+site. The subject reads "Fridge 2 at Lusail out of range" and the header
+"Customer · Branch", only when the customer has more than one branch.
+The ledger row is unchanged (`customer_id`, recipients, outcome).
+
+**Address.** Typed on admin since phase 2, now printed under the customer
+and branch name on the report preview and the PDF, whenever the branch
+has one, single branch or not.
+
+**Elsewhere.** The customer's Settings recipients card gains a section per
+branch under the account list, each saving through `PATCH /api/branches/[id]`
+as the signed-in user so RLS decides. The sensor page's "Alert recipients"
+shows the list that would actually be used. The recipients validator moved
+from the customer app to `packages/recipients` so both apps check with the
+same rules (TODO.md wanted this); the admin branch routes use it.
+
+**Tests.** `supabase/tests/branches/` is 26 cases: the column grant, the
+update policy as a signed-in customer, and that another customer's row is
+untouchable.
+
+Flagged, not touched: `PATCH /api/customers/[id]` still writes the account
+list after only an `Array.isArray` check (TODO.md). One line now that the
+package exists.
+
 ## 2026-09-24 — Branches, phase 3d: Settings, and phase 3 closes
 
 The Sensors and Gateways cards on the customer's Settings page list their

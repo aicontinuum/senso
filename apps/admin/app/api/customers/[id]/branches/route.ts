@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const { data, error } = await ctx.admin
       .from('branches')
-      .insert({ customer_id: customerId, name: input.name, address: input.address })
+      .insert({ customer_id: customerId, name: input.name, address: input.address, alert_recipients: input.alertRecipients })
       .select(BRANCH_COLUMNS)
       .single();
     if (error?.code === DUPLICATE_NAME_CODE) {

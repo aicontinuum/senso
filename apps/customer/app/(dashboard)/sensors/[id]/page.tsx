@@ -4,7 +4,7 @@ import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorDetailClient } from "./SensorDetailClient";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
-import { hasBranches, loadBranches } from "@/lib/branches";
+import { effectiveRecipients, hasBranches, loadBranches } from "@/lib/branches";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 
 export default async function SensorDetailPage({
@@ -20,7 +20,7 @@ export default async function SensorDetailPage({
   const [{ data: sensorRow }, branches] = await Promise.all([
     supabase
       .from("sensors")
-      .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id, branches (name))")
+      .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id, branch_id, branches (name))")
       .eq("id", id)
       .is("decommissioned_at", null)
       .single(),
@@ -32,7 +32,7 @@ export default async function SensorDetailPage({
   const gw = sensorRow.gateways as unknown as {
     id: string; name: string | null; is_online: boolean;
     firmware_version: string | null; last_seen_at: string | null; customer_id: string;
-    branches: { name: string } | null;
+    branch_id: string; branches: { name: string } | null;
   };
 
   if (gw.customer_id !== customer.id) notFound();
@@ -95,7 +95,12 @@ export default async function SensorDetailPage({
     firmwareVersion: gw.firmware_version ?? "—",
   };
 
-  const accountRecipients = (customerData?.alert_recipients as string[]) ?? [];
+  // Who is emailed about this sensor: the branch's own list when it has one,
+  // otherwise the account's.
+  const accountRecipients = effectiveRecipients(
+    branches.find((b) => b.id === gw.branch_id),
+    (customerData?.alert_recipients as string[]) ?? [],
+  );
 
   const recentReadings: Reading[] = (readingRows ?? [])
     .map((r) => ({ id: r.id, sensorId: id, temperature: r.temperature, recordedAt: r.recorded_at }))
