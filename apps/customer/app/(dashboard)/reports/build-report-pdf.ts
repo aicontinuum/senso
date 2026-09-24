@@ -20,6 +20,8 @@ export async function buildReportPDF(
   now: number,
   customerName: string,
   timezone: string,
+  /** The premises the report covers, when the branch has one on record. */
+  address: string | null,
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -88,6 +90,10 @@ export async function buildReportPDF(
     doc.setFont("helvetica", "normal");
     doc.text(customerName, margin, y);
     y += 5;
+    if (address) {
+      doc.text(address, margin, y);
+      y += 5;
+    }
     doc.text(`Period: ${periodLabel}`, margin, y);
     y += 5;
     doc.text(`Generated: ${formatDateTimeLong(now, timezone)}`, margin, y);

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@senso/mock-data": "*",
+    "@senso/recipients": "*",
     "@senso/status": "*",
     "@senso/tokens": "*",
     "@senso/types": "*",

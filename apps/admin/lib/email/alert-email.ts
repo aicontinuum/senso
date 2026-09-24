@@ -27,6 +27,8 @@ export interface AlertLine {
 
 export interface AlertEmailInput {
   customerName: string;
+  /** The branch these alerts are at, when the customer has more than one. */
+  branchName: string | null;
   /**
    * IANA zone for this customer, e.g. "Asia/Qatar".
    *
@@ -60,26 +62,34 @@ function headline(alert: AlertLine): string {
   }
 }
 
-export function alertEmailSubject(alerts: AlertLine[], customerName: string): string {
-  if (alerts.length === 0) return `Senso alert — ${customerName}`;
+/** "Customer" or "Customer · Branch": where the alerts are. */
+function whereLabel(customerName: string, branchName: string | null): string {
+  return branchName ? `${customerName} · ${branchName}` : customerName;
+}
+
+export function alertEmailSubject(alerts: AlertLine[], customerName: string, branchName: string | null): string {
+  const where = whereLabel(customerName, branchName);
+  if (alerts.length === 0) return `Senso alert — ${where}`;
 
   if (alerts.length === 1) {
     const [only] = alerts;
     // A reminder says "still", so a second email does not read as a second
     // problem. The word goes inside the sentence, not in front of the brand.
+    // The branch, when there is one, says which site's fridge this is.
     const still = only.notifyCount > 0 ? "still " : "";
+    const at = branchName ? ` at ${branchName}` : "";
     return only.kind === "threshold"
-      ? `Senso: ${only.subject} ${still}out of range${only.reading ? ` (${only.reading})` : ""}`
-      : `Senso: ${only.subject} ${still}not reporting`;
+      ? `Senso: ${only.subject}${at} ${still}out of range${only.reading ? ` (${only.reading})` : ""}`
+      : `Senso: ${only.subject}${at} ${still}not reporting`;
   }
 
-  return `Senso: ${alerts.length} alerts — ${customerName}`;
+  return `Senso: ${alerts.length} alerts — ${where}`;
 }
 
 /** Plain text, because it is what reaches a watch or a locked screen intact. */
 export function alertEmailText(input: AlertEmailInput): string {
-  const { customerName, timezone, alerts, appUrl } = input;
-  const lines: string[] = [`${customerName}`, ""];
+  const { customerName, branchName, timezone, alerts, appUrl } = input;
+  const lines: string[] = [whereLabel(customerName, branchName), ""];
 
   for (const alert of alerts) {
     lines.push(headline(alert));
@@ -106,7 +116,7 @@ function escapeHtml(value: string): string {
 }
 
 export function alertEmailHtml(input: AlertEmailInput): string {
-  const { customerName, timezone, alerts, appUrl } = input;
+  const { customerName, branchName, timezone, alerts, appUrl } = input;
 
   // Inline styles and a table are not a stylistic choice — mail clients strip
   // <style> blocks and have no grid or flexbox worth relying on.
@@ -134,7 +144,7 @@ export function alertEmailHtml(input: AlertEmailInput): string {
 <html><body style="margin:0;padding:24px;background:#fafafc;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#17161c">
   <table role="presentation" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #eeeef3;border-radius:20px;padding:24px">
     <tr><td>
-      <div style="font-size:13px;color:#55556a">${escapeHtml(customerName)}</div>
+      <div style="font-size:13px;color:#55556a">${escapeHtml(whereLabel(customerName, branchName))}</div>
       <table role="presentation" width="100%" style="border-collapse:collapse">${rows}</table>
       <a href="${escapeHtml(appUrl)}/dashboard"
          style="display:inline-block;margin-top:20px;background:#6e5be4;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:14px;font-weight:600">

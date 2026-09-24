@@ -95,7 +95,7 @@ export default async function SettingsPage() {
       <TimezoneSection initialTimezone={customer.timezone} />
       <SensorsSection groups={sensorGroups} />
       <GatewaysSection groups={gatewayGroups} timezone={customer.timezone} now={now} />
-      <AlertRecipientsSection initialEmails={initialAlertEmails} />
+      <AlertRecipientsSection initialEmails={initialAlertEmails} branches={branches} />
       <ChangePasswordSection />
     </div>
   );
