@@ -1,6 +1,5 @@
 import { Download, FileText, Table } from "lucide-react";
-import { Button } from "@senso/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@senso/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Select } from "@senso/ui";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { SensorPicker } from "./SensorPicker";
 import { hasBranches, type BranchOption } from "@/lib/branches";
@@ -72,6 +71,17 @@ export function ReportSettingsCard({
         <CardTitle>Period, sensors and format</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* One branch per report, chosen first because it decides which
+            sensors are listed below. The field exists only once there is a
+            choice, and is the same dropdown the dashboard filters with. */}
+        {hasBranches(branches) && (
+          <Field label="Branch">
+            <Select aria-label="Branch" value={branchId} onChange={(e) => onBranchChange(e.target.value)}>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </Select>
+          </Field>
+        )}
+
         <Field label="Time range">
           <SegmentedControl
             aria-label="Time range"
@@ -80,18 +90,6 @@ export function ReportSettingsCard({
             onChange={onRangeChange}
           />
         </Field>
-
-        {/* One branch per report; the field exists only once there is a choice. */}
-        {hasBranches(branches) && (
-          <Field label="Branch">
-            <SegmentedControl
-              aria-label="Branch"
-              options={branches.map((b) => ({ value: b.id, label: b.name }))}
-              value={branchId}
-              onChange={onBranchChange}
-            />
-          </Field>
-        )}
 
         <Field label="Sensors">
           <SensorPicker

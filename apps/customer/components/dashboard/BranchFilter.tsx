@@ -1,17 +1,18 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Select } from '@senso/ui';
 import { ALL_BRANCHES, BRANCH_PARAM, type BranchOption } from '@/lib/branches';
 
-// All, or one branch. The choice lives in the URL, so the page stays a
-// server component and a filtered view is a link you can send to someone.
+// All, or one branch, as a dropdown: one control on one line at any count,
+// and on a phone the native picker, which is the best list there is for a
+// dozen sites. The choice lives in the URL, so the page stays a server
+// component and a filtered view is a link you can send to someone.
 
 type Props = { branches: BranchOption[]; selected: string; className?: string };
 
 export function BranchFilter({ branches, selected, className }: Props) {
   const router = useRouter();
-  const options = [{ value: ALL_BRANCHES, label: 'All branches' }, ...branches.map(b => ({ value: b.id, label: b.name }))];
 
   function choose(value: string) {
     const params = new URLSearchParams(window.location.search);
@@ -20,5 +21,10 @@ export function BranchFilter({ branches, selected, className }: Props) {
     router.push(query ? `?${query}` : window.location.pathname);
   }
 
-  return <SegmentedControl options={options} value={selected} onChange={choose} aria-label="Branch" className={className} />;
+  return (
+    <Select aria-label="Branch" value={selected} onChange={e => choose(e.target.value)} wrapperClassName={className}>
+      <option value={ALL_BRANCHES}>All branches</option>
+      {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+    </Select>
+  );
 }
