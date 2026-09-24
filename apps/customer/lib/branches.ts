@@ -9,7 +9,7 @@ export type BranchOption = {
   name: string;
   /** Printed on this branch's reports. */
   address: string | null;
-  /** Empty means the account list is used for this branch's alerts. */
+  /** Emailed about this branch's alerts, on top of the account list. */
   alertRecipients: string[];
 };
 
@@ -40,9 +40,10 @@ export function selectedBranch(param: string | string[] | undefined, branches: B
   return value && branches.some(b => b.id === value) ? value : ALL_BRANCHES;
 }
 
-/** The addresses a branch's alerts go to: its own list, or the account's. */
+/** The addresses a branch's alerts go to: the account list, which hears
+ *  about every branch, plus the branch's own. */
 export function effectiveRecipients(branch: BranchOption | undefined, accountRecipients: string[]): string[] {
-  return branch && branch.alertRecipients.length > 0 ? branch.alertRecipients : accountRecipients;
+  return [...new Set([...accountRecipients, ...(branch?.alertRecipients ?? [])])];
 }
 
 /** Items in branch order, each branch with its own items, empty branches

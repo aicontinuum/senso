@@ -383,17 +383,20 @@ async function loadContext(
   // A single list resolved per customer cannot vary with batch composition, so
   // collapsing the two *is* the fix, not a step towards it.
   //
-  // Branches (2026-09-24) add one level, and keep that property: a branch's
-  // list replaces the account's for that branch, it is never unioned with it,
-  // and it is resolved from the branch row alone. An empty branch list means
-  // the account list, so a customer who never touches branches is emailed
-  // exactly as before.
+  // Branches (2026-09-24) add one level, and keep that property: the list
+  // for a branch is the account list plus the branch's own, both resolved
+  // from their rows alone. An "all branches" address hears about every
+  // branch; a branch address hears about its branch; nothing depends on what
+  // else is open. A customer who never touches branches is emailed exactly
+  // as before.
   const asList = (value: unknown): string[] =>
     Array.isArray(value) ? [...new Set((value as string[]).map((e) => e.toLowerCase()))] : [];
   const recipientsByBranch = new Map<string, string[]>();
   for (const [id, branch] of branches) {
-    const own = asList(branch.alert_recipients);
-    recipientsByBranch.set(id, own.length > 0 ? own : asList(customers.get(branch.customer_id)?.alert_recipients));
+    recipientsByBranch.set(id, [...new Set([
+      ...asList(customers.get(branch.customer_id)?.alert_recipients),
+      ...asList(branch.alert_recipients),
+    ])]);
   }
 
   const branchIdByAlert = new Map<string, string>();
