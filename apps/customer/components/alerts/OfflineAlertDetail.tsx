@@ -7,6 +7,8 @@ import { formatDateTimeLong, formatTemp, formatReadingTime } from "@/lib/tempera
 
 interface Props {
   sensorName: string;
+  /** The sensor's branch, or null for a single-branch customer. */
+  branchName: string | null;
   /** When readings stopped arriving. */
   since: string;
   isResolved: boolean;
@@ -17,6 +19,7 @@ interface Props {
 
 export function OfflineAlertDetail({
   sensorName,
+  branchName,
   since,
   isResolved,
   lastReadings,
@@ -28,6 +31,7 @@ export function OfflineAlertDetail({
         <div>
           <h1 className="text-2xl font-bold">{sensorName}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
+            {branchName && <>{branchName}{" · "}</>}
             No readings
             {" · "}
             {formatDateTimeLong(since, timezone)}

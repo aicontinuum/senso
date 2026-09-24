@@ -89,8 +89,22 @@ helpers live in `lib/branches.ts` for the pages that follow.
 Flagged, not touched: `dashboard/page.tsx` has the same `Date.now()` in
 the component body as the admin page had. Same fix applies.
 
-Next: branch name on the sensor and alert pages, the branch picker on
-Reports, grouping in Settings.
+## 2026-09-24 — Branches, phase 3b: sensor and alert pages
+
+Where a customer lands from an email or a forwarded link, the page now
+says which branch it is about, when there is more than one to tell apart.
+
+- **Sensor page:** the branch name under the title, and a Branch row in
+  Device Info above Gateway.
+- **Alerts list:** a Branch column after Sensor.
+- **Alert detail:** the branch name leads the subtitle line for both kinds
+  (threshold and no-readings).
+
+Each page loads the branch through the gateway join (`branches (name)`)
+and the customer's branch list, and names the branch only when
+`hasBranches()` is true. Single-branch customers see no change.
+
+Next: the branch picker on Reports, grouping in Settings.
 
 ---
 

@@ -4,6 +4,7 @@ import { Badge, Button, Card, LinkRow } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { formatDateTimeLong } from "@/lib/temperature";
+import { hasBranches, loadBranches } from "@/lib/branches";
 
 const TH = "px-6 py-3 font-medium";
 const TD = "px-6 py-3";
@@ -13,18 +14,26 @@ export default async function AlertsPage() {
 
   const supabase = await createClient();
 
-  const { data: gateways } = await supabase
-    .from("gateways")
-    .select("sensors (id, name, decommissioned_at)")
-    .eq("customer_id", customer.id)
-    .is("decommissioned_at", null);
+  const [branches, { data: gateways }] = await Promise.all([
+    loadBranches(supabase, customer.id),
+    supabase
+      .from("gateways")
+      .select("branch_id, sensors (id, name, decommissioned_at)")
+      .eq("customer_id", customer.id)
+      .is("decommissioned_at", null),
+  ]);
+  // A Branch column only once there is more than one to tell apart.
+  const multiBranch = hasBranches(branches);
+  const branchNameById = new Map(branches.map((b) => [b.id, b.name]));
 
   const sensors = (gateways ?? []).flatMap(
     (g) => ((g.sensors ?? []) as { id: string; name: string; decommissioned_at: string | null }[])
-      .filter((s) => s.decommissioned_at === null) as { id: string; name: string }[],
+      .filter((s) => s.decommissioned_at === null)
+      .map((s) => ({ id: s.id, name: s.name, branchName: branchNameById.get(g.branch_id as string) ?? "" })),
   );
   const sensorIds = sensors.map((s) => s.id);
   const sensorNameById = new Map(sensors.map((s) => [s.id, s.name]));
+  const branchNameBySensor = new Map(sensors.map((s) => [s.id, s.branchName]));
 
   const { data: alertConfigs } = sensorIds.length > 0
     ? await supabase
@@ -101,6 +110,7 @@ export default async function AlertsPage() {
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Sensor</th>
+                {multiBranch && <th className={TH}>Branch</th>}
                 <th className={TH}>Type</th>
                 <th className={TH}>Triggered</th>
                 <th className={TH}>Status</th>
@@ -116,6 +126,11 @@ export default async function AlertsPage() {
                     <td className={`${TD} whitespace-nowrap font-medium`}>
                       {sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : "—"}
                     </td>
+                    {multiBranch && (
+                      <td className={`${TD} whitespace-nowrap text-muted-foreground`}>
+                        {sensorId ? (branchNameBySensor.get(sensorId) ?? "—") : "—"}
+                      </td>
+                    )}
                     <td className={`${TD} whitespace-nowrap text-muted-foreground`}>
                       {alert.kind === "threshold" ? "Out of range" : "No readings"}
                     </td>

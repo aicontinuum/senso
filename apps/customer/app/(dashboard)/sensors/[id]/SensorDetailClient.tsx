@@ -29,6 +29,8 @@ interface Props {
   sensor: Sensor;
   config: AlertConfig;
   gateway: Gateway;
+  /** The sensor's branch, or null for a single-branch customer. */
+  branchName: string | null;
   accountRecipients: string[];
   recentReadings: Reading[];
   timezone: string;
@@ -38,7 +40,7 @@ interface Props {
   hasOpenAlert: boolean;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, branchName, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -136,7 +138,10 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
       </Button>
 
       <div className="mt-4 mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{name}</h1>
+        <div>
+          <h1 className="text-2xl font-bold">{name}</h1>
+          {branchName && <p className="mt-1 text-sm text-muted-foreground">{branchName}</p>}
+        </div>
         <SensorStatusBadge
           state={sensorState({ inService, isOffline, outOfRange, hasOpenAlert })}
           className="shrink-0"
@@ -384,6 +389,7 @@ export function SensorDetailClient({ sensor, config, gateway, accountRecipients,
           Device Info
         </p>
         <div className="space-y-2 text-sm">
+          {branchName && <InfoRow label="Branch">{branchName}</InfoRow>}
           <InfoRow label="Gateway">{gateway.name}</InfoRow>
           {sensor.lastReading && (
             <InfoRow label={isOffline ? "Last seen" : "Last reading"}>

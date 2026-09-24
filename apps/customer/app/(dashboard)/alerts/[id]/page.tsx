@@ -17,6 +17,7 @@ import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 import { AlertComment } from "@/components/alerts/AlertComment";
 import { OfflineAlertDetail } from "@/components/alerts/OfflineAlertDetail";
 import { OFFLINE_ALERT_LAST_READINGS } from "@/lib/constants";
+import { hasBranches, loadBranches } from "@/lib/branches";
 
 export default async function AlertDetailPage({
   params,
@@ -50,14 +51,21 @@ export default async function AlertDetailPage({
   if (!sensorId) notFound();
 
   // Verify ownership: sensor must belong to a gateway owned by this customer
-  const { data: sensor } = await supabase
-    .from("sensors")
-    .select("id, name, gateway_id, gateways!inner (customer_id)")
-    .eq("id", sensorId)
-    .is("decommissioned_at", null)
-    .single();
+  const [{ data: sensor }, branches] = await Promise.all([
+    supabase
+      .from("sensors")
+      .select("id, name, gateway_id, gateways!inner (customer_id, branches (name))")
+      .eq("id", sensorId)
+      .is("decommissioned_at", null)
+      .single(),
+    loadBranches(supabase, customer.id),
+  ]);
 
-  if (!sensor || (sensor.gateways as unknown as { customer_id: string }).customer_id !== customer.id) notFound();
+  const gw = sensor?.gateways as unknown as { customer_id: string; branches: { name: string } | null } | undefined;
+  if (!sensor || !gw || gw.customer_id !== customer.id) notFound();
+
+  // Named only when there is more than one branch to tell apart.
+  const branchName = hasBranches(branches) ? gw.branches?.name ?? null : null;
 
   // Shared by both kinds: the supervisor's note on this incident. An offline
   // sensor is exactly the sort of thing worth annotating — "battery replaced".
@@ -102,6 +110,7 @@ export default async function AlertDetailPage({
         {backLink}
         <OfflineAlertDetail
           sensorName={sensor.name}
+          branchName={branchName}
           since={alertLog.triggered_at}
           isResolved={alertLog.is_resolved}
           lastReadings={(before ?? [])
@@ -203,6 +212,7 @@ export default async function AlertDetailPage({
         <div>
           <h1 className="text-2xl font-bold">{sensor.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
+            {branchName && <>{branchName}{" · "}</>}
             {alertType === "max" ? "Too high" : "Too low"}
             {triggeringTemp !== undefined && <> · {formatTemp(triggeringTemp)}</>}
             {" · "}{formatDateTimeLong(alertLog.triggered_at, customer.timezone)}

@@ -4,6 +4,7 @@ import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorDetailClient } from "./SensorDetailClient";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
+import { hasBranches, loadBranches } from "@/lib/branches";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 
 export default async function SensorDetailPage({
@@ -16,21 +17,28 @@ export default async function SensorDetailPage({
 
   const supabase = await createClient();
 
-  const { data: sensorRow } = await supabase
-    .from("sensors")
-    .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id)")
-    .eq("id", id)
-    .is("decommissioned_at", null)
-    .single();
+  const [{ data: sensorRow }, branches] = await Promise.all([
+    supabase
+      .from("sensors")
+      .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id, branches (name))")
+      .eq("id", id)
+      .is("decommissioned_at", null)
+      .single(),
+    loadBranches(supabase, customer.id),
+  ]);
 
   if (!sensorRow) notFound();
 
   const gw = sensorRow.gateways as unknown as {
     id: string; name: string | null; is_online: boolean;
     firmware_version: string | null; last_seen_at: string | null; customer_id: string;
+    branches: { name: string } | null;
   };
 
   if (gw.customer_id !== customer.id) notFound();
+
+  // Named only when there is more than one branch to tell apart.
+  const branchName = hasBranches(branches) ? gw.branches?.name ?? null : null;
 
   const [{ data: configRows }, { data: readingRows }, { data: customerData }] = await Promise.all([
     supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
@@ -100,6 +108,7 @@ export default async function SensorDetailPage({
         sensor={sensor}
         config={config}
         gateway={gateway}
+        branchName={branchName}
         accountRecipients={accountRecipients}
         recentReadings={recentReadings}
         timezone={customer.timezone}
