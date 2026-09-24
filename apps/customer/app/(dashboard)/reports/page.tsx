@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { ReportClient } from "./ReportClient";
+import { loadBranches } from "@/lib/branches";
 
 export default async function ReportsPage() {
   const customer = await requireCustomer();
@@ -15,10 +16,13 @@ export default async function ReportsPage() {
   // Sensors that were never commissioned are the opposite case: they have no
   // history to report, only bench readings, so they are listed but cannot be
   // selected at all.
-  const { data: gateways } = await supabase
-    .from("gateways")
-    .select("sensors (id, name, hardware_id, decommissioned_at, commissioned_at)")
-    .eq("customer_id", customer.id);
+  const [branches, { data: gateways }] = await Promise.all([
+    loadBranches(supabase, customer.id),
+    supabase
+      .from("gateways")
+      .select("branch_id, sensors (id, name, hardware_id, decommissioned_at, commissioned_at)")
+      .eq("customer_id", customer.id),
+  ]);
 
   const sensors = (gateways ?? []).flatMap(
     (g) => ((g.sensors ?? []) as {
@@ -31,6 +35,7 @@ export default async function ReportsPage() {
       .map((s) => ({
         id: s.id,
         name: s.name,
+        branchId: g.branch_id as string,
         hardwareId: s.hardware_id,
         decommissionedAt: s.decommissioned_at,
         commissionedAt: s.commissioned_at,
@@ -43,6 +48,7 @@ export default async function ReportsPage() {
   return (
     <ReportClient
       customerName={customer.name}
+      branches={branches}
       sensors={sensors}
       timezone={customer.timezone}
     />

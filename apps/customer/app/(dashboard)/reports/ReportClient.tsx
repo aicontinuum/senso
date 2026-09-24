@@ -16,6 +16,7 @@ import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
 import type { AlertNote } from "@/lib/alert-comments";
 import { REPORT_ALERT_LOOKBACK } from "@/lib/constants";
+import { hasBranches, type BranchOption } from "@/lib/branches";
 import { buildReportPDF } from "./build-report-pdf";
 import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
@@ -49,11 +50,21 @@ type ConfigWithHistory = {
 
 interface Props {
   customerName: string;
+  branches: BranchOption[];
   sensors: SensorShape[];
   timezone: string;
 }
 
-export function ReportClient({ customerName, sensors, timezone }: Props) {
+export function ReportClient({ customerName, branches, sensors: allSensors, timezone }: Props) {
+  // A report covers one branch: it is a record for one premises, with one
+  // address, and an inspector asks for one location. With a single branch
+  // the choice does not exist and the whole account is the branch.
+  const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
+  const sensors = hasBranches(branches) ? allSensors.filter((s) => s.branchId === branchId) : allSensors;
+  const branchName = hasBranches(branches) ? branches.find((b) => b.id === branchId)?.name ?? null : null;
+  // What the report is about, as its header, file and share text say it.
+  const reportSubject = branchName ? `${customerName} — ${branchName}` : customerName;
+
   // A sensor that was never commissioned has no reportable history at all — only
   // readings taken before it was installed — so it cannot be selected. Retired
   // sensors are the opposite: still selectable, because their history is real,
@@ -114,6 +125,14 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
 
   function changeRange(next: RangeValue) {
     setRange(next);
+    setGenerated(false);
+  }
+
+  // A new branch means a new sensor list, so the selection starts over with
+  // that branch's live sensors, as the page did on first load.
+  function changeBranch(next: string) {
+    setBranchId(next);
+    setSelectedIds(new Set(allSensors.filter((s) => s.branchId === next && s.commissionedAt !== null && s.decommissionedAt === null).map((s) => s.id)));
     setGenerated(false);
   }
 
@@ -262,17 +281,17 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       notes: notesBySensor.get(s.id) ?? [],
     }));
 
-  const shareTitle = `Monitoring Report — ${customerName}`;
-  const shareText = `Temperature monitoring report for ${customerName}.\n\nPeriod: ${periodLabel}\nGenerated: ${formatDateTimeLong(now, timezone)}\n${tzNote}`;
+  const shareTitle = `Monitoring Report — ${reportSubject}`;
+  const shareText = `Temperature monitoring report for ${reportSubject}.\n\nPeriod: ${periodLabel}\nGenerated: ${formatDateTimeLong(now, timezone)}\n${tzNote}`;
   const mailtoHref = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareText)}`;
 
   async function handlePrint() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone);
     doc.output("dataurlnewwindow");
   }
 
   async function handleShare() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone);
     const blob = doc.output("blob");
     const file = new File([blob], reportFileName("pdf", now), { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
@@ -284,7 +303,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
 
   function downloadCSV() {
     const lines: string[] = [
-      `"Monitoring Report - ${customerName}"`,
+      `"Monitoring Report - ${reportSubject}"`,
       `"Period: ${periodLabel}"`,
       `"Generated: ${formatDateTimeLong(now, timezone)}"`,
       `"${tzNote}"`,
@@ -325,7 +344,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
   }
 
   async function downloadPDF() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
+    const doc = await buildReportPDF(reportSensors, rangeMs, now, reportSubject, timezone);
     doc.save(reportFileName("pdf", now));
   }
 
@@ -340,6 +359,9 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
             onRangeChange={changeRange}
             format={format}
             onFormatChange={setFormat}
+            branches={branches}
+            branchId={branchId}
+            onBranchChange={changeBranch}
             sensors={sensors}
             selectedIds={selectedIds}
             allSelected={allSelected}
@@ -371,7 +393,7 @@ export function ReportClient({ customerName, sensors, timezone }: Props) {
       {showReport && (
         <ReportPreview
           sensors={reportSensors}
-          customerName={customerName}
+          customerName={reportSubject}
           timezone={timezone}
           periodStart={periodStart}
           now={now}
