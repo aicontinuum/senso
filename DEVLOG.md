@@ -194,6 +194,17 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-25 — Two security items from TODO.md
+
+- `PATCH /api/customers/[id]` now validates `alertRecipients` through
+  `@senso/recipients` and stores the normalised list. Before, one non-string
+  entry entered by admin would throw inside the alert run and leave every
+  alert in that batch unsent until its lease expired.
+- `20260928_pin_owns_sensor_search_path.sql` recreates
+  `customer_owns_sensor()` with `search_path = public`, body unchanged. A
+  SECURITY DEFINER function without a pinned path can be pointed at a
+  look-alike table. The groups suite asserts the pin (33 cases).
+
 ## 2026-09-25 — Groups, phase 3: the owner's view
 
 One word, **site**, does the work. `lib/scope.ts` gives every page a

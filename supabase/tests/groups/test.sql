@@ -109,5 +109,6 @@ reset role;
 select assert(not has_table_privilege('authenticated', 'customer_group_members', 'insert') and not has_table_privilege('authenticated', 'customer_group_members', 'delete'), 'customers cannot change memberships');
 select assert(has_table_privilege('service_role', 'customer_group_members', 'delete'), 'service_role can');
 select assert((select prosecdef and 'search_path=public' = any(proconfig) from pg_proc where proname = 'customer_can_view'), 'customer_can_view is definer with search_path pinned');
+select assert((select prosecdef and 'search_path=public' = any(proconfig) from pg_proc where proname = 'customer_owns_sensor'), 'customer_owns_sensor is definer with search_path pinned');
 
 rollback;

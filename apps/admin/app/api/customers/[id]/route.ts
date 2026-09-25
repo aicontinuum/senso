@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { RECIPIENTS_MESSAGES, validateRecipients } from '@senso/recipients';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 
@@ -33,8 +34,15 @@ export async function PATCH(
     email: email.trim(),
     phone: phone?.trim() || null,
   };
-  if (Array.isArray(alertRecipients)) {
-    updatePayload.alert_recipients = alertRecipients;
+  // These addresses are what the alert job sends to, so the list is checked
+  // with the same rules the customer app applies and the normalised result
+  // is what gets stored. One bad entry used to abort a whole alert run.
+  if (alertRecipients !== undefined) {
+    const result = validateRecipients(alertRecipients);
+    if (!result.ok) {
+      return NextResponse.json({ error: RECIPIENTS_MESSAGES[result.error] }, { status: 400 });
+    }
+    updatePayload.alert_recipients = result.value;
   }
 
   const { error } = await admin

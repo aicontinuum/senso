@@ -45,9 +45,9 @@
 -- last_temperature   numeric
 
 -- ── customer_owns_sensor(uuid) ──────────────────────────────────────────────
--- The single ownership test every newer policy delegates to. Note: it does
--- NOT pin search_path, which a SECURITY DEFINER function should
--- (TODO.md). Fix in a migration, then refresh this record.
+-- The single ownership test every write rule delegates to. As found it did
+-- NOT pin search_path; 20260928_pin_owns_sensor_search_path.sql pins it,
+-- body unchanged.
 CREATE OR REPLACE FUNCTION public.customer_owns_sensor(sensor_uuid uuid)
  RETURNS boolean
  LANGUAGE sql

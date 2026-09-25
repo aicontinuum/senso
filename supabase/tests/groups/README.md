@@ -1,6 +1,6 @@
 # Groups fixture tests
 
-Proves `20260927_groups.sql` against a real PostgreSQL 16 before it touches
+Proves `20260927_groups.sql` and `20260928_pin_owns_sensor_search_path.sql` against a real PostgreSQL 16 before it touches
 the live project. Builds on the alerting and branches fixtures; `fixture.sql`
 adds the two tables whose policies the migration rewrites, switches
 row-level security on for the tables read as a signed-in customer, defines
@@ -29,6 +29,7 @@ psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260925_branches.s
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260926_branch_recipients.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/groups/fixture.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260927_groups.sql
+psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260928_pin_owns_sensor_search_path.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/groups/test.sql 2>&1 | grep -E 'PASS|FAIL'
 ```
 
