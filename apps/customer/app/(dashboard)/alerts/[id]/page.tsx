@@ -17,7 +17,8 @@ import { TemperatureChart } from "@/components/alerts/TemperatureChart";
 import { AlertComment } from "@/components/alerts/AlertComment";
 import { OfflineAlertDetail } from "@/components/alerts/OfflineAlertDetail";
 import { OFFLINE_ALERT_LAST_READINGS } from "@/lib/constants";
-import { hasBranches, loadBranches } from "@/lib/branches";
+import { hasBranches } from "@/lib/branches";
+import { canView, loadScope, siteOfGateway } from "@/lib/scope";
 
 export default async function AlertDetailPage({
   params,
@@ -51,21 +52,21 @@ export default async function AlertDetailPage({
   if (!sensorId) notFound();
 
   // Verify ownership: sensor must belong to a gateway owned by this customer
-  const [{ data: sensor }, branches] = await Promise.all([
+  const [{ data: sensor }, scope] = await Promise.all([
     supabase
       .from("sensors")
-      .select("id, name, gateway_id, gateways!inner (customer_id, branches (name))")
+      .select("id, name, gateway_id, gateways!inner (customer_id, branch_id)")
       .eq("id", sensorId)
       .is("decommissioned_at", null)
       .single(),
-    loadBranches(supabase, customer.id),
+    loadScope(supabase, customer),
   ]);
 
-  const gw = sensor?.gateways as unknown as { customer_id: string; branches: { name: string } | null } | undefined;
-  if (!sensor || !gw || gw.customer_id !== customer.id) notFound();
+  const gw = sensor?.gateways as unknown as { customer_id: string; branch_id: string } | undefined;
+  if (!sensor || !gw || !canView(scope, gw.customer_id)) notFound();
 
-  // Named only when there is more than one branch to tell apart.
-  const branchName = hasBranches(branches) ? gw.branches?.name ?? null : null;
+  // Named only when there is more than one site to tell apart.
+  const branchName = hasBranches(scope.sites) ? scope.sites.find((s) => s.id === siteOfGateway(scope, gw))?.name ?? null : null;
 
   // Shared by both kinds: the supervisor's note on this incident. An offline
   // sensor is exactly the sort of thing worth annotating — "battery replaced".
@@ -82,6 +83,7 @@ export default async function AlertDetailPage({
       createdAt={comment?.created_at ?? null}
       updatedAt={comment?.updated_at ?? null}
       timezone={customer.timezone}
+      readOnly={scope.readOnly}
     />
   );
 

@@ -171,7 +171,35 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
-Next: phase 3, the owner's view in the customer app.
+## 2026-09-25 — Groups, phase 3: the owner's view
+
+One word, **site**, does the work. `lib/scope.ts` gives every page a
+`ViewScope`: the accounts this login reads (itself, or its members),
+whether it is read-only, and the sites to group by (branches for an
+ordinary login, member accounts for a group), keyed by the matching
+gateway column. The branch helpers and `BranchFilter` now take any
+site-shaped list, so the dashboard, alerts list and report picker built
+for branches serve an owner login unchanged in shape.
+
+For a group login:
+- **Dashboard**: every member's sensors under a heading per account, an
+  "All accounts" filter, no Add device button. The summary bar counts what
+  is shown.
+- **Sensor page**: readable; the account name under the title; the
+  Settings card says "Changed in this account's own login" where Edit was.
+  Recipients shown are the member's effective list.
+- **Alerts**: an Account column; the detail page readable; the comment
+  card read-only, with a line saying the account's own login can add one.
+- **Reports**: an Account choice in place of Branch; the report carries
+  the member's name and its first branch's address, never the group's.
+- **Settings**: account info, timezone and password only.
+
+Reads are gated by the database (phase 1); `canView()` turns a row RLS
+withheld into a plain 404. Writes are refused by the database for a
+group whatever the page shows; hiding the controls is courtesy, not
+security. A member's own login is unchanged.
+
+Groups is complete across its three phases.
 
 ## 2026-09-24 — Branches, phase 4: recipients and address per branch
 

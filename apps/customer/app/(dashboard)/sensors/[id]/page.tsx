@@ -5,6 +5,7 @@ import { SensorDetailClient } from "./SensorDetailClient";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
 import { effectiveRecipients, hasBranches, loadBranches } from "@/lib/branches";
+import { canView, loadScope, siteOfGateway } from "@/lib/scope";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
 
 export default async function SensorDetailPage({
@@ -17,14 +18,14 @@ export default async function SensorDetailPage({
 
   const supabase = await createClient();
 
-  const [{ data: sensorRow }, branches] = await Promise.all([
+  const [{ data: sensorRow }, scope] = await Promise.all([
     supabase
       .from("sensors")
-      .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id, branch_id, branches (name))")
+      .select("id, name, status, battery_level, hardware_id, commissioned_at, gateway_id, gateways!inner (id, name, is_online, firmware_version, last_seen_at, customer_id, branch_id)")
       .eq("id", id)
       .is("decommissioned_at", null)
       .single(),
-    loadBranches(supabase, customer.id),
+    loadScope(supabase, customer),
   ]);
 
   if (!sensorRow) notFound();
@@ -32,18 +33,22 @@ export default async function SensorDetailPage({
   const gw = sensorRow.gateways as unknown as {
     id: string; name: string | null; is_online: boolean;
     firmware_version: string | null; last_seen_at: string | null; customer_id: string;
-    branch_id: string; branches: { name: string } | null;
+    branch_id: string;
   };
 
-  if (gw.customer_id !== customer.id) notFound();
+  if (!canView(scope, gw.customer_id)) notFound();
 
-  // Named only when there is more than one branch to tell apart.
-  const branchName = hasBranches(branches) ? gw.branches?.name ?? null : null;
+  // Named only when there is more than one site to tell apart: a branch, or
+  // for an owner login the member account.
+  const site = scope.sites.find((s) => s.id === siteOfGateway(scope, gw));
+  const branchName = hasBranches(scope.sites) ? site?.name ?? null : null;
+  // The branch's own recipients apply whichever login is looking.
+  const branches = await loadBranches(supabase, gw.customer_id);
 
   const [{ data: configRows }, { data: readingRows }, { data: customerData }] = await Promise.all([
     supabase.from("alert_configs").select("id, sensor_id, type, threshold, email_recipients").eq("sensor_id", id),
     supabase.from("readings").select("id, temperature, recorded_at, battery_v").eq("sensor_id", id).order("recorded_at", { ascending: false }).limit(10),
-    supabase.from("customers").select("alert_recipients").eq("id", customer.id).single(),
+    supabase.from("customers").select("alert_recipients").eq("id", gw.customer_id).single(),
   ]);
 
   // Whether an alert raised for this sensor is still open. The detail page used
@@ -114,6 +119,7 @@ export default async function SensorDetailPage({
         config={config}
         gateway={gateway}
         branchName={branchName}
+        readOnly={scope.readOnly}
         accountRecipients={accountRecipients}
         recentReadings={recentReadings}
         timezone={customer.timezone}

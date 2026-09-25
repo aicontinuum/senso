@@ -10,6 +10,8 @@ export type CustomerRecord = {
   phone: string | null;
   timezone: string;
   created_at: string;
+  /** An owner login: reads its member accounts, owns no devices. */
+  is_group: boolean;
 };
 
 export async function getCustomer(): Promise<CustomerRecord | null> {
@@ -18,7 +20,7 @@ export async function getCustomer(): Promise<CustomerRecord | null> {
   if (!user) return null;
   const { data } = await supabase
     .from('customers')
-    .select('id, name, email, contact_name, phone, timezone, created_at')
+    .select('id, name, email, contact_name, phone, timezone, created_at, is_group')
     .eq('auth_user_id', user.id)
     .single();
   if (!data) return null;

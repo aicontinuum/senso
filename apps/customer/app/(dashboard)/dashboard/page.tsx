@@ -7,12 +7,14 @@ import { SensorGrid } from "@/components/dashboard/SensorGrid";
 import { BranchFilter } from "@/components/dashboard/BranchFilter";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
-import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, loadBranches, selectedBranch } from "@/lib/branches";
+import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, selectedBranch } from "@/lib/branches";
+import { loadScope, siteOfGateway } from "@/lib/scope";
 import type { Sensor, AlertConfig } from "@senso/types";
 
-// With one branch the page is a summary bar and a grid of tiles. With more,
-// a filter sits above the grid and, on All, the tiles are grouped under a
-// heading per branch; the summary bar counts whatever is shown.
+// With one site the page is a summary bar and a grid of tiles. With more
+// (several branches, or an owner login over several accounts), a filter
+// sits above the grid and, on All, the tiles are grouped under a heading
+// per site; the summary bar counts whatever is shown.
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const customer = await requireCustomer();
@@ -20,19 +22,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const supabase = await createClient();
 
-  const [branches, { data: allGateways }, params] = await Promise.all([
-    loadBranches(supabase, customer.id),
+  const scope = await loadScope(supabase, customer);
+  const [{ data: allGateways }, params] = await Promise.all([
     supabase
       .from("gateways")
-      .select("id, name, branch_id, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at)")
-      .eq("customer_id", customer.id)
+      .select("id, name, customer_id, branch_id, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at)")
+      .in("customer_id", scope.customerIds)
       .is("decommissioned_at", null),
     searchParams,
   ]);
+  const branches = scope.sites;
   const multiBranch = hasBranches(branches);
   const branch = selectedBranch(params[BRANCH_PARAM], branches);
-  // Everything below is scoped to the chosen branch, the summary bar included.
-  const gateways = (allGateways ?? []).filter((g) => branch === ALL_BRANCHES || g.branch_id === branch);
+  // Everything below is scoped to the chosen site, the summary bar included.
+  const gateways = (allGateways ?? []).filter((g) => branch === ALL_BRANCHES || siteOfGateway(scope, g) === branch);
 
   // Retired sensors keep their readings for the compliance record but must not
   // appear as live devices.
@@ -48,7 +51,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       }) => ({
         ...s,
         gatewayId: g.id,
-        branchId: g.branch_id as string,
+        branchId: siteOfGateway(scope, g),
       })),
   );
   const sensorIds = allSensors.map((s) => s.id);
@@ -142,12 +145,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <AutoRefresh />
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <Button asChild size="sm">
-          <Link href="/setup">
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">Add device</span>
-          </Link>
-        </Button>
+        {/* An owner login adds nothing; devices belong to the member accounts. */}
+        {!scope.readOnly && (
+          <Button asChild size="sm">
+            <Link href="/setup">
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">Add device</span>
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* One card, hairline-divided into three, so the summary reads as a
@@ -194,7 +200,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {multiBranch ? (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold tracking-tight">Sensors</h2>
-          <BranchFilter branches={branches} selected={branch} />
+          <BranchFilter branches={branches} selected={branch} allLabel={scope.isGroup ? "All accounts" : "All branches"} />
         </div>
       ) : (
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
@@ -203,7 +209,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {sensors.length === 0 ? (
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">No sensors yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Add a gateway and sensors to start monitoring.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {scope.isGroup ? "Nothing is installed in the linked accounts yet." : "Add a gateway and sensors to start monitoring."}
+          </p>
         </div>
       ) : multiBranch && branch === ALL_BRANCHES ? (
         // Every branch, each under its own heading, so the eye finds a site
@@ -213,7 +221,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <section key={b.id} aria-label={b.name}>
               <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{b.name}</h3>
               {items.length === 0
-                ? <p className="text-sm text-muted-foreground">No sensors at this branch.</p>
+                ? <p className="text-sm text-muted-foreground">{scope.isGroup ? "No sensors in this account." : "No sensors at this branch."}</p>
                 : grid(items)}
             </section>
           ))}

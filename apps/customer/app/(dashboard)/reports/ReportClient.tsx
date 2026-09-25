@@ -16,7 +16,8 @@ import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
 import type { AlertNote } from "@/lib/alert-comments";
 import { REPORT_ALERT_LOOKBACK } from "@/lib/constants";
-import { hasBranches, type BranchOption } from "@/lib/branches";
+import { hasBranches } from "@/lib/branches";
+import type { Site } from "@/lib/scope";
 import { buildReportPDF } from "./build-report-pdf";
 import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
@@ -50,23 +51,26 @@ type ConfigWithHistory = {
 
 interface Props {
   customerName: string;
-  branches: BranchOption[];
+  /** Branches, or for an owner login the member accounts. */
+  branches: Site[];
+  isGroup: boolean;
   sensors: SensorShape[];
   timezone: string;
 }
 
-export function ReportClient({ customerName, branches, sensors: allSensors, timezone }: Props) {
-  // A report covers one branch: it is a record for one premises, with one
-  // address, and an inspector asks for one location. With a single branch
-  // the choice does not exist and the whole account is the branch.
+export function ReportClient({ customerName, branches, isGroup, sensors: allSensors, timezone }: Props) {
+  // A report covers one site: it is a record for one premises, with one
+  // address, and an inspector asks for one location. With a single site
+  // the choice does not exist and the whole account is the site.
   const [branchId, setBranchId] = useState(branches[0]?.id ?? "");
   const sensors = hasBranches(branches) ? allSensors.filter((s) => s.branchId === branchId) : allSensors;
   const branch = branches.find((b) => b.id === branchId);
   const branchName = hasBranches(branches) ? branch?.name ?? null : null;
   // What the report is about, as its header, file and share text say it. The
-  // address prints whenever there is one, single branch or not: a premises
-  // on record belongs on the record.
-  const reportSubject = branchName ? `${customerName} — ${branchName}` : customerName;
+  // address prints whenever there is one, single site or not: a premises on
+  // record belongs on the record. An owner's report is the member's report:
+  // it carries the member's name, not the group's.
+  const reportSubject = isGroup ? branch?.name ?? customerName : branchName ? `${customerName} — ${branchName}` : customerName;
   const reportAddress = branch?.address ?? null;
 
   // A sensor that was never commissioned has no reportable history at all — only
@@ -364,6 +368,7 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
             format={format}
             onFormatChange={setFormat}
             branches={branches}
+            branchLabel={isGroup ? "Account" : "Branch"}
             branchId={branchId}
             onBranchChange={changeBranch}
             sensors={sensors}

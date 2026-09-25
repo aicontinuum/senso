@@ -19,13 +19,15 @@ interface Props {
   createdAt: string | null;
   updatedAt: string | null;
   timezone: string;
+  /** An owner login reads the note and cannot write one. */
+  readOnly: boolean;
 }
 
-export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timezone }: Props) {
+export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timezone, readOnly }: Props) {
   const router = useRouter();
   const [body, setBody] = useState(initialBody ?? "");
   const [draft, setDraft] = useState(initialBody ?? "");
-  const [editing, setEditing] = useState(initialBody === null);
+  const [editing, setEditing] = useState(initialBody === null && !readOnly);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState<{ created: string | null; updated: string | null }>({
@@ -73,7 +75,7 @@ export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timez
     <section aria-label="Comment">
       <div className="mb-3 flex items-center justify-between gap-4">
         <h2 className="font-display text-md font-semibold leading-snug tracking-tight">Comment</h2>
-        {!editing && (
+        {!editing && !readOnly && (
           <Button variant="ghost" size="sm" onClick={() => { setDraft(body); setEditing(true); }}>
             <Pencil className="size-4" />
             Edit
@@ -119,7 +121,11 @@ export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timez
         <div>
           {/* Deliberately whitespace-preserving: people write these in short
               lines and a note reflowed into one paragraph reads worse. */}
-          <p className="whitespace-pre-wrap text-base">{body}</p>
+          {body === "" ? (
+            <p className="text-sm text-muted-foreground">No comment. The account&apos;s own login can add one.</p>
+          ) : (
+            <p className="whitespace-pre-wrap text-base">{body}</p>
+          )}
           {savedAt.created && (
             <p className="mt-2 text-xs text-muted-foreground">
               {formatDateTimeLong(savedAt.created, timezone)}
