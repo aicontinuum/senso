@@ -71,16 +71,18 @@ export default async function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* The two ways in share a row with the title from tablet width up; on
+          a phone they take a full-width row of their own, as an even pair. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary" size="sm">
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button asChild variant="secondary" size="sm" className="flex-1 sm:flex-none">
             <Link href="/customers/new-group">
               <Users className="size-4" />
               New group account
             </Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="flex-1 sm:flex-none">
             <Link href="/customers/new">
               <Plus className="size-4" />
               New customer
