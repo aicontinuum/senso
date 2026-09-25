@@ -36,15 +36,18 @@ export function CustomerDetailClient({ customer, branches, gateways, sensors, me
             Customers
           </Link>
         </Button>
+        {/* What kind of account this is, as a chip beside the name: Group
+            for an owner login, or the group a member belongs to, which is
+            also the way to it. The same chip the customers list shows. */}
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
           {customer.is_group && <Badge variant="offline">Group</Badge>}
+          {groupOf && (
+            <Link href={`/customers/${groupOf.id}`} title={`Open ${groupOf.name}, whose owner login can see this account`} className="rounded-chip">
+              <Badge variant="outline" className="text-muted-foreground transition-colors hover:bg-sunken hover:text-foreground">In {groupOf.name}</Badge>
+            </Link>
+          )}
         </div>
-        {groupOf && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Member of <Link href={`/customers/${groupOf.id}`} className="font-medium text-foreground hover:underline">{groupOf.name}</Link>, whose owner login can see this account.
-          </p>
-        )}
       </div>
 
       <AccountInfoSection customer={customer} />

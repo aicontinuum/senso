@@ -45,6 +45,9 @@ export default async function AdminDashboardPage() {
     admin
       .from('customers')
       .select('id, name, email, gateways (id, is_online, last_seen_at, decommissioned_at, sensors (id, status, decommissioned_at, commissioned_at))')
+      // A group is an owner login over other accounts: it owns no devices,
+      // so it is neither a fleet row nor one of the customers counted.
+      .eq('is_group', false)
       .order('name'),
     admin.from('platform_status').select(PLATFORM_STATUS_COLUMNS).eq('id', true).maybeSingle(),
   ]);
