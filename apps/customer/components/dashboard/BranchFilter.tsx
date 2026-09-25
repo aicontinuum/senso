@@ -10,9 +10,16 @@ import { ALL_BRANCHES, BRANCH_PARAM } from '@/lib/branches';
 // choice lives in the URL, so the page stays a server component and a
 // filtered view is a link you can send to someone.
 
-type Props = { branches: { id: string; name: string }[]; selected: string; allLabel: string; className?: string };
+type Props = {
+  branches: { id: string; name: string }[];
+  selected: string;
+  /** What one site is called to this login: "Branch", or "Account" for an owner. */
+  label: string;
+  allLabel: string;
+  className?: string;
+};
 
-export function BranchFilter({ branches, selected, allLabel, className }: Props) {
+export function BranchFilter({ branches, selected, label, allLabel, className }: Props) {
   const router = useRouter();
 
   function choose(value: string) {
@@ -23,7 +30,7 @@ export function BranchFilter({ branches, selected, allLabel, className }: Props)
   }
 
   return (
-    <Select aria-label="Site" value={selected} onChange={e => choose(e.target.value)} wrapperClassName={className}>
+    <Select aria-label={label} value={selected} onChange={e => choose(e.target.value)} wrapperClassName={className}>
       <option value={ALL_BRANCHES}>{allLabel}</option>
       {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
     </Select>
