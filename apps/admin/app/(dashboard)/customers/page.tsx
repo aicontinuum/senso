@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, Plus, Users } from 'lucide-react';
 import { Badge, Button, Card } from '@senso/ui';
 import { LinkRow } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -55,12 +55,20 @@ export default async function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-        <Button asChild size="sm">
-          <Link href="/customers/new">
-            <Plus className="size-4" />
-            New customer
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/customers/new-group">
+              <Users className="size-4" />
+              New group account
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/customers/new">
+              <Plus className="size-4" />
+              New customer
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="overflow-x-auto">

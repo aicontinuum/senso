@@ -153,9 +153,9 @@ an outsider seeing nothing of the group, grants, the definer function.
 
 ## 2026-09-25 — Groups, phase 2: the admin side
 
-- **New customer** form: a checkbox, "Owner login for a group of accounts".
-  The create route stores `is_group`; everything else about creating a
-  login is unchanged.
+- **New group account**, its own button beside New customer and its own page,
+  sharing the form with New customer (`NewAccountForm`). The create route
+  stores `is_group`; everything else about creating a login is unchanged.
 - **Group page**: Account card, then a **Members** card in place of the
   device cards (a group owns none and is emailed about nothing). Add
   member picks from accounts that are neither groups nor already in one;
