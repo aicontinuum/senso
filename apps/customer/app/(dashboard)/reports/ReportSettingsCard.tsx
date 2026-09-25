@@ -1,9 +1,8 @@
 import { Download, FileText, Table } from "lucide-react";
-import { Button } from "@senso/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@senso/ui";
+import { Button, Card, CardContent, CardHeader, CardTitle, Select } from "@senso/ui";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { SensorPicker } from "./SensorPicker";
-import { hasBranches } from "@/lib/branches";
+import { ALL_BRANCHES, hasBranches } from "@/lib/branches";
 import {
   FORMATS,
   RANGES,
@@ -18,8 +17,9 @@ interface ReportSettingsCardProps {
   format: ReportFormat;
   onFormatChange: (format: ReportFormat) => void;
   branches: { id: string; name: string }[];
-  /** "Branch", or "Account" for an owner login. */
-  branchLabel: string;
+  /** "Branch", or "Account" for an owner login; and the All option's words. */
+  siteLabel: string;
+  allLabel: string;
   branchId: string;
   onBranchChange: (branchId: string) => void;
   sensors: SensorShape[];
@@ -56,7 +56,8 @@ export function ReportSettingsCard({
   format,
   onFormatChange,
   branches,
-  branchLabel,
+  siteLabel,
+  allLabel,
   branchId,
   onBranchChange,
   sensors,
@@ -75,6 +76,18 @@ export function ReportSettingsCard({
         <CardTitle>Period, sensors and format</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* All branches or one, chosen first because it decides which
+            sensors are listed below. The field exists only once there is a
+            choice, and offers the same options the dashboard filters with. */}
+        {hasBranches(branches) && (
+          <Field label={siteLabel}>
+            <Select aria-label={siteLabel} value={branchId} onChange={(e) => onBranchChange(e.target.value)}>
+              <option value={ALL_BRANCHES}>{allLabel}</option>
+              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </Select>
+          </Field>
+        )}
+
         <Field label="Time range">
           <SegmentedControl
             aria-label="Time range"
@@ -84,18 +97,6 @@ export function ReportSettingsCard({
           />
         </Field>
 
-        {/* One site per report; the field exists only once there is a choice. */}
-        {hasBranches(branches) && (
-          <Field label={branchLabel}>
-            <SegmentedControl
-              aria-label={branchLabel}
-              options={branches.map((b) => ({ value: b.id, label: b.name }))}
-              value={branchId}
-              onChange={onBranchChange}
-            />
-          </Field>
-        )}
-
         <Field label="Sensors">
           <SensorPicker
             sensors={sensors}
@@ -103,6 +104,7 @@ export function ReportSettingsCard({
             allSelected={allSelected}
             onToggleAll={onToggleAll}
             onToggleSensor={onToggleSensor}
+            showBranch={branchId === ALL_BRANCHES}
           />
         </Field>
 

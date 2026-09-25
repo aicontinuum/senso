@@ -4,6 +4,29 @@ Running record of what was built each session. Most recent first.
 
 ---
 
+## 2026-09-24 — Branch recipients: addition, not replacement
+
+Decided today, on the customer's own reading of the rule: an address on
+**All branches** is emailed about any alert anywhere; an address on **one
+branch** is emailed only about that branch. Both are emailed when both
+apply. Phase 4 had a branch list *replace* the account list for that
+branch, which the flat list on Settings could not say honestly: "ops@ on
+all branches, manager@ on West Bay" would have meant ops@ hears nothing
+from West Bay.
+
+The change is one rule in two places: the alert job's per-branch list is
+now the account list plus the branch's own, still resolved from the rows
+alone so recipients never depend on what else is open; and the customer
+app's `effectiveRecipients` says the same for the sensor page. Storage is
+unchanged (`customers.alert_recipients`, `branches.alert_recipients`).
+A customer who never touches branches is emailed exactly as before.
+
+The Settings card is one flat list: every address tagged with its branch
+or All branches, and one add row of address, branch dropdown, Add. No
+section per branch, nothing to expand.
+
+---
+
 ## 2026-09-23 — Branches, phase 1: the schema
 
 Multi-location support, taken off the out-of-scope list by decision today. The
@@ -190,14 +213,19 @@ For a group login:
   Recipients shown are the member's effective list.
 - **Alerts**: an Account column; the detail page readable; the comment
   card read-only, with a line saying the account's own login can add one.
-- **Reports**: an Account choice in place of Branch; the report carries
-  the member's name and its first branch's address, never the group's.
+- **Reports**: the site choice reads Account / All accounts; each sensor's
+  section names its member account and prints the member's first branch
+  address, the way a branch report names its branch.
 - **Settings**: account info, timezone and password only.
 
 Reads are gated by the database (phase 1); `canView()` turns a row RLS
 withheld into a plain 404. Writes are refused by the database for a
 group whatever the page shows; hiding the controls is courtesy, not
 security. A member's own login is unchanged.
+
+Built against the branch UI as redesigned in the other session the same
+day (dropdown filter, headings with counts, all-branches reports); the
+owner view inherits all of it.
 
 Groups is complete across its three phases.
 

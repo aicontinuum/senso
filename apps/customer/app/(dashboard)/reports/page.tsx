@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { ReportClient } from "./ReportClient";
+import { hasBranches } from "@/lib/branches";
 import { loadScope, siteOfGateway } from "@/lib/scope";
 
 export default async function ReportsPage() {
@@ -22,7 +23,14 @@ export default async function ReportsPage() {
     .select("customer_id, branch_id, sensors (id, name, hardware_id, decommissioned_at, commissioned_at)")
     .in("customer_id", scope.customerIds);
 
-  const sensors = (gateways ?? []).flatMap(
+  // Sites: branches, or for an owner login the member accounts.
+  const branches = scope.sites;
+  const multiBranch = hasBranches(branches);
+  const branchNameOf = (id: string) => (multiBranch ? branches.find((b) => b.id === id)?.name ?? null : null);
+  // Gateways come back in no particular order; listing sensors branch by
+  // branch keeps an all-branches picker readable in one pass.
+  const branchRank = new Map(branches.map((b, i) => [b.id, i]));
+  const sensors = (gateways ?? []).sort((a, b) => (branchRank.get(siteOfGateway(scope, a)) ?? 0) - (branchRank.get(siteOfGateway(scope, b)) ?? 0)).flatMap(
     (g) => ((g.sensors ?? []) as {
       id: string;
       name: string;
@@ -34,6 +42,7 @@ export default async function ReportsPage() {
         id: s.id,
         name: s.name,
         branchId: siteOfGateway(scope, g),
+        branchName: branchNameOf(siteOfGateway(scope, g)),
         hardwareId: s.hardware_id,
         decommissionedAt: s.decommissioned_at,
         commissionedAt: s.commissioned_at,
@@ -46,7 +55,7 @@ export default async function ReportsPage() {
   return (
     <ReportClient
       customerName={customer.name}
-      branches={scope.sites}
+      branches={branches}
       isGroup={scope.isGroup}
       sensors={sensors}
       timezone={customer.timezone}

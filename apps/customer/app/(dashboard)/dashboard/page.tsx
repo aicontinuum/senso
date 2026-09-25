@@ -1,20 +1,20 @@
-import Link from "next/link";
-import { Plus } from "lucide-react";
-import { Button, Card, StatusDot } from "@senso/ui";
+import { Card, StatusDot } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorGrid } from "@/components/dashboard/SensorGrid";
 import { BranchFilter } from "@/components/dashboard/BranchFilter";
+import { BranchHeading } from "@/components/dashboard/BranchHeading";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { isGatewayOnline, isSensorOnline } from "@senso/status";
-import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, selectedBranch } from "@/lib/branches";
+import { ALL_BRANCHES, BRANCH_PARAM, groupByBranch, hasBranches, selectedBranch, sortBranchesByAttention, type BranchTally } from "@/lib/branches";
 import { loadScope, siteOfGateway } from "@/lib/scope";
 import type { Sensor, AlertConfig } from "@senso/types";
 
 // With one site the page is a summary bar and a grid of tiles. With more
-// (several branches, or an owner login over several accounts), a filter
-// sits above the grid and, on All, the tiles are grouped under a heading
-// per site; the summary bar counts whatever is shown.
+// (several branches, or an owner login over several accounts), a dropdown
+// sits beside the page title and, on All, the tiles are grouped under a
+// heading per site that carries the site's own counts, sites with trouble
+// first; the summary bar counts whatever is shown.
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const customer = await requireCustomer();
@@ -140,20 +140,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <SensorGrid sensors={items} configBySensor={configMap} activeAlertSensorIds={activeAlertSensorIds} timezone={customer.timezone} now={now} />
   );
 
+  // Per-branch counts for the headings on All: the same rules as the summary
+  // bar, so a heading never disagrees with the bar above it.
+  const tallyOf = (items: Sensor[]): BranchTally => {
+    const inService = items.filter((s) => s.commissionedAt !== null);
+    const online = inService.filter((s) => s.status === "online").length;
+    return { online, offline: inService.length - online, alerts: items.filter((s) => activeAlertSensorIds.has(s.id)).length };
+  };
+  const branchGroups = sortBranchesByAttention(
+    groupByBranch(branches, sensors, (s) => branchOfSensor.get(s.id) ?? "").map((g) => ({ ...g, tally: tallyOf(g.items) })),
+    (g) => g.tally,
+  );
+
   return (
     <div>
       <AutoRefresh />
-      <div className="mb-6 flex items-center justify-between">
+      {/* The branch dropdown takes the page's action slot: it is the one
+          control on the page, and it scopes everything under it, the
+          summary bar included. Adding devices is the technician's job. */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        {/* An owner login adds nothing; devices belong to the member accounts. */}
-        {!scope.readOnly && (
-          <Button asChild size="sm">
-            <Link href="/setup">
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">Add device</span>
-            </Link>
-          </Button>
-        )}
+        {multiBranch && <BranchFilter branches={branches} selected={branch} allLabel={scope.isGroup ? "All accounts" : "All branches"} className="w-full sm:w-64" />}
       </div>
 
       {/* One card, hairline-divided into three, so the summary reads as a
@@ -197,14 +204,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </SummaryItem>
       </Card>
 
-      {multiBranch ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">Sensors</h2>
-          <BranchFilter branches={branches} selected={branch} allLabel={scope.isGroup ? "All accounts" : "All branches"} />
-        </div>
-      ) : (
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
-      )}
+      <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
 
       {sensors.length === 0 ? (
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
@@ -214,12 +214,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </p>
         </div>
       ) : multiBranch && branch === ALL_BRANCHES ? (
-        // Every branch, each under its own heading, so the eye finds a site
-        // before it finds a fridge.
+        // Every branch, each under its own heading with its own counts, sites
+        // with trouble first, so the eye finds a site before it finds a fridge.
         <div className="space-y-8">
-          {groupByBranch(branches, sensors, (s) => branchOfSensor.get(s.id) ?? "").map(({ branch: b, items }) => (
+          {branchGroups.map(({ branch: b, items, tally }) => (
             <section key={b.id} aria-label={b.name}>
-              <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{b.name}</h3>
+              <BranchHeading name={b.name} tally={tally} />
               {items.length === 0
                 ? <p className="text-sm text-muted-foreground">{scope.isGroup ? "No sensors in this account." : "No sensors at this branch."}</p>
                 : grid(items)}

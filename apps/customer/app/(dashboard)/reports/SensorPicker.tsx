@@ -10,6 +10,10 @@ interface SensorPickerProps {
   allSelected: boolean;
   onToggleAll: () => void;
   onToggleSensor: (id: string) => void;
+  /** Tag each sensor with its branch. On when the list spans branches;
+   *  off when one branch was chosen and the tag would say the same thing
+   *  on every row. */
+  showBranch: boolean;
 }
 
 const CHECKBOX = "size-4 shrink-0 accent-primary";
@@ -20,6 +24,7 @@ export function SensorPicker({
   allSelected,
   onToggleAll,
   onToggleSensor,
+  showBranch,
 }: SensorPickerProps) {
   if (sensors.length === 0) {
     return <p className="text-sm text-muted-foreground">No sensors available.</p>;
@@ -63,12 +68,17 @@ export function SensorPicker({
                 />
                 <span className="truncate">{s.name}</span>
               </span>
+              <span className="flex shrink-0 items-center gap-2">
+              {showBranch && s.branchName && (
+                <Badge variant="outline" className="text-muted-foreground">{s.branchName}</Badge>
+              )}
               {s.decommissionedAt && (
                 <Badge variant="offline" className="shrink-0">Retired</Badge>
               )}
               {!reportable && (
                 <Badge variant="offline" className="shrink-0">Not in service</Badge>
               )}
+              </span>
             </label>
           );
         })}
