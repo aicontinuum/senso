@@ -194,6 +194,18 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-25 — The customer pages stop reading the clock in render
+
+The dashboard and settings pages now load through `lib/dashboard/load.ts`
+and `lib/settings/load.ts`, which take the clock once and return it, the
+shape the admin customer page and the billing loaders already have; the
+pages are thin and pure. The report client pins its clock to the instant
+Generate is pressed (`generatedAt`), so the period label and the
+"generated" stamp can no longer drift from the data that was fetched as
+the page re-renders, which they could before. The React compiler's
+purity rule is satisfied on all three. Still flagged, untouched: the
+`setState` in an effect in `TemperatureChart`.
+
 ## 2026-09-25 — Two security items from TODO.md
 
 - `PATCH /api/customers/[id]` now validates `alertRecipients` through

@@ -88,7 +88,11 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(activeSensors.map((s) => s.id)),
   );
-  const [generated, setGenerated] = useState(false);
+  // When the report was generated, or null while there is none. The period
+  // and the "generated" stamp hang off this instant, so they cannot drift
+  // from the data that was fetched as the page re-renders.
+  const [generatedAt, setGeneratedAt] = useState<number | null>(null);
+  const generated = generatedAt !== null;
   const [generating, setGenerating] = useState(false);
 
   // The view is read from the URL (see VIEW_PARAM). A generated report is shown
@@ -119,7 +123,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
 
   function toggleAll() {
     setSelectedIds(allSelected ? new Set() : new Set(reportableSensors.map((s) => s.id)));
-    setGenerated(false);
+    setGeneratedAt(null);
   }
 
   function toggleSensor(id: string) {
@@ -128,12 +132,12 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-    setGenerated(false);
+    setGeneratedAt(null);
   }
 
   function changeRange(next: RangeValue) {
     setRange(next);
-    setGenerated(false);
+    setGeneratedAt(null);
   }
 
   // A new branch means a new sensor list, so the selection starts over with
@@ -141,13 +145,14 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   function changeBranch(next: string) {
     setBranchId(next);
     setSelectedIds(new Set(sensorsOf(next).filter((s) => s.commissionedAt !== null && s.decommissionedAt === null).map((s) => s.id)));
-    setGenerated(false);
+    setGeneratedAt(null);
   }
 
-  async function generate() {
+  // `now` is the instant Generate was pressed: the report's period ends
+  // there and its "generated" stamp says so.
+  async function generate(now: number) {
     setGenerating(true);
     const supabase = createClient();
-    const now = Date.now();
     const since = new Date(now - rangeMs).toISOString();
     // Never query for a sensor that has nothing reportable, whatever state the
     // selection got into.
@@ -193,7 +198,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     if (readingsRes.error || configsRes.error) {
       console.error("Report data load failed", readingsRes.error, configsRes.error);
       setLoadError("Could not load the report data. Nothing has been generated — please try again.");
-      setGenerated(false);
+      setGeneratedAt(null);
       setGenerating(false);
       return;
     }
@@ -212,7 +217,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
       setLoadError(
         "Threshold history is unavailable, so readings cannot be checked against the limits that applied when they were recorded. The report has not been generated.",
       );
-      setGenerated(false);
+      setGeneratedAt(null);
       setGenerating(false);
       return;
     }
@@ -266,12 +271,13 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     setNotesBySensor(notesById);
     setReadingsBySensor(byId);
     setHistoryBySensor(historyById);
-    setGenerated(true);
+    setGeneratedAt(now);
     setGenerating(false);
     openReportView();
   }
 
-  const now = Date.now();
+  // Nothing below is shown until a report exists, so the fallback never prints.
+  const now = generatedAt ?? 0;
   const periodStart = now - rangeMs;
   const periodLabel = `${formatDateTimeLong(periodStart, timezone)} – ${formatDateTimeLong(now, timezone)}`;
   const tzNote = `All times shown in ${timezoneLabel(timezone)}`;
