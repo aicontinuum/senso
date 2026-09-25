@@ -137,6 +137,46 @@ as the page does on first load. The header, the PDF, the CSV's first line,
 the file's share title and the mail text all read "Customer — Branch".
 With one branch nothing changes. The address on the header is phase 4.
 
+## 2026-09-25 — Groups, phase 1: one owner login, several accounts
+
+The answer to "a supervisor in a rush prints the wrong branch": each site
+is its own account, and the owner gets a **group** login that reads all of
+them. Decided over branch mode (a PIN-gated chooser inside one login),
+which prevents accidents but not intent, and over sub-accounts, which is
+this from the other direction at higher cost. Branches stay as built for
+the owner-operator with one login.
+
+**Schema** (`20260927_groups.sql`). `customers.is_group`, and
+`customer_group_members (group_id, member_id)`. Guards: only a group has
+members, never itself, never another group; an account belongs to at most
+one group; a group never owns a gateway; the flag cannot flip under a row
+that depends on it. Admin-only to change.
+
+**Access.** One new question, `customer_can_view(customer)`: this login
+owns the account, or owns a group it belongs to. `customer_can_view_sensor`
+asks it of a sensor. Both SECURITY DEFINER with search_path pinned. Every
+SELECT rule that resolved ownership now asks that question: customers,
+gateways, sensors, branches, threshold history, alert comments, and (once
+their live definitions were captured) alert_configs, readings, alert_logs.
+No write rule changed; `customer_owns_sensor()` stays as the write gate,
+and the tests prove the owner login can neither rename a member's sensor
+nor add a threshold to it.
+
+**Two things found in the live rules on the way.** The duplicates TODO.md
+listed (three SELECTs on alert_configs, two on readings) are pruned to one
+each. And `alert_logs_select_own` reached an alert only through its
+threshold config, so every "stopped reporting" alert was invisible to the
+customer under RLS: emailed, then missing from the Alerts page. The
+rewritten rule covers both kinds; a test pins it.
+
+**Tests.** `supabase/tests/groups/`, 32 cases, on top of the branches
+fixtures: structure, the owner reading everything of its member and
+nothing else, a member seeing only itself (now including offline alerts),
+an outsider seeing nothing of the group, grants, the definer function.
+
+Next: phase 2, admin (create a group, link members, badges); phase 3, the
+owner's view in the customer app.
+
 ## 2026-09-24 — Branches, phase 4: recipients and address per branch
 
 The last piece, and the only one after the schema that touches delivery.

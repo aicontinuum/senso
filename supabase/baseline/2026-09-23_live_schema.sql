@@ -76,3 +76,16 @@ $function$;
 -- but not column-scoped (sensors is column-limited by grant since
 -- 20260902; customers is not), and both are TO public rather than
 -- TO authenticated. sensors carries two UPDATE policies that overlap.
+
+-- ── policies on readings, alert_configs, alert_logs (captured 2026-09-25) ──
+-- As found, before 20260927_groups.sql replaced every SELECT rule below.
+-- table         | policy                             | cmd    | roles           | using / with check
+-- alert_configs | alert_configs_select_own           | SELECT | {authenticated} | sensor_id in (sensors of gateways of the customer whose auth_user_id = auth.uid())
+-- alert_configs | customers_read_own_alert_configs   | SELECT | {public}        | same, written as a join
+-- alert_configs | customers_select_own_alert_configs | SELECT | {authenticated} | customer_owns_sensor(sensor_id)
+-- alert_configs | customers_insert_own_alert_configs | INSERT | {authenticated} | with check customer_owns_sensor(sensor_id)
+-- alert_configs | customers_update_own_alert_configs | UPDATE | {authenticated} | customer_owns_sensor(sensor_id)
+-- alert_logs    | alert_logs_select_own              | SELECT | {authenticated} | alert_config_id in (configs of the customer's sensors)
+--                                                                                 ← reached threshold alerts only; sensor_offline rows (no config) were invisible
+-- readings      | customers_select_own_readings      | SELECT | {authenticated} | customer_owns_sensor(sensor_id)
+-- readings      | readings_select_own                | SELECT | {authenticated} | sensor_id in (sensors of gateways of the customer)

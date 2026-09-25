@@ -23,6 +23,8 @@ from pg_policies
 where schemaname = 'public' and tablename in ('customers', 'gateways', 'sensors');
 ```
 
-Still to capture: `readings`, `alert_configs`, `alert_logs` columns and
-policies, and `information_schema.role_table_grants` for `public`
-(TODO.md, "Base schema and RLS policies are not in the repo").
+Policies on `readings`, `alert_configs` and `alert_logs` were captured on
+2026-09-25 and their SELECT rules replaced by `20260927_groups.sql`. Still
+to capture: those three tables' columns, and
+`information_schema.role_table_grants` for `public` (TODO.md, "Base schema
+and RLS policies are not in the repo").
