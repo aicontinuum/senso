@@ -1,10 +1,12 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { Button, Card, LinkRow } from '@senso/ui';
 import { formatDate } from '@/lib/format';
-import { LIST_TD, LIST_TH } from '@/components/customers/CustomersTable';
+import { LIST_ROW, LIST_TD, LIST_TH } from '@/components/customers/CustomersTable';
 
-// Owner logins, one row each, with how many accounts each can see.
+// Owner logins, one row each, with how many accounts each can see. The
+// same two forms as the customers below: a table from desktop width up,
+// a stacked list on a phone.
 
 export type GroupListRow = {
   id: string;
@@ -15,10 +17,14 @@ export type GroupListRow = {
   memberCount: number;
 };
 
+function membersLabel(count: number): string {
+  return `${count} ${count === 1 ? 'member' : 'members'}`;
+}
+
 export function GroupsTable({ rows }: { rows: GroupListRow[] }) {
   return (
-    <Card className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <Card className="overflow-hidden">
+      <table className="hidden w-full text-sm lg:table">
         <thead>
           <tr className="border-b border-hairline text-left text-muted-foreground">
             <th className={LIST_TH}>Group</th>
@@ -53,6 +59,18 @@ export function GroupsTable({ rows }: { rows: GroupListRow[] }) {
           })}
         </tbody>
       </table>
+
+      <ul className="divide-y divide-hairline lg:hidden">
+        {rows.map(row => (
+          <li key={row.id}>
+            <Link href={`/customers/${row.id}`} className={LIST_ROW}>
+              <p className="min-w-0 flex-1 truncate text-sm font-medium">{row.name}</p>
+              <p className="shrink-0 text-xs tabular-nums text-muted-foreground">{membersLabel(row.memberCount)}</p>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

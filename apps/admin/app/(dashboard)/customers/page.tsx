@@ -3,18 +3,12 @@ import { Plus, Users } from 'lucide-react';
 import { Button } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { loadGroupOfEveryone } from '@/lib/groups/load';
+import { GATEWAY_SUMMARY_SELECT, summariseDevices, type GatewaySummaryRow } from '@/lib/customers/device-summary';
 import { CustomersTable, type CustomerListRow } from '@/components/customers/CustomersTable';
 import { GroupsTable, type GroupListRow } from '@/components/customers/GroupsTable';
 
 // Two lists: owner logins first, when there are any, then the accounts
 // that own devices. Both kinds are created from the buttons at the top.
-
-type GatewayRow = {
-  id: string;
-  is_online: boolean;
-  decommissioned_at: string | null;
-  sensors?: { id: string; decommissioned_at: string | null }[];
-};
 
 export default async function CustomersPage() {
   const supabase = createAdminClient();
@@ -29,12 +23,7 @@ export default async function CustomersPage() {
         contact_name,
         created_at,
         is_group,
-        gateways (
-          id,
-          is_online,
-          decommissioned_at,
-          sensors (id, decommissioned_at)
-        )
+        ${GATEWAY_SUMMARY_SELECT}
       `)
       .order('created_at', { ascending: false }),
     loadGroupOfEveryone(supabase),
@@ -49,38 +38,30 @@ export default async function CustomersPage() {
 
   const rows: CustomerListRow[] = (customers ?? [])
     .filter(c => !c.is_group)
-    .map(customer => {
-      // Retired devices keep their readings but are not counted as live.
-      const gateways = ((customer.gateways ?? []) as GatewayRow[]).filter(gw => gw.decommissioned_at === null);
-      const sensorCount = gateways.reduce(
-        (sum: number, gw) => sum + (gw.sensors ?? []).filter(s => s.decommissioned_at === null).length,
-        0,
-      );
-      const anyOnline = gateways.some(gw => gw.is_online);
-      return {
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        contact_name: customer.contact_name,
-        created_at: customer.created_at,
-        sensorCount,
-        gwStatus: gateways.length === 0 ? 'none' : anyOnline ? 'online' : 'offline',
-        groupOf: groupOf.get(customer.id) ?? null,
-      };
-    });
+    .map(customer => ({
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      contact_name: customer.contact_name,
+      created_at: customer.created_at,
+      ...summariseDevices(customer.gateways as GatewaySummaryRow[] | null),
+      groupOf: groupOf.get(customer.id) ?? null,
+    }));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* The two ways in share a row with the title from tablet width up; on
+          a phone they take a full-width row of their own, as an even pair. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="secondary" size="sm">
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button asChild variant="secondary" size="sm" className="flex-1 sm:flex-none">
             <Link href="/customers/new-group">
               <Users className="size-4" />
               New group account
             </Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="flex-1 sm:flex-none">
             <Link href="/customers/new">
               <Plus className="size-4" />
               New customer
