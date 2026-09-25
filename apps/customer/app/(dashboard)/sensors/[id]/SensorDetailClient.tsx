@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
 import { BatteryMeter, Button, Card, Input } from "@senso/ui";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
+import { ManagedBy } from "@/components/ManagedBy";
 import { sensorState } from "@/lib/alert-state";
 import { formatDevEui } from "@/lib/deveui";
 import {
@@ -31,8 +32,9 @@ interface Props {
   gateway: Gateway;
   /** The sensor's branch, or null for a single-branch customer. */
   branchName: string | null;
-  /** An owner login looks and changes nothing; the settings are read-only. */
-  readOnly: boolean;
+  /** For an owner login, the member account that manages this sensor: the
+   *  settings are read-only and say so by name. Null when editable. */
+  managedBy: string | null;
   accountRecipients: string[];
   recentReadings: Reading[];
   timezone: string;
@@ -42,7 +44,7 @@ interface Props {
   hasOpenAlert: boolean;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, branchName, readOnly, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, branchName, managedBy, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -259,8 +261,8 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, readOn
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Settings
           </p>
-          {readOnly ? (
-            <p className="text-xs text-muted-foreground">Changed in this account&apos;s own login</p>
+          {managedBy ? (
+            <ManagedBy>Managed by {managedBy}</ManagedBy>
           ) : !editing ? (
             <Button variant="ghost" size="sm" onClick={startEditing}>
               <Pencil className="h-3.5 w-3.5" />

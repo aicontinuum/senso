@@ -6,6 +6,7 @@ import { Pencil } from "lucide-react";
 import { Button, Card } from "@senso/ui";
 import { ALERT_COMMENT_MAX_LENGTH } from "@/lib/constants";
 import { formatDateTimeLong } from "@/lib/temperature";
+import { ManagedBy } from "@/components/ManagedBy";
 
 // Where a supervisor explains what an incident actually was.
 //
@@ -19,12 +20,14 @@ interface Props {
   createdAt: string | null;
   updatedAt: string | null;
   timezone: string;
-  /** An owner login reads the note and cannot write one. */
-  readOnly: boolean;
+  /** For an owner login, the member account whose supervisor writes the
+   *  note: the owner reads it and cannot write one. Null when editable. */
+  readOnlyFor: string | null;
 }
 
-export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timezone, readOnly }: Props) {
+export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timezone, readOnlyFor }: Props) {
   const router = useRouter();
+  const readOnly = readOnlyFor !== null;
   const [body, setBody] = useState(initialBody ?? "");
   const [draft, setDraft] = useState(initialBody ?? "");
   const [editing, setEditing] = useState(initialBody === null && !readOnly);
@@ -122,7 +125,10 @@ export function AlertComment({ alertId, initialBody, createdAt, updatedAt, timez
           {/* Deliberately whitespace-preserving: people write these in short
               lines and a note reflowed into one paragraph reads worse. */}
           {body === "" ? (
-            <p className="text-sm text-muted-foreground">No comment. The account&apos;s own login can add one.</p>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">No comment.</p>
+              {readOnlyFor && <ManagedBy>Only {readOnlyFor} can add a comment</ManagedBy>}
+            </div>
           ) : (
             <p className="whitespace-pre-wrap text-base">{body}</p>
           )}
