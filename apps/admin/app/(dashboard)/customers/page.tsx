@@ -1,10 +1,13 @@
 import Link from 'next/link';
-import { ArrowRight, Plus, Users } from 'lucide-react';
-import { Badge, Button, Card } from '@senso/ui';
-import { LinkRow } from '@senso/ui';
+import { Plus, Users } from 'lucide-react';
+import { Button } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { formatDate } from '@/lib/format';
 import { loadGroupOfEveryone } from '@/lib/groups/load';
+import { CustomersTable, type CustomerListRow } from '@/components/customers/CustomersTable';
+import { GroupsTable, type GroupListRow } from '@/components/customers/GroupsTable';
+
+// Two lists: owner logins first, when there are any, then the accounts
+// that own devices. Both kinds are created from the buttons at the top.
 
 type GatewayRow = {
   id: string;
@@ -13,43 +16,58 @@ type GatewayRow = {
   sensors?: { id: string; decommissioned_at: string | null }[];
 };
 
-type GatewayStatus = 'none' | 'online' | 'offline';
-
-const TH = 'px-6 py-3 font-medium';
-const TD = 'px-6 py-4';
-
 export default async function CustomersPage() {
   const supabase = createAdminClient();
 
-  const [{ data: customers }, groupOf] = await Promise.all([supabase
-    .from('customers')
-    .select(`
-      id,
-      name,
-      email,
-      contact_name,
-      created_at,
-      is_group,
-      gateways (
+  const [{ data: customers }, groupOf] = await Promise.all([
+    supabase
+      .from('customers')
+      .select(`
         id,
-        is_online,
-        decommissioned_at,
-        sensors (id, decommissioned_at)
-      )
-    `)
-    .order('created_at', { ascending: false }), loadGroupOfEveryone(supabase)]);
+        name,
+        email,
+        contact_name,
+        created_at,
+        is_group,
+        gateways (
+          id,
+          is_online,
+          decommissioned_at,
+          sensors (id, decommissioned_at)
+        )
+      `)
+      .order('created_at', { ascending: false }),
+    loadGroupOfEveryone(supabase),
+  ]);
 
-  const rows = (customers ?? []).map(customer => {
-    // Retired devices keep their readings but are not counted as live.
-    const gateways = ((customer.gateways ?? []) as GatewayRow[]).filter(gw => gw.decommissioned_at === null);
-    const sensorCount = gateways.reduce(
-      (sum: number, gw) => sum + (gw.sensors ?? []).filter(s => s.decommissioned_at === null).length,
-      0,
-    );
-    const anyOnline = gateways.some(gw => gw.is_online);
-    const gwStatus: GatewayStatus = gateways.length === 0 ? 'none' : anyOnline ? 'online' : 'offline';
-    return { customer, sensorCount, gwStatus };
-  });
+  const memberCount = new Map<string, number>();
+  for (const group of groupOf.values()) memberCount.set(group.id, (memberCount.get(group.id) ?? 0) + 1);
+
+  const groups: GroupListRow[] = (customers ?? [])
+    .filter(c => c.is_group)
+    .map(c => ({ id: c.id, name: c.name, email: c.email, contact_name: c.contact_name, created_at: c.created_at, memberCount: memberCount.get(c.id) ?? 0 }));
+
+  const rows: CustomerListRow[] = (customers ?? [])
+    .filter(c => !c.is_group)
+    .map(customer => {
+      // Retired devices keep their readings but are not counted as live.
+      const gateways = ((customer.gateways ?? []) as GatewayRow[]).filter(gw => gw.decommissioned_at === null);
+      const sensorCount = gateways.reduce(
+        (sum: number, gw) => sum + (gw.sensors ?? []).filter(s => s.decommissioned_at === null).length,
+        0,
+      );
+      const anyOnline = gateways.some(gw => gw.is_online);
+      return {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        contact_name: customer.contact_name,
+        created_at: customer.created_at,
+        sensorCount,
+        gwStatus: gateways.length === 0 ? 'none' : anyOnline ? 'online' : 'offline',
+        groupOf: groupOf.get(customer.id) ?? null,
+      };
+    });
 
   return (
     <div className="space-y-6">
@@ -71,68 +89,17 @@ export default async function CustomersPage() {
         </div>
       </div>
 
-      <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-hairline text-left text-muted-foreground">
-              <th className={TH}>Customer</th>
-              <th className={TH}>Contact</th>
-              <th className={TH}>Sensors</th>
-              <th className={TH}>Gateway</th>
-              <th className={`${TH} whitespace-nowrap`}>Date added</th>
-              <th className={`${TH} relative`}><span className="sr-only">Open</span></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-hairline">
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
-                  No customers yet. <Link href="/customers/new" className="underline">Add one.</Link>
-                </td>
-              </tr>
-            )}
-            {rows.map(({ customer, sensorCount, gwStatus }) => {
-              const href = `/customers/${customer.id}`;
-              return (
-                <LinkRow key={customer.id} href={href}>
-                  <td className={TD}>
-                    <p className="flex items-center gap-2 font-medium">
-                      {customer.name}
-                      {customer.is_group && <Badge variant="offline">Group</Badge>}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {customer.email}
-                      {groupOf.get(customer.id) && <> · in {groupOf.get(customer.id)!.name}</>}
-                    </p>
-                  </td>
-                  <td className={`${TD} text-muted-foreground`}>{customer.contact_name ?? '—'}</td>
-                  <td className={`${TD} tabular-nums`}>{customer.is_group ? <span className="text-muted-foreground">—</span> : sensorCount}</td>
-                  <td className={TD}>
-                    {gwStatus === 'none' || customer.is_group
-                      ? <span className="text-muted-foreground">—</span>
-                      : (
-                        <Badge variant={gwStatus === 'online' ? 'ok' : 'offline'} dot>
-                          {gwStatus === 'online' ? 'Online' : 'Offline'}
-                        </Badge>
-                      )}
-                  </td>
-                  <td className={`${TD} whitespace-nowrap text-muted-foreground`}>{formatDate(customer.created_at)}</td>
-                  <td className={`${TD} text-right`}>
-                    {/* The row itself navigates; this is the visible affordance
-                        and the keyboard route to the same place. */}
-                    <Button asChild variant="secondary" size="sm">
-                      <Link href={href}>
-                        View
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    </Button>
-                  </td>
-                </LinkRow>
-              );
-            })}
-          </tbody>
-        </table>
-      </Card>
+      {groups.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold tracking-tight">Groups</h2>
+          <GroupsTable rows={groups} />
+        </section>
+      )}
+
+      <section className="space-y-3">
+        {groups.length > 0 && <h2 className="text-lg font-semibold tracking-tight">Customers</h2>}
+        <CustomersTable rows={rows} />
+      </section>
     </div>
   );
 }

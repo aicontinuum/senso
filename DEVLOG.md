@@ -186,8 +186,10 @@ an outsider seeing nothing of the group, grants, the definer function.
   links to its own page.
 - **Member page**: "Member of X, whose owner login can see this account"
   under the title, linking to the group.
-- **Customers list**: a Group badge; members show "in X" under the email;
-  a group's sensor and gateway cells are a dash.
+- **Customers list**: groups in their own Groups card above the Customers card,
+  with a Members count; members show "in X" under the email. The two tables
+  are `GroupsTable` and `CustomersTable`; the Groups card exists only when
+  there is a group.
 - **Billing** skips groups: they hold no plan, their members are billed.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
