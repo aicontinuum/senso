@@ -4,6 +4,7 @@ import { Badge, Button, Card } from '@senso/ui';
 import { LinkRow } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { formatDate } from '@/lib/format';
+import { loadGroupOfEveryone } from '@/lib/groups/load';
 
 type GatewayRow = {
   id: string;
@@ -20,7 +21,7 @@ const TD = 'px-6 py-4';
 export default async function CustomersPage() {
   const supabase = createAdminClient();
 
-  const { data: customers } = await supabase
+  const [{ data: customers }, groupOf] = await Promise.all([supabase
     .from('customers')
     .select(`
       id,
@@ -28,6 +29,7 @@ export default async function CustomersPage() {
       email,
       contact_name,
       created_at,
+      is_group,
       gateways (
         id,
         is_online,
@@ -35,7 +37,7 @@ export default async function CustomersPage() {
         sensors (id, decommissioned_at)
       )
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }), loadGroupOfEveryone(supabase)]);
 
   const rows = (customers ?? []).map(customer => {
     // Retired devices keep their readings but are not counted as live.
@@ -86,13 +88,19 @@ export default async function CustomersPage() {
               return (
                 <LinkRow key={customer.id} href={href}>
                   <td className={TD}>
-                    <p className="font-medium">{customer.name}</p>
-                    <p className="text-xs text-muted-foreground">{customer.email}</p>
+                    <p className="flex items-center gap-2 font-medium">
+                      {customer.name}
+                      {customer.is_group && <Badge variant="offline">Group</Badge>}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {customer.email}
+                      {groupOf.get(customer.id) && <> · in {groupOf.get(customer.id)!.name}</>}
+                    </p>
                   </td>
                   <td className={`${TD} text-muted-foreground`}>{customer.contact_name ?? '—'}</td>
-                  <td className={`${TD} tabular-nums`}>{sensorCount}</td>
+                  <td className={`${TD} tabular-nums`}>{customer.is_group ? <span className="text-muted-foreground">—</span> : sensorCount}</td>
                   <td className={TD}>
-                    {gwStatus === 'none'
+                    {gwStatus === 'none' || customer.is_group
                       ? <span className="text-muted-foreground">—</span>
                       : (
                         <Badge variant={gwStatus === 'online' ? 'ok' : 'offline'} dot>

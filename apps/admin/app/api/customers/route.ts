@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { name, contactName, contactEmail, phone, password } = await request.json();
+  const { name, contactName, contactEmail, phone, password, isGroup } = await request.json();
 
   const admin = createAdminClient();
 
@@ -36,6 +36,8 @@ export async function POST(request: Request) {
       phone: phone || null,
       auth_user_id: authData.user.id,
       status: 'active',
+      // An owner login: reads the accounts linked under it, owns no devices.
+      is_group: isGroup === true,
     });
 
   if (dbError) {

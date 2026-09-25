@@ -5,6 +5,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
 import { loadBranches } from '@/lib/branches/load';
+import { loadGroupMembers, loadGroupOf, loadUnlinkedAccounts, type GroupMember, type GroupRef } from '@/lib/groups/load';
 import type { CustomerRow } from '@/components/customers/AccountInfoSection';
 import type { GatewayRow } from '@/components/customers/GatewaysSection';
 import type { SensorRow } from '@/components/customers/SensorsSection';
@@ -18,6 +19,11 @@ export type CustomerDetail = {
   branches: Branch[];
   gateways: GatewayRow[];
   sensors: SensorRow[];
+  /** For a group: who it reads, and who it could add. Empty otherwise. */
+  members: GroupMember[];
+  candidates: GroupMember[];
+  /** For a member: the group it belongs to. */
+  groupOf: GroupRef | null;
 };
 
 type SensorSource = { id: string; name: string; status: string; gateway_id: string; commissioned_at: string | null };
@@ -25,13 +31,20 @@ type SensorSource = { id: string; name: string; status: string; gateway_id: stri
 export async function loadCustomerDetail(admin: Admin, id: string, now: number = Date.now()): Promise<CustomerDetail | null> {
   const { data: customer } = await admin
     .from('customers')
-    .select('id, name, email, contact_name, phone, status, created_at, alert_recipients')
+    .select('id, name, email, contact_name, phone, status, created_at, alert_recipients, is_group')
     .eq('id', id)
     .single();
   if (!customer) return null;
 
-  const [branches, { data: gateways }] = await Promise.all([
+  // A group has no devices to load; its page is its members.
+  if (customer.is_group) {
+    const [members, candidates] = await Promise.all([loadGroupMembers(admin, id), loadUnlinkedAccounts(admin)]);
+    return { now, customer, branches: [], gateways: [], sensors: [], members, candidates, groupOf: null };
+  }
+
+  const [branches, groupOf, { data: gateways }] = await Promise.all([
     loadBranches(admin, id),
+    loadGroupOf(admin, id),
     admin
       .from('gateways')
       .select('id, name, branch_id, is_online, firmware_version, last_seen_at, mac_address')
@@ -86,6 +99,9 @@ export async function loadCustomerDetail(admin: Admin, id: string, now: number =
     now,
     customer,
     branches,
+    members: [],
+    candidates: [],
+    groupOf,
     gateways: (gateways ?? []).map(g => ({ ...g, is_online: isGatewayOnline(g.is_online, g.last_seen_at) })),
     sensors: (sensors ?? []).map(s => ({
       ...s,
