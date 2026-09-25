@@ -42,6 +42,9 @@ export default async function SensorDetailPage({
   // for an owner login the member account.
   const site = scope.sites.find((s) => s.id === siteOfGateway(scope, gw));
   const branchName = hasBranches(scope.sites) ? site?.name ?? null : null;
+  // For an owner login the site is the member account, and the one that
+  // manages this sensor: named on the read-only settings whatever the count.
+  const managedBy = scope.readOnly ? site?.name ?? null : null;
   // The branch's own recipients apply whichever login is looking.
   const branches = await loadBranches(supabase, gw.customer_id);
 
@@ -118,7 +121,7 @@ export default async function SensorDetailPage({
         config={config}
         gateway={gateway}
         branchName={branchName}
-        readOnly={scope.readOnly}
+        managedBy={managedBy}
         accountRecipients={accountRecipients}
         recentReadings={recentReadings}
         timezone={customer.timezone}

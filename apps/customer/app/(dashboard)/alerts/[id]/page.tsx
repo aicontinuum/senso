@@ -66,7 +66,11 @@ export default async function AlertDetailPage({
   if (!sensor || !gw || !canView(scope, gw.customer_id)) notFound();
 
   // Named only when there is more than one site to tell apart.
-  const branchName = hasBranches(scope.sites) ? scope.sites.find((s) => s.id === siteOfGateway(scope, gw))?.name ?? null : null;
+  const site = scope.sites.find((s) => s.id === siteOfGateway(scope, gw));
+  const branchName = hasBranches(scope.sites) ? site?.name ?? null : null;
+  // For an owner login the site is the member account whose supervisor
+  // writes the note; the comment card names it whatever the count.
+  const readOnlyFor = scope.readOnly ? site?.name ?? null : null;
 
   // Shared by both kinds: the supervisor's note on this incident. An offline
   // sensor is exactly the sort of thing worth annotating — "battery replaced".
@@ -83,7 +87,7 @@ export default async function AlertDetailPage({
       createdAt={comment?.created_at ?? null}
       updatedAt={comment?.updated_at ?? null}
       timezone={customer.timezone}
-      readOnly={scope.readOnly}
+      readOnlyFor={readOnlyFor}
     />
   );
 
