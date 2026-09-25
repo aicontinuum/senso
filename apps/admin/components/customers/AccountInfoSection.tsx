@@ -132,7 +132,7 @@ export function AccountInfoSection({ customer }: { customer: CustomerRow }) {
       </CardHeader>
 
       <dl className="space-y-4 px-5 py-5">
-        <Field label="Business name">
+        <Field label={customer.is_group ? "Group name" : "Business name"}>
           {editing ? <Input value={form.name} onChange={e => set('name')(e.target.value)} /> : <span className="font-medium">{form.name}</span>}
         </Field>
         <Field label="Contact name">
