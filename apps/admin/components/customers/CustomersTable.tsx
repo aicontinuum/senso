@@ -3,6 +3,7 @@ import { ArrowRight, ChevronRight } from 'lucide-react';
 import { Badge, Button, Card, LinkRow, StatusDot } from '@senso/ui';
 import { formatDate } from '@/lib/format';
 import type { GroupRef } from '@/lib/groups/load';
+import type { DeviceSummary, GatewayStatus } from '@/lib/customers/device-summary';
 
 // The accounts that own devices, one row each, in two forms of the same
 // data: a six-column table from desktop width up, and a stacked list below
@@ -10,14 +11,12 @@ import type { GroupRef } from '@/lib/groups/load';
 // chip after the name in both. Rows arrive shaped by the page; this only
 // draws them.
 
-export type CustomerListRow = {
+export type CustomerListRow = DeviceSummary & {
   id: string;
   name: string;
   email: string;
   contact_name: string | null;
   created_at: string;
-  sensorCount: number;
-  gwStatus: 'none' | 'online' | 'offline';
   groupOf: GroupRef | null;
 };
 
@@ -31,11 +30,17 @@ export function GroupChip({ group }: { group: GroupRef }) {
   return <Badge variant="outline" className="text-muted-foreground">{group.name}</Badge>;
 }
 
-// The gateway's state as a dot before the name, on the phone, where the
-// table's badge column has no room. No gateway is no dot, only its space,
-// so the names line up: grey would read as offline, and there is nothing
-// to be offline.
-function GatewayDot({ status }: { status: CustomerListRow['gwStatus'] }) {
+/** "6 sensors", or "No gateway" when there is nothing to count. */
+export function sensorsLabel({ sensorCount, gwStatus }: DeviceSummary): string {
+  if (gwStatus === 'none') return 'No gateway';
+  return `${sensorCount} ${sensorCount === 1 ? 'sensor' : 'sensors'}`;
+}
+
+// The gateway's state as a dot before the name, on the phone and in any
+// list without room for the table's badge column. No gateway is no dot,
+// only its space, so the names line up: grey would read as offline, and
+// there is nothing to be offline.
+export function GatewayDot({ status }: { status: GatewayStatus }) {
   if (status === 'none') return <span className="size-2 shrink-0" aria-hidden />;
   const label = status === 'online' ? 'Gateway online' : 'Gateway offline';
   return (
@@ -123,9 +128,7 @@ export function CustomersTable({ rows }: { rows: CustomerListRow[] }) {
                 <p className="truncate text-sm font-medium">{row.name}</p>
                 {row.groupOf && <div className="mt-1"><GroupChip group={row.groupOf} /></div>}
               </div>
-              <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                {row.gwStatus === 'none' ? 'No gateway' : `${row.sensorCount} ${row.sensorCount === 1 ? 'sensor' : 'sensors'}`}
-              </p>
+              <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{sensorsLabel(row)}</p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
           </li>

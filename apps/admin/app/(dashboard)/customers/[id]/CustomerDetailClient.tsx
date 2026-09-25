@@ -7,7 +7,7 @@ import { BranchesSection } from '@/components/customers/BranchesSection';
 import { GatewaysSection, type GatewayRow } from '@/components/customers/GatewaysSection';
 import { GroupMembersSection } from '@/components/customers/GroupMembersSection';
 import { SensorsSection, type SensorRow } from '@/components/customers/SensorsSection';
-import type { GroupMember, GroupRef } from '@/lib/groups/load';
+import type { AccountRef, GroupMember, GroupRef } from '@/lib/groups/load';
 import type { Branch } from '@/types/branches';
 
 interface Props {
@@ -16,7 +16,7 @@ interface Props {
   gateways: GatewayRow[];
   sensors: SensorRow[];
   members: GroupMember[];
-  candidates: GroupMember[];
+  candidates: AccountRef[];
   groupOf: GroupRef | null;
   /** Server clock at render, so relative times match the rest of the page. */
   now: number;

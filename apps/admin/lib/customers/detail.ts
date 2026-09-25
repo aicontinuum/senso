@@ -5,7 +5,7 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { isGatewayOnline, isSensorOnline, SENSOR_STALE_MS } from '@senso/status';
 import { loadBranches } from '@/lib/branches/load';
-import { loadGroupMembers, loadGroupOf, loadUnlinkedAccounts, type GroupMember, type GroupRef } from '@/lib/groups/load';
+import { loadGroupMembers, loadGroupOf, loadUnlinkedAccounts, type AccountRef, type GroupMember, type GroupRef } from '@/lib/groups/load';
 import type { CustomerRow } from '@/components/customers/AccountInfoSection';
 import type { GatewayRow } from '@/components/customers/GatewaysSection';
 import type { SensorRow } from '@/components/customers/SensorsSection';
@@ -21,7 +21,7 @@ export type CustomerDetail = {
   sensors: SensorRow[];
   /** For a group: who it reads, and who it could add. Empty otherwise. */
   members: GroupMember[];
-  candidates: GroupMember[];
+  candidates: AccountRef[];
   /** For a member: the group it belongs to. */
   groupOf: GroupRef | null;
 };

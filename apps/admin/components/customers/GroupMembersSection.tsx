@@ -3,20 +3,25 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Unlink } from 'lucide-react';
-import { Button, Card, CardDescription, CardHeader, CardTitle, Select } from '@senso/ui';
+import { ChevronRight, Plus, Unlink } from 'lucide-react';
+import { Button, Card, CardDescription, CardHeader, CardTitle, Select, cn } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import type { GroupMember } from '@/lib/groups/load';
+import type { AccountRef, GroupMember } from '@/lib/groups/load';
+import { InlinePanel } from '@/components/billing/InlinePanel';
+import { GatewayDot, LIST_ROW, sensorsLabel } from '@/components/customers/CustomersTable';
 
-// The accounts an owner login can see. Linking is the whole job of a
-// group, so Add sits in the header; unlinking asks once, since it removes
-// the owner's view and nothing else.
+// The accounts an owner login can see, each a row you can open, with its
+// device health beside the name: the question an admin opening a group
+// has is which of its sites is in trouble. Linking is the whole job of a
+// group, so Add sits in the header; unlinking opens the one confirmation
+// shape every other card uses, under the row, since it removes the
+// owner's view and nothing else.
 
 type Props = {
   groupId: string;
   members: GroupMember[];
   /** Accounts that are neither groups nor already in one. */
-  candidates: GroupMember[];
+  candidates: AccountRef[];
 };
 
 export function GroupMembersSection({ groupId, members, candidates }: Props) {
@@ -47,9 +52,23 @@ export function GroupMembersSection({ groupId, members, candidates }: Props) {
     router.refresh();
   }
 
+  function openAdd() {
+    setError('');
+    setConfirmId(null);
+    setAdding(true);
+  }
+
+  function openRemove(id: string) {
+    setError('');
+    setAdding(false);
+    setConfirmId(id);
+  }
+
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
+      {/* Title and words first, the button beside them from tablet width
+          and on its own full-width row on a phone. */}
+      <CardHeader className="flex-col gap-3 space-y-0 border-b border-hairline sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-baseline gap-2">
             <CardTitle>Members</CardTitle>
@@ -58,7 +77,7 @@ export function GroupMembersSection({ groupId, members, candidates }: Props) {
           <CardDescription>The accounts this owner login can see. It can look at everything in them and change nothing.</CardDescription>
         </div>
         {!adding && (
-          <Button size="sm" onClick={() => setAdding(true)} disabled={candidates.length === 0} title={candidates.length === 0 ? 'Every account is already in a group' : undefined}>
+          <Button size="sm" onClick={openAdd} disabled={candidates.length === 0} title={candidates.length === 0 ? 'Every account is already in a group' : undefined} className="w-full shrink-0 sm:w-auto">
             <Plus className="size-4" />
             Add member
           </Button>
@@ -66,16 +85,22 @@ export function GroupMembersSection({ groupId, members, candidates }: Props) {
       </CardHeader>
 
       {adding && (
-        <div className="border-b border-hairline px-5 py-4">
-          <Card tone="sunken" className="space-y-4 p-4 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]">
-            <Select label="Account" hint="Only accounts not already in a group are listed." value={memberId} onChange={e => setMemberId(e.target.value)}>
+        <div className="border-b border-hairline bg-sunken px-5 py-4">
+          <InlinePanel
+            title="Link an account"
+            description="Only accounts not already in a group are listed. The account itself is unchanged; this owner login can now see it."
+            error={error}
+            confirmLabel="Link account"
+            busyLabel="Linking…"
+            busy={busy}
+            disabled={memberId === ''}
+            onConfirm={link}
+            onCancel={() => setAdding(false)}
+          >
+            <Select label="Account" value={memberId} onChange={e => setMemberId(e.target.value)} wrapperClassName="sm:max-w-md">
               {candidates.map(c => <option key={c.id} value={c.id}>{c.name} · {c.email}</option>)}
             </Select>
-            <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={link} disabled={busy || memberId === ''}>{busy ? 'Linking…' : 'Link account'}</Button>
-              <Button variant="secondary" size="sm" onClick={() => setAdding(false)} disabled={busy}>Cancel</Button>
-            </div>
-          </Card>
+          </InlinePanel>
         </div>
       )}
 
@@ -87,27 +112,50 @@ export function GroupMembersSection({ groupId, members, candidates }: Props) {
       ) : (
         <ul className="divide-y divide-hairline">
           {members.map(m => (
-            <li key={m.id} className="flex items-center gap-4 px-5 py-3.5">
-              <div className="min-w-0 flex-1">
-                <Link href={`/customers/${m.id}`} className="text-sm font-medium hover:underline">{m.name}</Link>
-                <p className="truncate text-xs text-muted-foreground">{m.email}</p>
-              </div>
-              {confirmId === m.id ? (
-                <span className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Remove from this group? The account itself is untouched.</span>
-                  <Button variant="danger" size="sm" onClick={() => unlink(m.id)} disabled={busy}>{busy ? 'Removing…' : 'Remove'}</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)} disabled={busy}>Cancel</Button>
-                </span>
-              ) : (
-                <Button variant="ghost" size="icon" aria-label={`Remove ${m.name} from the group`} title="Remove from group" className="hover:text-alert-text" onClick={() => setConfirmId(m.id)}>
+            <li key={m.id}>
+              <div className="flex items-center">
+                {/* The row opens the account; the unlink button sits after
+                    it, outside the link, so a tap on the name never removes. */}
+                <Link href={`/customers/${m.id}`} className={cn(LIST_ROW, 'min-w-0 flex-1 pr-2')}>
+                  <GatewayDot status={m.gwStatus} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{m.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                  </div>
+                  <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{sensorsLabel(m)}</p>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Remove ${m.name} from the group`}
+                  title="Remove from group"
+                  className="mr-3 shrink-0 text-muted-foreground hover:text-alert-text"
+                  onClick={() => openRemove(m.id)}
+                  disabled={busy}
+                >
                   <Unlink className="size-4" />
                 </Button>
+              </div>
+              {confirmId === m.id && (
+                <div className="border-t border-hairline bg-sunken px-5 py-4">
+                  <InlinePanel
+                    title={`Remove ${m.name} from this group?`}
+                    description="The owner login stops seeing this account. The account itself, its devices and its login are untouched."
+                    error={error}
+                    confirmLabel="Remove"
+                    busyLabel="Removing…"
+                    busy={busy}
+                    danger
+                    onConfirm={() => unlink(m.id)}
+                    onCancel={() => setConfirmId(null)}
+                  />
+                </div>
               )}
             </li>
           ))}
         </ul>
       )}
-      {error && <p role="alert" className="px-5 pb-4 text-sm text-alert-text">{error}</p>}
     </Card>
   );
 }
