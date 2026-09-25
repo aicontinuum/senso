@@ -28,14 +28,15 @@ export async function loadBranches(supabase: SupabaseClient, customerId: string)
   return (data ?? []).map((b) => ({ id: b.id, name: b.name, address: b.address, alertRecipients: b.alert_recipients ?? [] }));
 }
 
-/** Branch UI exists only once there is something to choose between. */
-export function hasBranches(branches: BranchOption[]): boolean {
+/** Branch UI exists only once there is something to choose between. Takes
+ *  any site-shaped list: branches, or a group's members. */
+export function hasBranches(branches: { id: string }[]): boolean {
   return branches.length > 1;
 }
 
 /** The branch a page should show, from its query string: a real branch id,
  *  or all of them. An unknown id falls back to all rather than to nothing. */
-export function selectedBranch(param: string | string[] | undefined, branches: BranchOption[]): string {
+export function selectedBranch(param: string | string[] | undefined, branches: { id: string }[]): string {
   const value = Array.isArray(param) ? param[0] : param;
   return value && branches.some(b => b.id === value) ? value : ALL_BRANCHES;
 }
@@ -48,7 +49,7 @@ export function effectiveRecipients(branch: BranchOption | undefined, accountRec
 
 /** Items in branch order, each branch with its own items, empty branches
  *  included so a site with nothing installed yet still has a heading. */
-export function groupByBranch<T>(branches: BranchOption[], items: T[], branchOf: (item: T) => string): { branch: BranchOption; items: T[] }[] {
+export function groupByBranch<T, B extends { id: string }>(branches: B[], items: T[], branchOf: (item: T) => string): { branch: B; items: T[] }[] {
   return branches.map(branch => ({ branch, items: items.filter(item => branchOf(item) === branch.id) }));
 }
 
@@ -59,7 +60,7 @@ export type BranchTally = { online: number; offline: number; alerts: number };
 /** Branches that need attention first (an active alert, then an offline
  *  sensor), the rest in the order they were created. Stable, so two quiet
  *  sites keep their order between refreshes. */
-export function sortBranchesByAttention<T extends { branch: BranchOption }>(groups: T[], tallyOf: (group: T) => BranchTally): T[] {
+export function sortBranchesByAttention<T extends { branch: { id: string } }>(groups: T[], tallyOf: (group: T) => BranchTally): T[] {
   const rank = (g: T) => { const t = tallyOf(g); return t.alerts > 0 ? 2 : t.offline > 0 ? 1 : 0; };
   return [...groups].sort((a, b) => rank(b) - rank(a));
 }

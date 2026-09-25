@@ -2,16 +2,17 @@
 
 import { useRouter } from 'next/navigation';
 import { Select } from '@senso/ui';
-import { ALL_BRANCHES, BRANCH_PARAM, type BranchOption } from '@/lib/branches';
+import { ALL_BRANCHES, BRANCH_PARAM } from '@/lib/branches';
 
-// All, or one branch, as a dropdown: one control on one line at any count,
-// and on a phone the native picker, which is the best list there is for a
-// dozen sites. The choice lives in the URL, so the page stays a server
-// component and a filtered view is a link you can send to someone.
+// All, or one site (a branch, or for an owner login a member account), as
+// a dropdown: one control on one line at any count, and on a phone the
+// native picker, which is the best list there is for a dozen sites. The
+// choice lives in the URL, so the page stays a server component and a
+// filtered view is a link you can send to someone.
 
-type Props = { branches: BranchOption[]; selected: string; className?: string };
+type Props = { branches: { id: string; name: string }[]; selected: string; allLabel: string; className?: string };
 
-export function BranchFilter({ branches, selected, className }: Props) {
+export function BranchFilter({ branches, selected, allLabel, className }: Props) {
   const router = useRouter();
 
   function choose(value: string) {
@@ -22,8 +23,8 @@ export function BranchFilter({ branches, selected, className }: Props) {
   }
 
   return (
-    <Select aria-label="Branch" value={selected} onChange={e => choose(e.target.value)} wrapperClassName={className}>
-      <option value={ALL_BRANCHES}>All branches</option>
+    <Select aria-label="Site" value={selected} onChange={e => choose(e.target.value)} wrapperClassName={className}>
+      <option value={ALL_BRANCHES}>{allLabel}</option>
       {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
     </Select>
   );

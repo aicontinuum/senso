@@ -16,7 +16,8 @@ import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
 import type { AlertNote } from "@/lib/alert-comments";
 import { REPORT_ALERT_LOOKBACK } from "@/lib/constants";
-import { ALL_BRANCHES, hasBranches, type BranchOption } from "@/lib/branches";
+import { ALL_BRANCHES, hasBranches } from "@/lib/branches";
+import type { Site } from "@/lib/scope";
 import { buildReportPDF } from "./build-report-pdf";
 import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
@@ -51,12 +52,14 @@ type ConfigWithHistory = {
 
 interface Props {
   customerName: string;
-  branches: BranchOption[];
+  /** Branches, or for an owner login the member accounts. */
+  branches: Site[];
+  isGroup: boolean;
   sensors: SensorShape[];
   timezone: string;
 }
 
-export function ReportClient({ customerName, branches, sensors: allSensors, timezone }: Props) {
+export function ReportClient({ customerName, branches, isGroup, sensors: allSensors, timezone }: Props) {
   // A report covers all branches or one, as the dashboard does, and starts
   // on all. Each sensor's section names its own branch and address, so a
   // report across branches still says where every sensor is, and an
@@ -369,6 +372,8 @@ export function ReportClient({ customerName, branches, sensors: allSensors, time
             format={format}
             onFormatChange={setFormat}
             branches={branches}
+            siteLabel={isGroup ? "Account" : "Branch"}
+            allLabel={isGroup ? "All accounts" : "All branches"}
             branchId={branchId}
             onBranchChange={changeBranch}
             sensors={sensors}

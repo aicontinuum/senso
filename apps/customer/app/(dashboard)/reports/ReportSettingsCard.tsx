@@ -2,7 +2,7 @@ import { Download, FileText, Table } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, Select } from "@senso/ui";
 import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
 import { SensorPicker } from "./SensorPicker";
-import { ALL_BRANCHES, hasBranches, type BranchOption } from "@/lib/branches";
+import { ALL_BRANCHES, hasBranches } from "@/lib/branches";
 import {
   FORMATS,
   RANGES,
@@ -16,7 +16,10 @@ interface ReportSettingsCardProps {
   onRangeChange: (range: RangeValue) => void;
   format: ReportFormat;
   onFormatChange: (format: ReportFormat) => void;
-  branches: BranchOption[];
+  branches: { id: string; name: string }[];
+  /** "Branch", or "Account" for an owner login; and the All option's words. */
+  siteLabel: string;
+  allLabel: string;
   branchId: string;
   onBranchChange: (branchId: string) => void;
   sensors: SensorShape[];
@@ -53,6 +56,8 @@ export function ReportSettingsCard({
   format,
   onFormatChange,
   branches,
+  siteLabel,
+  allLabel,
   branchId,
   onBranchChange,
   sensors,
@@ -75,9 +80,9 @@ export function ReportSettingsCard({
             sensors are listed below. The field exists only once there is a
             choice, and offers the same options the dashboard filters with. */}
         {hasBranches(branches) && (
-          <Field label="Branch">
-            <Select aria-label="Branch" value={branchId} onChange={(e) => onBranchChange(e.target.value)}>
-              <option value={ALL_BRANCHES}>All branches</option>
+          <Field label={siteLabel}>
+            <Select aria-label={siteLabel} value={branchId} onChange={(e) => onBranchChange(e.target.value)}>
+              <option value={ALL_BRANCHES}>{allLabel}</option>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </Field>

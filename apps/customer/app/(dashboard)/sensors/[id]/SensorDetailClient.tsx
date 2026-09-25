@@ -31,6 +31,8 @@ interface Props {
   gateway: Gateway;
   /** The sensor's branch, or null for a single-branch customer. */
   branchName: string | null;
+  /** An owner login looks and changes nothing; the settings are read-only. */
+  readOnly: boolean;
   accountRecipients: string[];
   recentReadings: Reading[];
   timezone: string;
@@ -40,7 +42,7 @@ interface Props {
   hasOpenAlert: boolean;
 }
 
-export function SensorDetailClient({ sensor, config, gateway, branchName, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
+export function SensorDetailClient({ sensor, config, gateway, branchName, readOnly, accountRecipients, recentReadings, timezone, batteryVolts, hardwareId, hasOpenAlert }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(sensor.name);
@@ -257,7 +259,9 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, accoun
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Settings
           </p>
-          {!editing ? (
+          {readOnly ? (
+            <p className="text-xs text-muted-foreground">Changed in this account&apos;s own login</p>
+          ) : !editing ? (
             <Button variant="ghost" size="sm" onClick={startEditing}>
               <Pencil className="h-3.5 w-3.5" />
               Edit

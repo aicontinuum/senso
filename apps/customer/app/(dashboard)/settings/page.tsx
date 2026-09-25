@@ -93,9 +93,15 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-bold">Settings</h1>
       <AccountInfoSection customer={customerShape} />
       <TimezoneSection initialTimezone={customer.timezone} />
-      <SensorsSection groups={sensorGroups} />
-      <GatewaysSection groups={gatewayGroups} timezone={customer.timezone} now={now} />
-      <AlertRecipientsSection initialEmails={initialAlertEmails} branches={branches} />
+      {/* An owner login has no devices and is emailed about nothing of its
+          own; those cards belong to the member accounts. */}
+      {!customer.is_group && (
+        <>
+          <SensorsSection groups={sensorGroups} />
+          <GatewaysSection groups={gatewayGroups} timezone={customer.timezone} now={now} />
+          <AlertRecipientsSection initialEmails={initialAlertEmails} branches={branches} />
+        </>
+      )}
       <ChangePasswordSection />
     </div>
   );
