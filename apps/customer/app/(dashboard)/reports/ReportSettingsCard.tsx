@@ -27,7 +27,8 @@ interface ReportSettingsCardProps {
   allSelected: boolean;
   onToggleAll: () => void;
   onToggleSensor: (id: string) => void;
-  onGenerate: () => void;
+  /** Called with the instant the button was pressed: the report's clock. */
+  onGenerate: (now: number) => void;
   generating: boolean;
 }
 
@@ -118,7 +119,7 @@ export function ReportSettingsCard({
         </Field>
 
         <div className="space-y-2 border-t border-hairline pt-5">
-          <Button block onClick={onGenerate} disabled={nothingSelected || generating}>
+          <Button block onClick={() => onGenerate(Date.now())} disabled={nothingSelected || generating}>
             <Download className="size-4" />
             {generating ? "Generating…" : "Generate report"}
           </Button>

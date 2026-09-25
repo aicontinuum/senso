@@ -1,92 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
+import { loadSettings } from "@/lib/settings/load";
 import { AccountInfoSection } from "./AccountInfoSection";
 import { SensorsSection } from "./SensorsSection";
 import { GatewaysSection } from "./GatewaysSection";
 import { AlertRecipientsSection } from "./AlertRecipientsSection";
 import { ChangePasswordSection } from "./ChangePasswordSection";
 import { TimezoneSection } from "./TimezoneSection";
-import { isGatewayOnline, isSensorOnline } from "@senso/status";
-import { groupByBranch, hasBranches, loadBranches } from "@/lib/branches";
-import type { Customer, Gateway, Sensor } from "@senso/types";
 
 export default async function SettingsPage() {
   const customer = await requireCustomer();
-  const now = Date.now();
-
   const supabase = await createClient();
-
-  const { data: customerData } = await supabase
-    .from("customers")
-    .select("alert_recipients")
-    .eq("id", customer.id)
-    .single();
-  const initialAlertEmails = (customerData?.alert_recipients as string[]) ?? [];
-
-  const [branches, { data: gateways }] = await Promise.all([
-    loadBranches(supabase, customer.id),
-    supabase
-      .from("gateways")
-      .select("id, name, branch_id, is_online, firmware_version, last_seen_at, sensors (id, name, status, decommissioned_at)")
-      .eq("customer_id", customer.id)
-      .is("decommissioned_at", null),
-  ]);
-  const branchOfGateway = new Map((gateways ?? []).map((g) => [g.id, g.branch_id as string]));
-
-  const allSensors = (gateways ?? []).flatMap(
-    (g) => (g.sensors ?? [])
-      .filter((s: { decommissioned_at: string | null }) => s.decommissioned_at === null)
-      .map((s: { id: string; name: string; status: string }) => ({
-        ...s,
-        gatewayId: g.id,
-      })),
-  );
-  const sensorIds = allSensors.map((s) => s.id);
-
-  // Latest reading per sensor, for freshness-based online/offline
-  const { data: lastReadings } = sensorIds.length > 0
-    ? await supabase.from("readings").select("sensor_id, recorded_at").in("sensor_id", sensorIds).order("recorded_at", { ascending: false })
-    : { data: [] as { sensor_id: string; recorded_at: string }[] };
-  const lastReadingAtBySensor = new Map<string, string>();
-  for (const r of lastReadings ?? []) {
-    if (!lastReadingAtBySensor.has(r.sensor_id)) lastReadingAtBySensor.set(r.sensor_id, r.recorded_at);
-  }
-
-  const customerShape: Customer = {
-    id: customer.id,
-    name: customer.name,
-    contactName: customer.contact_name ?? "",
-    contactEmail: customer.email,
-    phone: customer.phone ?? undefined,
-    billingStatus: "active",
-    createdAt: customer.created_at,
-  };
-
-  const sensorShapes: Sensor[] = allSensors.map((s) => ({
-    id: s.id,
-    gatewayId: s.gatewayId,
-    customerId: customer.id,
-    name: s.name,
-    status: isSensorOnline(s.status, lastReadingAtBySensor.get(s.id), now) ? "online" : "offline",
-  }));
-
-  const gatewayShapes: Gateway[] = (gateways ?? []).map((g) => ({
-    id: g.id,
-    customerId: customer.id,
-    name: g.name ?? "Gateway",
-    status: isGatewayOnline(g.is_online, g.last_seen_at, now) ? "online" : "offline",
-    lastSeen: g.last_seen_at ?? new Date().toISOString(),
-    firmwareVersion: g.firmware_version ?? "—",
-  }));
-
-  // Under a heading per branch once there is more than one; otherwise one
-  // unnamed group, and the cards look as they always did.
-  const sensorGroups = hasBranches(branches)
-    ? groupByBranch(branches, sensorShapes, (s) => branchOfGateway.get(s.gatewayId) ?? "").map((g) => ({ name: g.branch.name, sensors: g.items }))
-    : [{ name: null, sensors: sensorShapes }];
-  const gatewayGroups = hasBranches(branches)
-    ? groupByBranch(branches, gatewayShapes, (g) => branchOfGateway.get(g.id) ?? "").map((g) => ({ name: g.branch.name, gateways: g.items }))
-    : [{ name: null, gateways: gatewayShapes }];
+  const { now, customerShape, branches, initialAlertEmails, sensorGroups, gatewayGroups } = await loadSettings(supabase, customer);
 
   return (
     <div className="max-w-lg space-y-6">
