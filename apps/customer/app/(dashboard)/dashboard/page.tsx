@@ -36,7 +36,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           summary bar included. Adding devices is the technician's job. */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        {multiBranch && <BranchFilter branches={branches} selected={branch} allLabel={scope.isGroup ? "All accounts" : "All branches"} className="w-full sm:w-64" />}
+        {multiBranch && (
+          <BranchFilter
+            branches={branches}
+            selected={branch}
+            label={scope.isGroup ? "Account" : "Branch"}
+            allLabel={scope.isGroup ? "All accounts" : "All branches"}
+            className="w-full sm:w-64"
+          />
+        )}
       </div>
 
       {/* One card, hairline-divided into three, so the summary reads as a
