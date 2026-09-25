@@ -11,9 +11,12 @@ What is covered: structure (only a group has members, never itself, never
 another group, at most one group per account, a group owns no gateway, the
 flag cannot flip under a row that depends on it, unlinking leaves the
 member alone); the owner login reads its members' accounts, gateways,
-sensors, branches and memberships and nothing else, and cannot rename a
-member's sensor; a member sees only itself; an outsider sees nothing of the
-group; grants; the view function is definer with its search path pinned.
+sensors, branches, readings, thresholds, alerts of both kinds and
+memberships and nothing else, and can neither rename a member's sensor nor
+add a threshold to it; a member sees only itself, including its
+stopped-reporting alerts (hidden by the live rule until now); an outsider
+sees nothing of the group; grants; the view function is definer with its
+search path pinned.
 
 ## Run it
 

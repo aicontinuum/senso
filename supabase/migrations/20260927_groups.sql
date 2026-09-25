@@ -172,5 +172,35 @@ grant select, insert, delete on table customer_group_members to service_role;
 select proname from pg_proc where proname in ('customer_can_view', 'customer_can_view_sensor') order by proname;
 
 -- ── Block 3: readings, alert_configs, alert_logs ────────────────────────────
--- Their read rules were written by hand before the repo had migrations, and
--- are appended here once captured. See supabase/baseline/README.md.
+-- Their read rules were written by hand before the repo had migrations
+-- (captured 2026-09-25, supabase/baseline). Three things happen here:
+-- the rules are widened to the owner login like the rest; the duplicates
+-- (three on alert_configs, two on readings, all saying the same thing) are
+-- pruned to one each, which TODO.md asked for; and the alert_logs rule,
+-- which only reached alerts that have a threshold config and so hid every
+-- "stopped reporting" alert from the customer, now covers both kinds.
+-- Every write rule on these tables stays exactly as it is.
+
+drop policy if exists alert_configs_select_own on alert_configs;
+drop policy if exists customers_read_own_alert_configs on alert_configs;
+drop policy if exists customers_select_own_alert_configs on alert_configs;
+create policy customers_select_own_alert_configs on alert_configs
+  for select to authenticated using (customer_can_view_sensor(sensor_id));
+
+drop policy if exists customers_select_own_readings on readings;
+drop policy if exists readings_select_own on readings;
+create policy readings_select_own on readings
+  for select to authenticated using (customer_can_view_sensor(sensor_id));
+
+drop policy if exists alert_logs_select_own on alert_logs;
+create policy alert_logs_select_own on alert_logs
+  for select to authenticated
+  using (customer_can_view_sensor(
+    coalesce(sensor_id, (select ac.sensor_id from alert_configs ac where ac.id = alert_logs.alert_config_id))
+  ));
+
+-- Verify: expect exactly one SELECT policy on each of the three.
+select tablename, count(*) as select_policies
+  from pg_policies
+ where tablename in ('alert_configs', 'readings', 'alert_logs') and cmd = 'SELECT'
+ group by tablename order by tablename;

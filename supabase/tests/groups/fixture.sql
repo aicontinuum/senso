@@ -36,7 +36,11 @@ alter table gateways enable row level security;
 alter table sensors enable row level security;
 alter table alert_threshold_history enable row level security;
 alter table alert_comments enable row level security;
-grant select on gateways, sensors, alert_configs, alert_logs, alert_threshold_history, alert_comments to authenticated;
+alter table readings enable row level security;
+alter table alert_configs enable row level security;
+alter table alert_logs enable row level security;
+grant insert on alert_configs to authenticated;
+grant select on gateways, sensors, readings, alert_configs, alert_logs, alert_threshold_history, alert_comments to authenticated;
 -- The write rule the owner login must not pass: renaming a sensor.
 grant update (name) on sensors to authenticated;
 create policy customers_update_own_sensor_name on sensors
@@ -48,3 +52,12 @@ create policy gateways_select_own on gateways for select to authenticated
   using (customer_id = (select id from customers where auth_user_id = auth.uid()));
 create policy sensors_select_own on sensors for select to authenticated
   using (gateway_id in (select id from gateways where customer_id = (select id from customers where auth_user_id = auth.uid())));
+create policy alert_configs_select_own on alert_configs for select to authenticated using (customer_owns_sensor(sensor_id));
+create policy customers_read_own_alert_configs on alert_configs for select to public using (customer_owns_sensor(sensor_id));
+create policy customers_select_own_alert_configs on alert_configs for select to authenticated using (customer_owns_sensor(sensor_id));
+create policy customers_insert_own_alert_configs on alert_configs for insert to authenticated with check (customer_owns_sensor(sensor_id));
+create policy customers_select_own_readings on readings for select to authenticated using (customer_owns_sensor(sensor_id));
+create policy readings_select_own on readings for select to authenticated using (customer_owns_sensor(sensor_id));
+-- The live rule, threshold alerts only: the gap the migration closes.
+create policy alert_logs_select_own on alert_logs for select to authenticated
+  using (alert_config_id in (select id from alert_configs where customer_owns_sensor(sensor_id)));
