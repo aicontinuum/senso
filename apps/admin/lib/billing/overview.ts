@@ -77,7 +77,7 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
 
   const windowEnd = new Date(now + renewalNoticeDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const [summaryRes, invoicesRes, renewalsRes, installed, paymentsRes] = await Promise.all([
+  const [summaryRes, invoicesRes, renewalsRes, installed, paymentsRes, groupsRes] = await Promise.all([
     admin.from('customer_billing_summary').select(SUMMARY_COLUMNS).order('name'),
     admin.from('invoices')
       .select('id, number, customer_id, type, total, issued_on, due_on, customers (name)')
@@ -91,13 +91,18 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
       .order('renewal_date'),
     loadInstalledSensorCounts(admin),
     admin.from('payments').select('amount'),
+    // A group owns no devices and holds no plan; its members are billed.
+    admin.from('customers').select('id').eq('is_group', true),
   ]);
   if (summaryRes.error) throw new Error(`customer_billing_summary: ${summaryRes.error.message}`);
+  if (groupsRes.error) throw new Error(`customers: ${groupsRes.error.message}`);
+  const groupIds = new Set((groupsRes.data ?? []).map(g => g.id));
   if (invoicesRes.error) throw new Error(`invoices: ${invoicesRes.error.message}`);
   if (renewalsRes.error) throw new Error(`subscriptions: ${renewalsRes.error.message}`);
   if (paymentsRes.error) throw new Error(`payments: ${paymentsRes.error.message}`);
 
   const customers = (summaryRes.data as unknown as CustomerBillingSummaryRow[])
+    .filter(row => !groupIds.has(row.customer_id))
     .map(row => toCustomerBilling(row, installed.get(row.customer_id) ?? 0));
   const byId = new Map(customers.map(c => [c.customerId, c]));
 

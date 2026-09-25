@@ -17,6 +17,8 @@ export type CustomerRow = {
   status: string | null;
   created_at: string;
   alert_recipients: string[] | null;
+  /** An owner login that reads its members and owns no devices. */
+  is_group: boolean;
 };
 
 const PASSWORD_MIN_LENGTH = 8;

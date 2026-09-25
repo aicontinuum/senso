@@ -11,7 +11,7 @@ export default async function CustomerDetailPage({
   const { id } = await params;
   const detail = await loadCustomerDetail(createAdminClient(), id);
   if (!detail) notFound();
-  const { now, customer, branches, gateways, sensors } = detail;
+  const { now, customer, branches, gateways, sensors, members, candidates, groupOf } = detail;
 
   return (
     <CustomerDetailClient
@@ -19,6 +19,9 @@ export default async function CustomerDetailPage({
       branches={branches}
       gateways={gateways}
       sensors={sensors}
+      members={members}
+      candidates={candidates}
+      groupOf={groupOf}
       now={now}
     />
   );

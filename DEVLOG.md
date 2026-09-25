@@ -151,8 +151,25 @@ fixtures: structure, the owner reading everything of its member and
 nothing else, a member seeing only itself (now including offline alerts),
 an outsider seeing nothing of the group, grants, the definer function.
 
-Next: phase 2, admin (create a group, link members, badges); phase 3, the
-owner's view in the customer app.
+## 2026-09-25 — Groups, phase 2: the admin side
+
+- **New customer** form: a checkbox, "Owner login for a group of accounts".
+  The create route stores `is_group`; everything else about creating a
+  login is unchanged.
+- **Group page**: Account card, then a **Members** card in place of the
+  device cards (a group owns none and is emailed about nothing). Add
+  member picks from accounts that are neither groups nor already in one;
+  Remove asks once and says the account itself is untouched. Each member
+  links to its own page.
+- **Member page**: "Member of X, whose owner login can see this account"
+  under the title, linking to the group.
+- **Customers list**: a Group badge; members show "in X" under the email;
+  a group's sensor and gateway cells are a dash.
+- **Billing** skips groups: they hold no plan, their members are billed.
+- Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
+  admin-only; the database's guards come back as 409 in their own words.
+
+Next: phase 3, the owner's view in the customer app.
 
 ## 2026-09-24 — Branches, phase 4: recipients and address per branch
 

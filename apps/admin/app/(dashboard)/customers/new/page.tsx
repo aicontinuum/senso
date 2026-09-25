@@ -27,6 +27,7 @@ export default function NewCustomerPage() {
   const [form, setForm] = useState<Record<string, string>>(
     Object.fromEntries(FIELDS.map(f => [f.key, '']))
   );
+  const [isGroup, setIsGroup] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -71,6 +72,7 @@ export default function NewCustomerPage() {
         contactEmail: form.contactEmail,
         phone: form.phone,
         password: form.password,
+        isGroup,
       }),
     });
 
@@ -96,15 +98,15 @@ export default function NewCustomerPage() {
           <p className="text-2xl">✓</p>
           <p className="font-semibold text-lg">Customer created</p>
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium">{form.name}</span> has been added.
-            They can log in with <span className="font-medium">{form.contactEmail}</span>.
+            <span className="font-medium">{form.name}</span> has been added{isGroup ? ' as a group' : ''}.
+            They can log in with <span className="font-medium">{form.contactEmail}</span>.{isGroup ? ' Link its member accounts from its page.' : ''}
           </p>
           <div className="flex justify-center gap-3 pt-2">
             <Link href="/customers" className="text-sm px-4 py-2 rounded-md border border-border hover:bg-muted">
               Back to Customers
             </Link>
             <button
-              onClick={() => { setForm(Object.fromEntries(FIELDS.map(f => [f.key, '']))); setCreated(false); }}
+              onClick={() => { setForm(Object.fromEntries(FIELDS.map(f => [f.key, '']))); setIsGroup(false); setCreated(false); }}
               className="text-sm px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Add Another
@@ -132,6 +134,18 @@ export default function NewCustomerPage() {
         </div>
         <form onSubmit={handleSubmit} noValidate>
           <div className="px-6 py-5 space-y-4">
+            {/* A group is an owner login over several accounts: no devices
+                of its own, and its members are linked on its page after
+                it is created. */}
+            <label className="flex max-w-md cursor-pointer items-start gap-3 rounded-md border border-border px-3 py-3">
+              <input type="checkbox" checked={isGroup} onChange={e => setIsGroup(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-primary" />
+              <span>
+                <span className="block text-sm font-medium">Owner login for a group of accounts</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Sees every account linked under it and changes nothing. No gateways or sensors of its own. Link the accounts on its page once it is created.
+                </span>
+              </span>
+            </label>
             {FIELDS.map(f => (
               <div key={f.key}>
                 <label className="block text-sm font-medium mb-1">
