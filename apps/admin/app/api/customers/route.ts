@@ -26,8 +26,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
-  // Insert the customer record linked to the new auth user
-  const { error: dbError } = await admin
+  // Insert the customer record linked to the new auth user. The new row's
+  // id comes back so the form can offer the account's page next.
+  const { data: created, error: dbError } = await admin
     .from('customers')
     .insert({
       name,
@@ -38,13 +39,15 @@ export async function POST(request: Request) {
       status: 'active',
       // An owner login: reads the accounts linked under it, owns no devices.
       is_group: isGroup === true,
-    });
+    })
+    .select('id')
+    .single();
 
-  if (dbError) {
+  if (dbError || !created) {
     // Roll back: delete the auth user so we don't leave orphaned accounts
     await admin.auth.admin.deleteUser(authData.user.id);
-    return NextResponse.json({ error: dbError.message }, { status: 400 });
+    return NextResponse.json({ error: dbError?.message ?? 'Could not create the account.' }, { status: 400 });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ id: created.id });
 }
