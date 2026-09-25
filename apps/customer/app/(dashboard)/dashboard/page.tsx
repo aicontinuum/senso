@@ -83,11 +83,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
 
       {sensors.length === 0 ? (
+        // Three different reasons for an empty page, said apart: an owner
+        // login with no accounts linked yet, an owner whose accounts have
+        // nothing installed, and an ordinary account with no devices.
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
-          <p className="text-sm text-muted-foreground">No sensors yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {scope.isGroup ? "Nothing is installed in the linked accounts yet." : "Add a gateway and sensors to start monitoring."}
-          </p>
+          {scope.isGroup && scope.sites.length === 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground">No accounts are linked to this login yet.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Senso links the accounts this login should see. Their sensors appear here once it does.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">No sensors yet.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {scope.isGroup ? "Nothing is installed in the linked accounts yet." : "Add a gateway and sensors to start monitoring."}
+              </p>
+            </>
+          )}
         </div>
       ) : multiBranch && branch === ALL_BRANCHES ? (
         // Every branch, each under its own heading with its own counts, sites
