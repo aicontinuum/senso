@@ -37,6 +37,13 @@ export const metadata: Metadata = {
   description: "Temperature monitoring dashboard",
 };
 
+// Every page is rendered per request, never at build time. The Content-
+// Security-Policy from proxy.ts marks the page's scripts with a nonce that
+// Next stamps in while rendering; a page prerendered at build time has no
+// nonce, so the browser refuses all of its scripts and anything drawn by
+// the browser (the root redirect, a not-found page) never appears.
+export const dynamic = "force-dynamic";
+
 // The platform layer that separates "a website in a browser" from something
 // that feels installed. viewport-fit lets the page under the notch so the
 // header can paint edge to edge; the theme colour matches the top bar, not the
