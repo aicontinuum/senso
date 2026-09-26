@@ -15,6 +15,7 @@ export type CustomerRow = {
   contact_name: string | null;
   phone: string | null;
   status: string | null;
+  suspended_at: string | null;
   created_at: string;
   alert_recipients: string[] | null;
   /** An owner login that reads its members and owns no devices. */

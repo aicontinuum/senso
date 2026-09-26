@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Badge, Button } from '@senso/ui';
 import { AccountInfoSection, type CustomerRow } from '@/components/customers/AccountInfoSection';
+import { AccountStatusSection } from '@/components/customers/AccountStatusSection';
 import { AlertRecipientsSection } from '@/components/customers/AlertRecipientsSection';
 import { BranchesSection } from '@/components/customers/BranchesSection';
 import { GatewaysSection, type GatewayRow } from '@/components/customers/GatewaysSection';
@@ -51,6 +52,7 @@ export function CustomerDetailClient({ customer, branches, gateways, sensors, me
       </div>
 
       <AccountInfoSection customer={customer} />
+      <AccountStatusSection customerId={customer.id} name={customer.name} status={customer.status} suspendedAt={customer.suspended_at} />
       {customer.is_group ? (
         <GroupMembersSection groupId={customer.id} members={members} candidates={candidates} />
       ) : (

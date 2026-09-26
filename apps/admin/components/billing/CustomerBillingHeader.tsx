@@ -2,47 +2,27 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Ban, ChevronLeft, RotateCcw, UserRound } from 'lucide-react';
-import { Button, Card, Input } from '@senso/ui';
-import { callApi } from '@/lib/api-client';
+import { Button, Card } from '@senso/ui';
 import { formatDate } from '@/lib/format';
 import { BillingStatusBadge } from '@/components/billing/BillingStatusBadge';
-import { InlinePanel } from '@/components/billing/InlinePanel';
+import { SuspensionPanel } from '@/components/billing/SuspensionPanel';
 import type { CustomerBilling } from '@/types/billing';
 
 // The page header: who this is, their billing status, and the two things you
-// can do from here — open the customer record, or suspend / reactivate.
-// Suspension is by hand, with a reason, after a confirmation that says what
-// it means; the system flags a candidate and never does it on its own. A
-// banner appears under the header only when there is something to say: the
-// customer is suspended, or is past the threshold and waiting on a decision.
+// can do from here — open the customer record, or suspend / reactivate
+// (the same panel the customer page offers). A banner appears under the
+// header only when there is something to say: the customer is suspended,
+// or is past the threshold and waiting on a decision.
 
 type Props = { customer: Pick<CustomerBilling, 'customerId' | 'name' | 'email' | 'status' | 'suspendedAt' | 'suspensionCandidate'> };
 
 export function CustomerBillingHeader({ customer }: Props) {
-  const router = useRouter();
   const suspended = customer.status === 'suspended';
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  async function apply() {
-    setError('');
-    setBusy(true);
-    const result = await callApi(`/api/billing/customers/${customer.customerId}/status`, 'POST', {
-      status: suspended ? 'active' : 'suspended', reason,
-    });
-    setBusy(false);
-    if (!result.ok) { setError(result.error); return; }
-    setOpen(false);
-    setReason('');
-    router.refresh();
-  }
 
   const banner = suspended
-    ? <><span className="font-semibold">Suspended</span> since {formatDate(customer.suspendedAt)}. Readings keep logging; the portal and reports are locked.</>
+    ? <><span className="font-semibold">Suspended</span> since {formatDate(customer.suspendedAt)}. Readings keep logging; they are signed out until reactivated.</>
     : customer.suspensionCandidate
       ? <><span className="font-semibold text-alert-text">Past the suspension threshold.</span> Suspending is your call; nothing happens until you do.</>
       : null;
@@ -87,22 +67,7 @@ export function CustomerBillingHeader({ customer }: Props) {
           {banner && <p className="px-5 py-4 text-sm">{banner}</p>}
           {open && (
             <div className={`bg-sunken px-5 py-4 ${banner ? 'border-t border-hairline' : ''}`}>
-              <InlinePanel
-                title={suspended ? `Reactivate ${customer.name}?` : `Suspend ${customer.name}?`}
-                description={suspended
-                  ? 'Their portal and reports unlock immediately.'
-                  : 'They lose the portal and reports until reactivated. Readings and alerts are unaffected.'}
-                error={error}
-                confirmLabel={suspended ? 'Reactivate customer' : 'Suspend customer'}
-                busyLabel="Saving…"
-                busy={busy}
-                danger={!suspended}
-                disabled={reason.trim() === ''}
-                onConfirm={apply}
-                onCancel={() => { setOpen(false); setError(''); }}
-              >
-                <Input label="Reason" hint="Kept in the change log." value={reason} onChange={e => setReason(e.target.value)} placeholder={suspended ? 'e.g. Transfer received' : 'e.g. 60 days overdue, no reply'} enterKeyHint="done" wrapperClassName="sm:max-w-md" />
-              </InlinePanel>
+              <SuspensionPanel customerId={customer.customerId} name={customer.name} suspended={suspended} onDone={() => setOpen(false)} onCancel={() => setOpen(false)} />
             </div>
           )}
         </Card>
