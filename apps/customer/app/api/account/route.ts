@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCustomer } from '@/lib/supabase/get-customer';
+import { getCustomer, requireActiveCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
 import { isValidTimezone } from '@/lib/timezones';
 import { validateRecipients, RECIPIENTS_MESSAGES } from '@senso/recipients';
@@ -19,8 +19,9 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const customer = await getCustomer();
-  if (!customer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const gate = await requireActiveCustomer();
+  if ('response' in gate) return gate.response;
+  const { customer } = gate;
 
   const { alertRecipients, contactName, phone, timezone } = await request.json();
 

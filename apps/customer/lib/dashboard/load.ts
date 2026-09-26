@@ -27,6 +27,8 @@ export type DashboardData = {
   configBySensor: Map<string, AlertConfig>;
   activeAlertSensorIds: Set<string>;
   branchGroups: { branch: Site; items: Sensor[]; tally: BranchTally }[];
+  /** Suspended member accounts, for an owner login: shown blurred, no data. */
+  suspendedSites: Site[];
 };
 
 export async function loadDashboard(
@@ -163,5 +165,6 @@ export async function loadDashboard(
     now, scope, branches, multiBranch, branch, gatewayCount, gatewaysOnline,
     sensorCount: allSensors.length, onlineCount, offlineCount, pendingCount, recentAlertCount,
     sensors, configBySensor: configMap, activeAlertSensorIds, branchGroups,
+    suspendedSites: scope.suspendedSites,
   };
 }

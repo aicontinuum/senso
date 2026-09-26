@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CustomerRecord } from '@/lib/supabase/get-customer';
+import { SUSPENDED, type CustomerRecord } from '@/lib/supabase/get-customer';
 import { loadBranches } from '@/lib/branches';
 
 // What a login can see, and how the pages group it. An ordinary account
@@ -25,11 +25,14 @@ export type ViewScope = {
   readOnly: boolean;
   /** Members for a group, branches otherwise. */
   sites: Site[];
+  /** Members that are suspended: named on the dashboard, their data never
+   *  loaded. Empty for an ordinary login. */
+  suspendedSites: Site[];
   /** Which gateway column a site is keyed by. */
   siteKey: 'customer_id' | 'branch_id';
 };
 
-type MemberRow = { member_id: string; customers: { id: string; name: string } | null };
+type MemberRow = { member_id: string; customers: { id: string; name: string; status: string } | null };
 
 export async function loadScope(supabase: SupabaseClient, customer: CustomerRecord): Promise<ViewScope> {
   if (!customer.is_group) {
@@ -39,17 +42,21 @@ export async function loadScope(supabase: SupabaseClient, customer: CustomerReco
       isGroup: false,
       readOnly: false,
       sites: branches.map((b) => ({ id: b.id, name: b.name, address: b.address })),
+      suspendedSites: [],
       siteKey: 'branch_id',
     };
   }
 
   const { data, error } = await supabase
     .from('customer_group_members')
-    .select('member_id, customers!customer_group_members_member_id_fkey (id, name)')
+    .select('member_id, customers!customer_group_members_member_id_fkey (id, name, status)')
     .eq('group_id', customer.id);
   if (error) throw new Error(`customer_group_members: ${error.message}`);
-  const members = (data as unknown as MemberRow[]).flatMap((r) => (r.customers ? [r.customers] : []))
+  const all = (data as unknown as MemberRow[]).flatMap((r) => (r.customers ? [r.customers] : []))
     .sort((a, b) => a.name.localeCompare(b.name));
+  // A suspended member is withheld from its owner too: named, nothing more.
+  const members = all.filter((m) => m.status !== SUSPENDED);
+  const suspended = all.filter((m) => m.status === SUSPENDED);
   const memberIds = members.map((m) => m.id);
 
   // A member's address is the one on its first branch, the one created with
@@ -66,6 +73,7 @@ export async function loadScope(supabase: SupabaseClient, customer: CustomerReco
     isGroup: true,
     readOnly: true,
     sites: members.map((m) => ({ id: m.id, name: m.name, address: addressOf.get(m.id) ?? null })),
+    suspendedSites: suspended.map((m) => ({ id: m.id, name: m.name, address: null })),
     siteKey: 'customer_id',
   };
 }

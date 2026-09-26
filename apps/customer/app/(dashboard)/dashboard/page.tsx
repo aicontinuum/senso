@@ -4,6 +4,7 @@ import { requireCustomer } from "@/lib/supabase/get-customer";
 import { SensorGrid } from "@/components/dashboard/SensorGrid";
 import { BranchFilter } from "@/components/dashboard/BranchFilter";
 import { BranchHeading } from "@/components/dashboard/BranchHeading";
+import { SuspendedSite } from "@/components/dashboard/SuspendedSite";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ALL_BRANCHES } from "@/lib/branches";
 import { loadDashboard } from "@/lib/dashboard/load";
@@ -21,8 +22,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const {
     now, scope, branches, multiBranch, branch, gatewayCount, gatewaysOnline,
     sensorCount, onlineCount, offlineCount, pendingCount, recentAlertCount,
-    sensors, configBySensor, activeAlertSensorIds, branchGroups,
+    sensors, configBySensor, activeAlertSensorIds, branchGroups, suspendedSites,
   } = await loadDashboard(supabase, customer, await searchParams);
+  // An owner with only suspended members still has something to show.
+  const anySite = multiBranch || suspendedSites.length > 0;
 
   const grid = (items: Sensor[]) => (
     <SensorGrid sensors={items} configBySensor={configBySensor} activeAlertSensorIds={activeAlertSensorIds} timezone={customer.timezone} now={now} />
@@ -90,10 +93,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
 
-      {sensors.length === 0 ? (
+      {sensors.length === 0 && suspendedSites.length === 0 ? (
         // Three different reasons for an empty page, said apart: an owner
         // login with no accounts linked yet, an owner whose accounts have
-        // nothing installed, and an ordinary account with no devices.
+        // nothing installed, and an ordinary account with no devices. An
+        // owner whose only accounts are suspended is not empty: it sees
+        // them named and blurred below.
         <div className="rounded-card border border-dashed px-6 py-12 text-center">
           {scope.isGroup && scope.sites.length === 0 ? (
             <>
@@ -109,7 +114,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </>
           )}
         </div>
-      ) : multiBranch && branch === ALL_BRANCHES ? (
+      ) : anySite && branch === ALL_BRANCHES ? (
         // Every branch, each under its own heading with its own counts, sites
         // with trouble first, so the eye finds a site before it finds a fridge.
         <div className="space-y-8">
@@ -121,6 +126,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 : grid(items)}
             </section>
           ))}
+          {suspendedSites.map((site) => <SuspendedSite key={site.id} name={site.name} />)}
         </div>
       ) : (
         grid(sensors)
