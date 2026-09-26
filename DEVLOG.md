@@ -194,6 +194,26 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Dependencies pinned
+
+Every package the apps take from the registry was listed as "any
+version" (`*`) or "any newer minor" (`^`). The lock file kept deploys
+stable, but a regenerated lock or a plain install would have pulled
+whatever was newest that day. Each entry now names the exact version
+installed and running on the live sites, in the root, both apps and
+`packages/ui`. The workspace packages (`@senso/*`) keep `*`, since they
+are local, not from the registry. Nothing installed changed: the lock
+file diff is only the version strings, and both apps build as before.
+From now on a version moves only when someone bumps it, builds, tests
+and deploys.
+
+`npm audit` on the pinned set reports three advisories, all inside Next
+16.2.11 and the two libraries it bundles (postcss, sharp): fixed in Next
+16.3.6. One is Windows-only (Vercel is Linux); one is in the image
+optimiser when fed AVIF files, which the sites never expose to outside
+input. Raised for a decision rather than upgraded in passing, since a
+Next version change deserves its own build and test round.
+
 ## 2026-09-26 — The older admin routes join the shared helpers
 
 Second fix from the security review. Eight admin handlers predated the

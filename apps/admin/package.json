@@ -17,24 +17,24 @@
     "@senso/tokens": "*",
     "@senso/types": "*",
     "@senso/ui": "*",
-    "@supabase/ssr": "*",
-    "@supabase/supabase-js": "*",
-    "clsx": "*",
-    "jspdf": "*",
-    "lucide-react": "*",
+    "@supabase/ssr": "0.10.3",
+    "@supabase/supabase-js": "2.106.2",
+    "clsx": "2.1.1",
+    "jspdf": "4.2.1",
+    "lucide-react": "1.16.0",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "tailwind-merge": "*"
+    "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
+    "@tailwindcss/postcss": "4.3.0",
+    "@types/node": "20.19.41",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
     "eslint-config-next": "16.2.11",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "4.3.0",
+    "typescript": "5.9.3"
   }
 }
