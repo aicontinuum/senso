@@ -16,13 +16,13 @@ export function LockedNotice({ contact }: { contact: SupportContact }) {
           {contact.phone && (
             <div className="flex justify-center gap-2">
               <dt className="font-medium">Phone</dt>
-              <dd><a href={`tel:${contact.phone}`} className="underline">{contact.phone}</a></dd>
+              <dd>{contact.phone}</dd>
             </div>
           )}
           {contact.email && (
             <div className="flex justify-center gap-2">
               <dt className="font-medium">Email</dt>
-              <dd><a href={`mailto:${contact.email}`} className="underline">{contact.email}</a></dd>
+              <dd>{contact.email}</dd>
             </div>
           )}
         </dl>
