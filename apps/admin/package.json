@@ -11,6 +11,7 @@
   "dependencies": {
     "@senso/mock-data": "*",
     "@senso/recipients": "*",
+    "@senso/security": "*",
     "@senso/status": "*",
     "@senso/tokens": "*",
     "@senso/types": "*",

@@ -194,6 +194,32 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Security headers, and two input fixes from the review
+
+**Headers.** A new `packages/security` holds them once for both sites.
+The fixed ones (HSTS for two years, X-Frame-Options DENY, nosniff,
+Referrer-Policy, Permissions-Policy) go on every response from
+`next.config.ts`. The Content-Security-Policy is built per request in
+each `proxy.ts` with a nonce, the way the Next guide does it: scripts
+must carry this request's nonce or be loaded by one that does, so an
+injected script is refused; styles allow inline attributes (tiles set an
+animation delay, the billing bar sets widths); connections go to the site
+and to Supabase; a generated PDF may open in a frame as a data: URL;
+nothing may frame the site. To let a page load something new from
+outside, add the origin to the matching line in `packages/security` and
+nothing else. A missing one shows at once as that thing not loading.
+
+**Thresholds** (`/api/sensors/[id]`): both limits must be real numbers
+within the sensor's range and min below max, checked before anything is
+written, so a bad request can no longer rename the sensor and then be
+refused. `Number('abc')` used to pass the comparison and be stored as no
+limit. The rules live in `lib/thresholds.ts` beside the other threshold
+logic; a malformed body is a 400, not a 500.
+
+**CSV export**: every cell goes through `lib/csv.ts`, which doubles
+quotes and puts an apostrophe before anything a spreadsheet would read as
+a formula. A sensor named `=HYPERLINK(...)` opens as text.
+
 ## 2026-09-26 — Security review, and the first fix: what a customer may write
 
 Two read-only audits of both apps (admin and customer plus infra). Clean:
