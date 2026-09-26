@@ -194,6 +194,28 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Devices page: the register forms, without the send
+
+Decided today: new hardware will be registered on the network server
+from the admin site instead of the ChirpStack screen, under one tenant
+and one application (network-server/README.md §8). This is the front
+half only, by request; the send is not built.
+
+The Devices page, a placeholder until now, has two cards. **Register a
+gateway**: EUI and name. **Register a sensor**: DevEUI, AppKey and name;
+the device profile and the 15-minute interval are stated in the card,
+not chosen, since every sensor is the same. The identifier checks are
+the ones the customer-page forms already use, plus a new AppKey check
+(32 hex characters) beside the DevEUI one in `lib/deveui.ts`. A valid
+form currently ends at "Network registration is not connected yet.
+Nothing was sent." The AppKey is typed here, will go to the network
+server once, and is never stored on our side.
+
+Next, when wanted: one API token from ChirpStack in an environment
+variable, a small file with the four calls (create gateway, create
+device, set its key, queue the interval downlink), and the two forms
+posting to a route that makes them.
+
 ## 2026-09-26 — Dependencies pinned
 
 Every package the apps take from the registry was listed as "any

@@ -15,6 +15,15 @@ export const NAV_ITEMS = [
   { label: "Settings",  href: "/settings" },
 ];
 
+// ── Network server ──────────────────────────────────────────────────────────
+// Every sensor is the same model on the same profile, and reports every
+// 15 minutes; both are set on the network server at registration, not
+// chosen per device. See network-server/README.md §9.
+export const NETWORK_DEVICE_PROFILE = 'Dragino LHT65N';
+export const SENSOR_REPORTING_INTERVAL_MIN = 15;
+/** Shown on the register forms until the network server route exists. */
+export const NETWORK_NOT_CONNECTED_NOTICE = 'Network registration is not connected yet. Nothing was sent.';
+
 // ── Watchdog ────────────────────────────────────────────────────────────────
 // The alert sender runs every five minutes. Six missed runs is unambiguous — a
 // slow run or a single blip will not trip it, and anything that has been quiet
