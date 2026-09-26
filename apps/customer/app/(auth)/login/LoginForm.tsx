@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { APP_NAME } from '@/lib/constants';
+import { APP_NAME, LOCKED_ERROR } from '@/lib/constants';
 import { Button } from '@senso/ui';
 import { Input } from '@senso/ui';
 
@@ -24,6 +24,11 @@ export default function LoginForm() {
     } else if (err === 'session') {
       setLoading(false);
       setError('We couldn’t load your account. Please sign in again.');
+      createClient().auth.signOut();
+    } else if (err === LOCKED_ERROR) {
+      // The page shows the locked notice; here only the session is ended.
+      setLoading(false);
+      setError('');
       createClient().auth.signOut();
     } else {
       setError('');

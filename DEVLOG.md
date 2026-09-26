@@ -199,13 +199,15 @@ an outsider seeing nothing of the group, grants, the definer function.
 Until now Suspend was a label on admin. Now it is a consequence.
 
 **The lock.** The customer app's layout reads the account's status before
-any page renders. A suspended account gets `LockedAccount` instead,
-whatever the URL: the shell and a dashboard-shaped stand-in, blurred and
-inert, under a light-red card that says the account is locked, gives
-Senso's phone and email, and offers Log out. The stand-in is the loading
-skeleton, not the page, so there is no data under the blur to uncover
-with the browser's tools. Login and logout still work; nothing else does.
-Reactivate on admin unlocks on the next page load.
+any page renders. A suspended account is signed out on the spot and sent
+to the login page, which shows a light-red notice: the account is locked,
+contact the Senso team, with Senso's phone and email. Someone already
+signed in is thrown out on their next page load, and the dashboard
+refreshes itself, so within a minute. Signing in again passes the
+password step and is bounced straight back to the notice. Reactivate on
+admin lets the next sign-in through. (First built as an in-app lock
+screen over a blurred stand-in; replaced the same day by the sign-out,
+which is simpler and leaves nothing of the app on screen.)
 
 **Server side.** The four routes the app writes through go through
 `requireActiveCustomer()`, which answers 403 for a suspended account, so
@@ -224,12 +226,13 @@ owner until it is reactivated. A suspended group login is locked like any
 account.
 
 **Contact details.** `20260929_support_contact.sql`: a definer function
-returning `billing_settings.phone` and `billing_email` to a signed-in
-customer, and nothing else from that table.
+returning `billing_settings.phone` and `billing_email`, and nothing else
+from that table; `20260930_support_contact_anon.sql` grants it to `anon`
+too, since the notice is shown after the session has ended.
 
-Also: the logout logic moved from the shell into `hooks/useLogout.ts`,
-since the lock card needs it too; the dashboard skeleton moved into a
-component so the lock screen can use it.
+Also: the logout logic moved from the shell into `hooks/useLogout.ts`;
+the dashboard skeleton moved into a component so the suspended-member
+tiles can use it.
 
 ## 2026-09-25 — The customer pages stop reading the clock in render
 
