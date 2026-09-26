@@ -1,5 +1,8 @@
 export const APP_NAME = "Senso";
 
+/** Where a signed-in customer lands. */
+export const DASHBOARD_PATH = "/dashboard";
+
 export const TEMP_UNIT = "°C";
 
 // Every temperature renders to a fixed 2 decimal places — including whole
