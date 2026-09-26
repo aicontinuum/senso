@@ -4,6 +4,7 @@ import { integrationSecretOk } from '@/lib/ingest-auth';
 import { stampPlatform } from '@/lib/platform-status';
 import { retry, describeError } from '@/lib/retry';
 import { MAX_READING_AGE_MS, JOB_INGEST } from '@/lib/constants';
+import { THRESHOLD_MIN_C, THRESHOLD_MAX_C } from '@senso/thresholds';
 
 // Ingest endpoint for ChirpStack's HTTP integration (LoRaWAN).
 //
@@ -21,9 +22,10 @@ const READING_FPORT = 2;
 /** Every Qatar device is registered eu868; anything else is misconfigured. */
 const EXPECTED_REGION = 'eu868';
 
-/** Sanity bounds for a temperature reading, well outside any real fridge/freezer. */
-const MIN_TEMP_C = -80;
-const MAX_TEMP_C = 100;
+/** Sanity bounds for a temperature reading, well outside any real
+ *  fridge/freezer, and the same bounds a threshold may be set within. */
+const MIN_TEMP_C = THRESHOLD_MIN_C;
+const MAX_TEMP_C = THRESHOLD_MAX_C;
 
 /** How far ahead of now a device timestamp may be before we distrust it. */
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;

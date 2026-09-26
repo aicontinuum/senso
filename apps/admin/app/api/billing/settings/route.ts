@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, isDenied, readJson, failureResponse, ruleOrThrow } from '@/lib/billing/route-helpers';
 import { loadSettings } from '@/lib/billing/detail';
-import { BillingInputError, optionalText, requireCount, requireMoney, requireText, MAX_LABEL } from '@/lib/billing/validate';
+import { BillingInputError, optionalEmail, optionalText, requireCount, requireMoney, requireText, MAX_LABEL } from '@/lib/billing/validate';
 
 // The one settings row. Every field on it is editable here; the whole form
 // is sent each time and written as one update, so the row is never half of
@@ -9,7 +9,6 @@ import { BillingInputError, optionalText, requireCount, requireMoney, requireTex
 // letters) because it becomes part of every number.
 
 const PREFIX_RE = /^[A-Z]{1,6}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const MAX_TAX_RATE = 1; // stored as a fraction; 1 = 100 %
 
 export async function PATCH(request: Request) {
@@ -20,8 +19,7 @@ export async function PATCH(request: Request) {
   try {
     const body = await readJson(request);
 
-    const billingEmail = optionalText(body.billingEmail, 'billing email', MAX_LABEL);
-    if (billingEmail !== null && !EMAIL_RE.test(billingEmail)) throw new BillingInputError('billing email is not a valid address');
+    const billingEmail = optionalEmail(body.billingEmail, 'billing email');
     const invoicePrefix = requireText(body.invoicePrefix, 'invoice prefix', 6).toUpperCase();
     if (!PREFIX_RE.test(invoicePrefix)) throw new BillingInputError('invoice prefix must be 1–6 letters');
     const taxRate = requireMoney(body.taxRatePercent, 'tax rate') / 100;

@@ -49,7 +49,7 @@ export function failureResponse(label: string, error: unknown): NextResponse {
   if (error instanceof BillingRuleError) {
     return NextResponse.json({ error: error.message }, { status: 409 });
   }
-  console.error(`[billing] ${label} failed`, error);
+  console.error(`[api] ${label} failed`, error);
   return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
 }
 

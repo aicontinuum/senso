@@ -1,53 +1,59 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing/route-helpers';
+import { MAX_LABEL, optionalBoolean, optionalText, requireEmail, requirePassword, requireText } from '@/lib/billing/validate';
 
+/** Supabase Auth refuses a second login with the same address under this code. */
+const EMAIL_TAKEN_CODE = 'email_exists';
+
+/** Create a customer or a group account: a login, then the customer row
+ *  linked to it. If the row cannot be written the login is removed again,
+ *  so a failed attempt leaves nothing behind. */
 export async function POST(request: Request) {
-  // Verify the requester is a logged-in admin
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { name, contactName, contactEmail, phone, password, isGroup } = await request.json();
-
-  const admin = createAdminClient();
-
-  // Create the Supabase auth user
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email: contactEmail,
-    password,
-    email_confirm: true,
-  });
-
-  if (authError) {
-    return NextResponse.json({ error: authError.message }, { status: 400 });
-  }
-
-  // Insert the customer record linked to the new auth user. The new row's
-  // id comes back so the form can offer the account's page next.
-  const { data: created, error: dbError } = await admin
-    .from('customers')
-    .insert({
-      name,
-      contact_name: contactName,
-      email: contactEmail,
-      phone: phone || null,
-      auth_user_id: authData.user.id,
-      status: 'active',
+  const ctx = await requireAdmin();
+  if (isDenied(ctx)) return ctx.response;
+  try {
+    const body = await readJson(request);
+    const input = {
+      name: requireText(body.name, 'name', MAX_LABEL),
+      contactName: optionalText(body.contactName, 'contact name', MAX_LABEL),
+      email: requireEmail(body.contactEmail, 'email'),
+      phone: optionalText(body.phone, 'phone', MAX_LABEL),
+      password: requirePassword(body.password),
       // An owner login: reads the accounts linked under it, owns no devices.
-      is_group: isGroup === true,
-    })
-    .select('id')
-    .single();
+      isGroup: optionalBoolean(body.isGroup, 'isGroup'),
+    };
 
-  if (dbError || !created) {
-    // Roll back: delete the auth user so we don't leave orphaned accounts
-    await admin.auth.admin.deleteUser(authData.user.id);
-    return NextResponse.json({ error: dbError?.message ?? 'Could not create the account.' }, { status: 400 });
+    const { data: authData, error: authError } = await ctx.admin.auth.admin.createUser({
+      email: input.email,
+      password: input.password,
+      email_confirm: true,
+    });
+    if (authError?.code === EMAIL_TAKEN_CODE) {
+      return NextResponse.json({ error: 'A login with this email address already exists' }, { status: 409 });
+    }
+    if (authError || !authData.user) throw new Error(`${authError?.code ?? ''} ${authError?.message ?? 'no user returned'}`);
+
+    // The new row's id comes back so the form can offer the account's page next.
+    const { data: created, error: dbError } = await ctx.admin
+      .from('customers')
+      .insert({
+        name: input.name,
+        contact_name: input.contactName,
+        email: input.email,
+        phone: input.phone,
+        auth_user_id: authData.user.id,
+        status: 'active',
+        is_group: input.isGroup,
+      })
+      .select('id')
+      .single();
+    if (dbError || !created) {
+      await ctx.admin.auth.admin.deleteUser(authData.user.id);
+      throw new Error(`${dbError?.code ?? ''} ${dbError?.message ?? 'no row returned'}`);
+    }
+
+    return NextResponse.json({ id: created.id });
+  } catch (error) {
+    return failureResponse('create customer', error);
   }
-
-  return NextResponse.json({ id: created.id });
 }

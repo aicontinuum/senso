@@ -3,7 +3,7 @@ import { requireAdmin, isDenied, readJson, failureResponse, ruleOrThrow, Billing
 import { EVENT_KIND, recordBillingEvent } from '@/lib/billing/events';
 import { loadInvoiceBundle } from '@/lib/billing/invoice-load';
 import { buildInvoicePdf, invoiceFilename } from '@/lib/billing/invoice-pdf';
-import { BillingInputError, requireUuid } from '@/lib/billing/validate';
+import { BillingInputError, EMAIL_RE, requireUuid } from '@/lib/billing/validate';
 import { emailConfigured, sendEmail } from '@/lib/email/send';
 import { invoiceEmailHtml, invoiceEmailSubject, invoiceEmailText } from '@/lib/email/invoice-email';
 
@@ -12,7 +12,6 @@ import { invoiceEmailHtml, invoiceEmailSubject, invoiceEmailText } from '@/lib/e
 // invoice goes out: a draft has no number and a void one is not owed. The
 // send is recorded on the invoice (when, to whom) and in the change log.
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const MAX_RECIPIENTS = 5;
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {

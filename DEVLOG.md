@@ -194,6 +194,36 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — The older admin routes join the shared helpers
+
+Second fix from the security review. Eight admin handlers predated the
+billing helpers and each did its own thing: its own admin check, a body
+read that threw on malformed JSON, no type checks (a number where a name
+was expected was a 500), and in seven places the database's or the auth
+service's own error text sent to the browser, constraint names and all.
+Now every admin route runs the same way: `requireAdmin`, `readJson`, the
+validators in `lib/billing/validate.ts`, and `failureResponse`, which
+answers bad input with a 400 in words, a database rule with a 409, and
+anything else with a logged generic 500. Ids in the URL are checked as
+UUIDs before they reach a query. Account creation gained the server-side
+rules it never had: name, email, password length and the group flag.
+
+Two rules that lived in several copies now live once. Email and password
+length: `EMAIL_RE` and `PASSWORD_MIN_LENGTH` in the admin app, used by the
+forms and the routes alike. Temperature limits: a new `packages/thresholds`
+holds the bounds and `validateThresholds`, used by the customer sensor
+route, the admin sensor route (which used to accept `Number('abc')`), and
+ingest's sanity bounds.
+
+Checked against a stand-in for Supabase with twenty-one calls: signed out,
+malformed JSON, each missing or wrong field, each unknown id. Every answer
+is the intended status with a plain reason and nothing from the database.
+
+Flagged, not touched: the customer app's `/api/account` and
+`/api/branches/[id]` still read their body unguarded, so malformed JSON
+is a 500 there; and `EmailRecipientsEditor` keeps its own email test
+rather than `@senso/recipients`.
+
 ## 2026-09-26 — Sign in stuck on "Signing in…" from an error page
 
 Reported right after the fix below: a non-admin signing in on the admin
