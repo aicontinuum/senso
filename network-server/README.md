@@ -135,18 +135,26 @@ and pages someone if it doesn't" — not literal zero downtime, which nobody has
 
 ChirpStack has two grouping levels:
 
-- **Tenant = customer.** Gateways live at tenant level, shared across that customer's
-  applications.
-- **Application = branch/site** (a device group inside a tenant).
+- **Tenant** — an organisation that logs in to ChirpStack and sees only its own devices.
+- **Application** — a device group inside a tenant.
 
-Customers never see ChirpStack — they only ever see senso.com. The customer-facing
-grouping must therefore exist in **our** schema too: `customers → sites → gateways/sensors`
-(a `sites`/`branches` table is a Phase 5 consideration).
+**Decision (2026-09-26): flat.** One tenant, one application, every gateway and sensor
+in it. Only Senso logs in to ChirpStack; customers only ever see senso.com, and the
+separation they need lives in our database (`customers → branches → gateways → sensors`,
+enforced by row-level rules, with groups on top). Tenants per customer would be a second
+copy of that separation, protecting nobody and kept in step by hand.
+
+Gateways are radio relays, not owners: a gateway forwards every packet it hears and
+ChirpStack identifies the sender from the device's own identity, not from which gateway
+heard it. So gateways need no separating either, and flat is better for coverage — a
+sensor near another customer's gateway is relayed by it, invisibly to both. Our ingest
+stores the reading against the sensor and stamps whichever gateways relayed it as alive,
+whatever their owner. Leave the tenant's **private gateways** setting off (the default).
 
 ## 9. Registered objects (test)
 
-All under the default tenant `ChirpStack` (`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`) —
-real customers get their own tenants.
+All under the default tenant `ChirpStack` (`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`),
+which is the one tenant everything stays in (§8).
 
 | Object | Name | ID |
 |---|---|---|
