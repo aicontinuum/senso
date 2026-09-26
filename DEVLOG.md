@@ -194,6 +194,15 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Suspend and reactivate from the customer page too
+
+An **Account status** card under Account info on the admin customer page:
+the status badge, "suspended since" or "they can sign in", a link to the
+billing page, and the Suspend / Reactivate button. The confirmation step
+with its reason moved out of the billing header into `SuspensionPanel`,
+which both pages use, so the words and the call are one. Same route,
+same change-log entry either way.
+
 ## 2026-09-26 — Billing step 5: suspension locks the customer app
 
 Until now Suspend was a label on admin. Now it is a consequence.

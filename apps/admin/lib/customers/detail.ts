@@ -31,7 +31,7 @@ type SensorSource = { id: string; name: string; status: string; gateway_id: stri
 export async function loadCustomerDetail(admin: Admin, id: string, now: number = Date.now()): Promise<CustomerDetail | null> {
   const { data: customer } = await admin
     .from('customers')
-    .select('id, name, email, contact_name, phone, status, created_at, alert_recipients, is_group')
+    .select('id, name, email, contact_name, phone, status, suspended_at, created_at, alert_recipients, is_group')
     .eq('id', id)
     .single();
   if (!customer) return null;
