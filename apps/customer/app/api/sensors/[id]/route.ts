@@ -6,6 +6,7 @@ import {
   normaliseSensorName,
   SENSOR_NAME_MESSAGES,
 } from '@/lib/sensor-name';
+import { validateThresholds } from '@/lib/thresholds';
 
 export async function PATCH(
   request: Request,
@@ -37,18 +38,29 @@ export async function PATCH(
 
   if (!gateway) return NextResponse.json({ error: 'Sensor not found' }, { status: 404 });
 
-  const { name, minTemp, maxTemp } = await request.json();
+  let body: { name?: unknown; minTemp?: unknown; maxTemp?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Request body must be JSON' }, { status: 400 });
+  }
+  const { name, minTemp, maxTemp } = body;
 
-  if (minTemp == null || maxTemp == null) return NextResponse.json({ error: 'Thresholds are required' }, { status: 400 });
-  if (Number(minTemp) >= Number(maxTemp)) return NextResponse.json({ error: 'Min must be less than max' }, { status: 400 });
-
-  // The name is optional in the payload so older clients keep working, but if it
-  // is present it is validated here rather than trusted from the browser.
+  // Everything is checked before anything is written, so a bad request
+  // never half-applies (a rename that went through while the limits were
+  // refused). A limit must be a real number: Number('abc') is NaN, which
+  // passes a comparison and would be stored as no limit at all.
+  const limits = validateThresholds(minTemp, maxTemp);
+  if (!limits.ok) return NextResponse.json({ error: limits.error }, { status: 400 });
   if (name !== undefined) {
     const nameError = validateSensorName(name);
     if (nameError) {
       return NextResponse.json({ error: SENSOR_NAME_MESSAGES[nameError] }, { status: 400 });
     }
+  }
+
+  // The name is optional in the payload so older clients keep working.
+  if (name !== undefined) {
 
     const { data: renamed, error: renameError } = await supabase
       .from('sensors')
@@ -77,8 +89,8 @@ export async function PATCH(
   // ever add people rather than route to them, and one email covers every alert
   // open for a customer — anyone added to one sensor received the others anyway.
   const thresholds = [
-    { type: 'min', threshold: Number(minTemp) },
-    { type: 'max', threshold: Number(maxTemp) },
+    { type: 'min', threshold: limits.min },
+    { type: 'max', threshold: limits.max },
   ];
 
   for (const row of thresholds) {

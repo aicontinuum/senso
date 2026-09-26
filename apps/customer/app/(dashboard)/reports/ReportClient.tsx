@@ -18,6 +18,7 @@ import type { AlertNote } from "@/lib/alert-comments";
 import { REPORT_ALERT_LOOKBACK } from "@/lib/constants";
 import { ALL_BRANCHES, hasBranches } from "@/lib/branches";
 import type { Site } from "@/lib/scope";
+import { csvRow } from "@/lib/csv";
 import { buildReportPDF } from "./build-report-pdf";
 import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
@@ -318,37 +319,38 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
 
   function downloadCSV() {
     const lines: string[] = [
-      `"Monitoring Report - ${reportSubject}"`,
-      `"Period: ${periodLabel}"`,
-      `"Generated: ${formatDateTimeLong(now, timezone)}"`,
-      `"${tzNote}"`,
+      csvRow(`Monitoring Report - ${reportSubject}`),
+      csvRow(`Period: ${periodLabel}`),
+      csvRow(`Generated: ${formatDateTimeLong(now, timezone)}`),
+      csvRow(tzNote),
       "",
     ];
     // Comments are deliberately not exported here. The CSV is a data extract for
     // filtering and pivoting, and repeating a sentence of free text across every
-    // row of an episode makes it worse at that job — while also being the one
-    // place customer-typed text could carry a spreadsheet formula. The PDF is
-    // the compliance document, and it carries them.
+    // row of an episode makes it worse at that job. The PDF is the compliance
+    // document, and it carries them. Every cell goes through csvCell, so a
+    // name or address typed by a customer can neither break the row nor be
+    // read by a spreadsheet as a formula.
     for (const { sensor, address, history, readings } of reportSensors) {
-      lines.push(`"${sensor.name}"`);
+      lines.push(csvRow(sensor.name));
       // Where the sensor is, for an extract that may span branches.
-      if (sensor.branchName) lines.push(`"Branch: ${sensor.branchName}"`);
-      if (address) lines.push(`"${address}"`);
+      if (sensor.branchName) lines.push(csvRow(`Branch: ${sensor.branchName}`));
+      if (address) lines.push(csvRow(address));
       const csvDeviceId = formatDevEui(sensor.hardwareId);
-      if (csvDeviceId) lines.push(`"Device ID: ${csvDeviceId}"`);
+      if (csvDeviceId) lines.push(csvRow(`Device ID: ${csvDeviceId}`));
       const csvCommissioned = commissionedNote(sensor.commissionedAt, periodStart, timezone);
-      if (csvCommissioned) lines.push(`"${csvCommissioned}"`);
+      if (csvCommissioned) lines.push(csvRow(csvCommissioned));
       const csvRetired = retiredNote(sensor, timezone);
-      if (csvRetired) lines.push(`"${csvRetired}"`);
+      if (csvRetired) lines.push(csvRow(csvRetired));
       const csvSummary = thresholdSummary(history, readings);
-      if (csvSummary) lines.push(`"${csvSummary}"`);
-      lines.push('"Date / Time","Temperature","Range","Status"');
+      if (csvSummary) lines.push(csvRow(csvSummary));
+      lines.push(csvRow("Date / Time", "Temperature", "Range", "Status"));
       for (const r of readings) {
         const applied = rangeAt(history, r.recordedAt);
         const status = hasRange(applied)
           ? (isOutOfRangeAt(r.temperature, applied) ? "Out of range" : "OK")
           : "No limit set";
-        lines.push(`"${formatReadingTime(r.recordedAt, timezone)}","${formatTemp(r.temperature)}","${formatRange(applied)}","${status}"`);
+        lines.push(csvRow(formatReadingTime(r.recordedAt, timezone), formatTemp(r.temperature), formatRange(applied), status));
       }
       lines.push("");
     }
