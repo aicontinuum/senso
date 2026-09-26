@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { loadSettings } from '@/lib/billing/detail';
-import { BillingSettingsForm } from '@/components/settings/BillingSettingsForm';
+import { BillingSettingsCards } from '@/components/settings/BillingSettingsCards';
 
 export default async function AdminSettingsPage() {
   const settings = await loadSettings(createAdminClient());
@@ -8,7 +8,7 @@ export default async function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-      <BillingSettingsForm settings={settings} />
+      <BillingSettingsCards settings={settings} />
     </div>
   );
 }
