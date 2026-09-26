@@ -1,6 +1,6 @@
 # Groups fixture tests
 
-Proves `20260927_groups.sql` and `20260928_pin_owns_sensor_search_path.sql` against a real PostgreSQL 16 before it touches
+Proves `20260927_groups.sql`, `20260928_pin_owns_sensor_search_path.sql` and `20261001_customer_write_scope.sql` against a real PostgreSQL 16 before it touches
 the live project. Builds on the alerting and branches fixtures; `fixture.sql`
 adds the two tables whose policies the migration rewrites, switches
 row-level security on for the tables read as a signed-in customer, defines
@@ -16,7 +16,11 @@ memberships and nothing else, and can neither rename a member's sensor nor
 add a threshold to it; a member sees only itself, including its
 stopped-reporting alerts (hidden by the live rule until now); an outsider
 sees nothing of the group; grants; the view function is definer with its
-search path pinned.
+search path pinned; a customer can change their contact details, add and
+change thresholds and rename a sensor, and nothing else (not status, name,
+email, a config's recipients or kind, a device id, or another customer's
+row); the owner login cannot change a member's details; no write rule is
+open to anyone.
 
 ## Run it
 
@@ -30,6 +34,7 @@ psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260926_branch_rec
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/groups/fixture.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260927_groups.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260928_pin_owns_sensor_search_path.sql
+psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261001_customer_write_scope.sql
 psql -d senso_test -v ON_ERROR_STOP=1 -f supabase/tests/groups/test.sql 2>&1 | grep -E 'PASS|FAIL'
 ```
 

@@ -105,6 +105,36 @@ select assert((select count(*) = 0 from customer_group_members), 'and no members
 select assert((select count(*) = 1 from readings), 'and only its own readings');
 reset role;
 
+-- ── What a customer may change (20261001) ───────────────────────────────────
+set local role authenticated;
+select sign_in('00000000-0000-0000-0000-0000000000a1');
+update customers set contact_name = 'Sara', phone = '+974 5555 0000', timezone = 'Asia/Dubai', alert_recipients = '{ops@fresh.example}'
+ where id = '00000000-0000-0000-0000-00000000c0a1';
+select assert((select contact_name = 'Sara' and phone = '+974 5555 0000' from customers where id = '00000000-0000-0000-0000-00000000c0a1'), 'a customer can change their own contact details');
+select assert_raises($q$update customers set status = 'active' where id = '00000000-0000-0000-0000-00000000c0a1'$q$, 'a customer cannot change their own status');
+select assert_raises($q$update customers set name = 'Renamed' where id = '00000000-0000-0000-0000-00000000c0a1'$q$, 'nor their business name');
+select assert_raises($q$update customers set email = 'x@y.example' where id = '00000000-0000-0000-0000-00000000c0a1'$q$, 'nor their login email');
+update customers set contact_name = 'Intruder' where id = '00000000-0000-0000-0000-00000000c0a3';
+insert into alert_configs (sensor_id, type, threshold) values ('00000000-0000-0000-0000-00000000e001', 'min', 2);
+select assert((select count(*) = 2 from alert_configs where sensor_id = '00000000-0000-0000-0000-00000000e001'), 'a customer can add a threshold to their own sensor');
+update alert_configs set threshold = 9 where sensor_id = '00000000-0000-0000-0000-00000000e001' and type = 'max';
+select assert((select threshold = 9 from alert_configs where sensor_id = '00000000-0000-0000-0000-00000000e001' and type = 'max'), 'and change its value');
+select assert_raises($q$update alert_configs set email_recipients = '{x@y.example}' where sensor_id = '00000000-0000-0000-0000-00000000e001'$q$, 'but not the config''s recipient list');
+select assert_raises($q$update alert_configs set type = 'min' where sensor_id = '00000000-0000-0000-0000-00000000e001' and type = 'max'$q$, 'nor its kind');
+select assert_raises($q$update sensors set hardware_id = 'ffffffffffffffff' where id = '00000000-0000-0000-0000-00000000e001'$q$, 'nor a sensor''s device id');
+update sensors set name = 'Walk-in' where id = '00000000-0000-0000-0000-00000000e001';
+select assert((select name = 'Walk-in' from sensors where id = '00000000-0000-0000-0000-00000000e001'), 'a sensor can still be renamed');
+reset role;
+set local role authenticated;
+select sign_in('00000000-0000-0000-0000-0000000000b0');
+update customers set contact_name = 'Owner wrote this' where id = '00000000-0000-0000-0000-00000000c0a1';
+select assert((select contact_name = 'Sara' from customers where id = '00000000-0000-0000-0000-00000000c0a1'), 'the owner login cannot change a member''s contact details');
+reset role;
+-- Checked as the superuser, since the customer cannot see the row they aimed at.
+select assert((select contact_name is distinct from 'Intruder' from customers where id = '00000000-0000-0000-0000-00000000c0a3'), 'a customer never changes another customer''s row');
+select assert((select count(*) = 1 from pg_policies where tablename = 'sensors' and cmd = 'UPDATE'), 'sensors has one update rule');
+select assert((select bool_and('authenticated' = any(roles)) and not bool_or('public' = any(roles)) from pg_policies where tablename in ('customers', 'alert_configs', 'sensors') and cmd in ('UPDATE', 'INSERT')), 'no write rule is open to anyone');
+
 -- ── Grants ──────────────────────────────────────────────────────────────────
 select assert(not has_table_privilege('authenticated', 'customer_group_members', 'insert') and not has_table_privilege('authenticated', 'customer_group_members', 'delete'), 'customers cannot change memberships');
 select assert(has_table_privilege('service_role', 'customer_group_members', 'delete'), 'service_role can');

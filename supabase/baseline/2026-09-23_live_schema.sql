@@ -72,10 +72,12 @@ $function$;
 -- sensors   | customers_update_own_sensors     | UPDATE | {public}        | gateway_id in (select id from gateways where customer_id = (select id from customers where auth_user_id = auth.uid())) |
 -- sensors   | sensors_select_own               | SELECT | {authenticated} | gateway_id in (select id from gateways where customer_id = (select id from customers where auth_user_id = auth.uid())) |
 --
--- Known issues, already in TODO.md: the two UPDATE policies are row-scoped
--- but not column-scoped (sensors is column-limited by grant since
--- 20260902; customers is not), and both are TO public rather than
--- TO authenticated. sensors carries two UPDATE policies that overlap.
+-- As found, the two UPDATE policies were row-scoped but not column-scoped
+-- and TO public, and sensors carried two overlapping UPDATE policies.
+-- 20261001_customer_write_scope.sql column-scopes customers and
+-- alert_configs, re-scopes every write rule TO authenticated, and drops
+-- customers_update_own_sensors. The SELECT rules were replaced by
+-- 20260927_groups.sql.
 
 -- ── policies on readings, alert_configs, alert_logs (captured 2026-09-25) ──
 -- As found, before 20260927_groups.sql replaced every SELECT rule below.
