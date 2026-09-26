@@ -1,5 +1,9 @@
 # Pre-Launch TODO
 
+## Scheduled
+
+- [ ] **Upgrade Next to 16.3.6 or later — due 2026-10-24** *(added 2026-09-26)* — `npm audit` on the pinned set reports three advisories inside Next 16.2.11 and its bundled postcss and sharp, all fixed in 16.3.6. No live exposure: one is Windows-only, the others need attacker-supplied AVIF images reaching the image optimiser, and the sites never take image input. Deferred by decision on 2026-09-26 so the version change gets its own build and test round. Steps: bump `next` and `eslint-config-next` in both apps, `npm install`, build both, rerun the login checks, merge, click through both sites. Rerun `npm audit` at the same time and note anything new here.
+
 ## Security — audit 2026-07-04 (prioritized patch queue)
 
 Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene. Ranked by severity. **Verify the RLS items against the live DB first — that is the single biggest risk.** Re-audited 2026-09-08 after the Pi kit was removed: the device-auth items are closed, the Next.js advisories are patched, and seven findings that were not on this list were added, marked *added 2026-09-08*.
