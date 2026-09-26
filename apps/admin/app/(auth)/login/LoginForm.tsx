@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { DASHBOARD_PATH } from '@/lib/constants';
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,8 +36,13 @@ export default function LoginForm() {
       return;
     }
 
-    router.push('/dashboard');
-    router.refresh();
+    // A full page load, not a client-side route change. The server decides
+    // where a signed-in user belongs (the dashboard, or back here with a
+    // reason such as not_admin), and this form reads that reason from the
+    // URL when it mounts. A client-side change to the URL already shown,
+    // which is what a second attempt from an error page produces, would
+    // not remount it, and the button would stay on "Signing in…".
+    window.location.assign(DASHBOARD_PATH);
   }
 
   return (

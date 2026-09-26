@@ -194,6 +194,28 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Sign in stuck on "Signing in…" from an error page
+
+Reported right after the fix below: a non-admin signing in on the admin
+site was left on "Signing in…" with no message. Reproduced locally
+against a stand-in for Supabase, with the real headers, and the headers
+were not the cause. The form sent the browser to the dashboard as a
+client-side route change; the server bounced it back to `/login?error=
+not_admin`; and the form only reads that reason when the URL changes.
+The second attempt starts on that very URL, so the bounce changes
+nothing, the reason is never read, and the button never resets. The
+first attempt from a plain `/login` always worked, which is why it
+had not shown up before. The customer site's form had the same shape,
+and a suspended customer trying again from the locked page would have
+frozen the same way.
+
+Both forms now do a full page load of the dashboard after a successful
+sign in. The server's answer, whatever it is, arrives as a fresh page
+that reads its reason on mount. Checked locally from the error URL and
+from the plain one: both end on the login page with the message and
+the button reset. Left as it was: the `set-state-in-effect` lint note
+on both forms, older than this change.
+
 ## 2026-09-26 — The headers' first casualty: pages built ahead of time
 
 The admin login page came up with a title and no form within an hour of

@@ -1,5 +1,8 @@
 export const APP_NAME = "Senso Admin";
 
+/** Where a signed-in admin lands. */
+export const DASHBOARD_PATH = "/dashboard";
+
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Customers", href: "/customers" },
