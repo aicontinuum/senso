@@ -194,6 +194,23 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — The headers' first casualty: pages built ahead of time
+
+The admin login page came up with a title and no form within an hour of
+the headers going live; the customer site's root redirect would have hung
+the same way. The policy refuses any script without this request's
+nonce, and Next stamps the nonce in only while rendering the page for a
+request. Both login-side pages were prerendered at build time, when there
+is no request and so no nonce, and the browser then refused every script
+on them; the form and the redirect are drawn by the browser, so nothing
+appeared. Every other page already rendered per request (cookies,
+search params) and was fine.
+
+The fix is one line in each app's root layout: every page renders per
+request, never at build time. The build now lists only the two icon
+files as static. Checked by serving the admin build and reading `/login`:
+sixteen script tags, all carrying the header's nonce, none without.
+
 ## 2026-09-26 — Security headers, and two input fixes from the review
 
 **Headers.** A new `packages/security` holds them once for both sites.
