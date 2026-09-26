@@ -45,7 +45,6 @@ export default async function CustomersPage() {
       contact_name: customer.contact_name,
       created_at: customer.created_at,
       ...summariseDevices(customer.gateways as GatewaySummaryRow[] | null),
-      groupOf: groupOf.get(customer.id) ?? null,
     }));
 
   return (

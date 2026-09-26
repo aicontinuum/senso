@@ -2,14 +2,14 @@ import Link from 'next/link';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { Badge, Button, Card, LinkRow, StatusDot } from '@senso/ui';
 import { formatDate } from '@/lib/format';
-import type { GroupRef } from '@/lib/groups/load';
 import type { DeviceSummary, GatewayStatus } from '@/lib/customers/device-summary';
 
 // The accounts that own devices, one row each, in two forms of the same
 // data: a six-column table from desktop width up, and a stacked list below
-// it, where a table would only scroll sideways. Membership of a group is a
-// chip after the name in both. Rows arrive shaped by the page; this only
-// draws them.
+// it, where a table would only scroll sideways. Which group an account is
+// in is not shown here: the Groups card above lists the groups, and the
+// account's own page names its group. Rows arrive shaped by the page; this
+// only draws them.
 
 export type CustomerListRow = DeviceSummary & {
   id: string;
@@ -17,18 +17,12 @@ export type CustomerListRow = DeviceSummary & {
   email: string;
   contact_name: string | null;
   created_at: string;
-  groupOf: GroupRef | null;
 };
 
 export const LIST_TH = 'px-6 py-3 font-medium';
 export const LIST_TD = 'px-6 py-4';
 /** A phone row: the same press feel as every other list in the app. */
 export const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
-
-/** Which group an account is in, as a chip that reads at a glance. */
-export function GroupChip({ group }: { group: GroupRef }) {
-  return <Badge variant="outline" className="text-muted-foreground">{group.name}</Badge>;
-}
 
 /** "6 sensors", or "No gateway" when there is nothing to count. */
 export function sensorsLabel({ sensorCount, gwStatus }: DeviceSummary): string {
@@ -82,10 +76,7 @@ export function CustomersTable({ rows }: { rows: CustomerListRow[] }) {
             return (
               <LinkRow key={row.id} href={href}>
                 <td className={LIST_TD}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{row.name}</p>
-                    {row.groupOf && <GroupChip group={row.groupOf} />}
-                  </div>
+                  <p className="font-medium">{row.name}</p>
                   <p className="text-xs text-muted-foreground">{row.email}</p>
                 </td>
                 <td className={`${LIST_TD} text-muted-foreground`}>{row.contact_name ?? '—'}</td>
@@ -117,17 +108,14 @@ export function CustomersTable({ rows }: { rows: CustomerListRow[] }) {
       </table>
 
       {/* Phone: the same rows as a list. The gateway dot and the name on
-          the left, with the group chip under the name; the sensor count on
-          the right. Contact, email and date wait on the customer's page. */}
+          the left, the sensor count on the right. Contact, email and date
+          wait on the customer's page. */}
       <ul className="divide-y divide-hairline lg:hidden">
         {rows.map(row => (
           <li key={row.id}>
             <Link href={`/customers/${row.id}`} className={LIST_ROW}>
               <GatewayDot status={row.gwStatus} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{row.name}</p>
-                {row.groupOf && <div className="mt-1"><GroupChip group={row.groupOf} /></div>}
-              </div>
+              <p className="min-w-0 flex-1 truncate text-sm font-medium">{row.name}</p>
               <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{sensorsLabel(row)}</p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
