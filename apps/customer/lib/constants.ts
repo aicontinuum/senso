@@ -14,6 +14,10 @@ export const TEMP_DECIMALS = 1;
 // band in the middle half of the track.
 export const RANGE_TRACK_PADDING_FRACTION = 0.5;
 
+// The login page's `error` value for "signed out because the account is
+// suspended"; the layout sends it, the page shows the locked notice.
+export const LOCKED_ERROR = "locked";
+
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Alerts", href: "/alerts" },
