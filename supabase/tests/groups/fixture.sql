@@ -39,7 +39,14 @@ alter table alert_comments enable row level security;
 alter table readings enable row level security;
 alter table alert_configs enable row level security;
 alter table alert_logs enable row level security;
-grant insert on alert_configs to authenticated;
+grant insert, update on alert_configs to authenticated;
+grant update on customers to authenticated;
+alter table customers add column if not exists phone text;
+create policy customers_update_own_record on customers for update to public
+  using (auth_user_id = auth.uid()) with check (auth_user_id = auth.uid());
+create policy customers_update_own_alert_configs on alert_configs for update to authenticated using (customer_owns_sensor(sensor_id));
+create policy customers_update_own_sensors on sensors for update to public
+  using (gateway_id in (select id from gateways where customer_id = (select id from customers where auth_user_id = auth.uid())));
 grant select on gateways, sensors, readings, alert_configs, alert_logs, alert_threshold_history, alert_comments to authenticated;
 -- The write rule the owner login must not pass: renaming a sensor.
 grant update (name) on sensors to authenticated;

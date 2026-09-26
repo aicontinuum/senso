@@ -194,6 +194,39 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Security review, and the first fix: what a customer may write
+
+Two read-only audits of both apps (admin and customer plus infra). Clean:
+route protection, data scoping, secrets and history, XSS, the service
+key. Open: no rate limiting, no security headers, no CSRF check, raw
+database errors from the older admin routes, and one critical item in the
+database itself. Also confirmed against the live project that none of
+the server-only functions (invoicing, alert claiming) is callable by a
+customer or a visitor.
+
+**The critical item.** The hand-written rule on `customers` let a
+customer update any column of their own row, `status` included, so a
+suspended customer could sign in and, in the moment before the app signed
+them out, set themselves back to active from a browser console. The same
+shape on `alert_configs` let any value into any column, skipping the
+app's checks.
+
+**`20261001_customer_write_scope.sql`** adds column grants: on
+`customers`, only contact_name, phone, alert_recipients and timezone (what
+Settings offers); on `alert_configs`, insert of sensor_id, type,
+threshold and update of threshold. Every write rule is re-created `TO
+authenticated`, and the wide, `TO public` `customers_update_own_sensors`
+rule, which the column-scoped rename rule had been OR'd with, is dropped.
+The app already wrote only these columns, so nothing changes on screen.
+The groups suite grows to 47 cases: a customer can change their contact
+details, add and change thresholds and rename a sensor, and nothing else;
+the owner login cannot change a member's details; no write rule is open
+to anyone.
+
+Next from the review: security headers on both apps, the threshold and
+CSV input fixes, rate limiting, the older admin routes onto the shared
+validators, and the VPS port check.
+
 ## 2026-09-26 — Suspend and reactivate from the customer page too
 
 An **Account status** card under Account info on the admin customer page:
