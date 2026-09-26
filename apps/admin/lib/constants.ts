@@ -3,6 +3,10 @@ export const APP_NAME = "Senso Admin";
 /** Where a signed-in admin lands. */
 export const DASHBOARD_PATH = "/dashboard";
 
+/** The shortest password an admin may set for a customer login. Checked
+ *  in the forms for a quick answer and on the server as the rule. */
+export const PASSWORD_MIN_LENGTH = 8;
+
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Customers", href: "/customers" },

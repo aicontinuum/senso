@@ -15,6 +15,7 @@
     "@senso/recipients": "*",
     "@senso/security": "*",
     "@senso/status": "*",
+    "@senso/thresholds": "*",
     "@senso/tokens": "*",
     "@senso/types": "*",
     "@senso/ui": "*",

@@ -1,59 +1,42 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { RECIPIENTS_MESSAGES, validateRecipients } from '@senso/recipients';
+import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing/route-helpers';
+import { BillingInputError, MAX_LABEL, optionalText, requireEmail, requireText, requireUuid } from '@/lib/billing/validate';
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+/** Edit a customer's contact details, and optionally its alert recipients. */
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await requireAdmin();
+  if (isDenied(ctx)) return ctx.response;
+  try {
+    const customerId = requireUuid((await params).id, 'customer');
+    const body = await readJson(request);
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user || user.app_metadata?.role !== 'admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { name, contactName, email, phone, alertRecipients } = await request.json();
-
-  if (!name?.trim()) {
-    return NextResponse.json({ error: 'Business name is required' }, { status: 400 });
-  }
-  if (!email?.trim() || !EMAIL_RE.test(email.trim())) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 });
-  }
-
-  const { id: customerId } = await params;
-  const admin = createAdminClient();
-
-  const updatePayload: Record<string, unknown> = {
-    name: name.trim(),
-    contact_name: contactName?.trim() || null,
-    email: email.trim(),
-    phone: phone?.trim() || null,
-  };
-  // These addresses are what the alert job sends to, so the list is checked
-  // with the same rules the customer app applies and the normalised result
-  // is what gets stored. One bad entry used to abort a whole alert run.
-  if (alertRecipients !== undefined) {
-    const result = validateRecipients(alertRecipients);
-    if (!result.ok) {
-      return NextResponse.json({ error: RECIPIENTS_MESSAGES[result.error] }, { status: 400 });
+    const updatePayload: Record<string, unknown> = {
+      name: requireText(body.name, 'Business name', MAX_LABEL),
+      contact_name: optionalText(body.contactName, 'contact name', MAX_LABEL),
+      email: requireEmail(body.email, 'Email'),
+      phone: optionalText(body.phone, 'phone', MAX_LABEL),
+    };
+    // These addresses are what the alert job sends to, so the list is checked
+    // with the same rules the customer app applies and the normalised result
+    // is what gets stored. One bad entry used to abort a whole alert run.
+    if (body.alertRecipients !== undefined) {
+      const result = validateRecipients(body.alertRecipients);
+      if (!result.ok) throw new BillingInputError(RECIPIENTS_MESSAGES[result.error]);
+      updatePayload.alert_recipients = result.value;
     }
-    updatePayload.alert_recipients = result.value;
+
+    const { data, error } = await ctx.admin
+      .from('customers')
+      .update(updatePayload)
+      .eq('id', customerId)
+      .select('id')
+      .maybeSingle();
+    if (error) throw new Error(`${error.code} ${error.message}`);
+    if (!data) return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return failureResponse('update customer', error);
   }
-
-  const { error } = await admin
-    .from('customers')
-    .update(updatePayload)
-    .eq('id', customerId);
-
-  if (error) {
-    console.error('Customer update failed', { customerId, code: error.code, message: error.message });
-    return NextResponse.json({ error: 'Could not save the customer. Please try again.' }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true });
 }

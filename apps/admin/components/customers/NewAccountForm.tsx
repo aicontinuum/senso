@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Check, ChevronLeft, Plus } from 'lucide-react';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
+import { EMAIL_RE } from '@/lib/billing/validate';
 
 // One form for both kinds of account. A customer and a group differ only
 // in the flag sent with the request and the words around the fields. On
@@ -13,8 +15,6 @@ import { callApi } from '@/lib/api-client';
 // new account's page (for a group, where its members get linked) or
 // another of the same kind.
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
-const PASSWORD_MIN_LENGTH = 8;
 
 type FieldKey = 'name' | 'contactName' | 'contactEmail' | 'phone' | 'password' | 'confirm';
 

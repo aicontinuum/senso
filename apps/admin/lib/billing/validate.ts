@@ -4,10 +4,16 @@
 // value or throws a BillingInputError the route turns into a 400.
 
 import type { BillingTier, DiscountType, InvoiceType, PaymentMethod, TermMonths } from '@/types/billing';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
 export class BillingInputError extends Error {}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** One @, no whitespace, a dotted domain: the shape a login or contact
+ *  address must have. The forms use the same test for their quick answer. */
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+/** Supabase caps a password at 72 bytes; anything near it is a paste error. */
+const MAX_PASSWORD = 72;
 const TIERS: readonly BillingTier[] = ['starter', 'standard', 'custom'];
 const INVOICE_TYPES: readonly InvoiceType[] = ['onboarding', 'renewal', 'adjustment'];
 const DISCOUNT_TYPES: readonly DiscountType[] = ['amount', 'percent'];
@@ -55,6 +61,33 @@ export function optionalText(value: unknown, field: string, max = MAX_TEXT): str
   if (typeof value !== 'string' || value.length > max) throw new BillingInputError(`${field} is too long`);
   const trimmed = value.trim();
   return trimmed === '' ? null : trimmed;
+}
+
+export function requireEmail(value: unknown, field: string): string {
+  const text = requireText(value, field, MAX_LABEL);
+  if (!EMAIL_RE.test(text)) throw new BillingInputError(`${field} must be a valid email address`);
+  return text;
+}
+
+export function optionalEmail(value: unknown, field: string): string | null {
+  const text = optionalText(value, field, MAX_LABEL);
+  if (text !== null && !EMAIL_RE.test(text)) throw new BillingInputError(`${field} must be a valid email address`);
+  return text;
+}
+
+/** A password is never trimmed: the characters typed are the password. */
+export function requirePassword(value: unknown): string {
+  if (typeof value !== 'string' || value.length < PASSWORD_MIN_LENGTH || value.length > MAX_PASSWORD) {
+    throw new BillingInputError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+  }
+  return value;
+}
+
+/** Absent means false. */
+export function optionalBoolean(value: unknown, field: string): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value !== 'boolean') throw new BillingInputError(`${field} must be true or false`);
+  return value;
 }
 
 function oneOf<T extends string>(allowed: readonly T[], value: unknown, field: string): T {

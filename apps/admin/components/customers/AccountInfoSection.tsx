@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { KeyRound, Pencil } from 'lucide-react';
 import { Button, Card, CardHeader, CardTitle, Input } from '@senso/ui';
+import { PASSWORD_MIN_LENGTH } from '@/lib/constants';
 
 // Who the customer is and how to reach them, editable in place, plus the
 // office-side password reset a technician uses when handing over credentials.
@@ -22,7 +23,6 @@ export type CustomerRow = {
   is_group: boolean;
 };
 
-const PASSWORD_MIN_LENGTH = 8;
 
 function formOf(customer: CustomerRow) {
   return {
