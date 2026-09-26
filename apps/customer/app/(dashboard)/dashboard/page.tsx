@@ -118,6 +118,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         // Every branch, each under its own heading with its own counts, sites
         // with trouble first, so the eye finds a site before it finds a fridge.
         <div className="space-y-8">
+          {/* A suspended account comes first: it is the one thing on this
+              page the owner can do nothing about from here, and the one
+              they most need to notice. */}
+          {suspendedSites.map((site) => <SuspendedSite key={site.id} name={site.name} />)}
           {branchGroups.map(({ branch: b, items, tally }) => (
             <section key={b.id} aria-label={b.name}>
               <BranchHeading name={b.name} tally={tally} />
@@ -126,7 +130,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 : grid(items)}
             </section>
           ))}
-          {suspendedSites.map((site) => <SuspendedSite key={site.id} name={site.name} />)}
         </div>
       ) : (
         grid(sensors)
