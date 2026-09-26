@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCustomer } from '@/lib/supabase/get-customer';
+import { requireActiveCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
 import { validateRecipients, RECIPIENTS_MESSAGES } from '@senso/recipients';
 
@@ -8,8 +8,9 @@ import { validateRecipients, RECIPIENTS_MESSAGES } from '@senso/recipients';
 // the column grant decide what it may touch; a branch of another customer
 // is invisible and the update reaches no row.
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const customer = await getCustomer();
-  if (!customer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const gate = await requireActiveCustomer();
+  if ('response' in gate) return gate.response;
+  const { customer } = gate;
 
   const { id } = await params;
   const { alertRecipients } = await request.json();

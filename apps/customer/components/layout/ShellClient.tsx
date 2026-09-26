@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { LayoutDashboard, Bell, FileText, Settings } from "lucide-react";
 import { AppShell, type NavItem } from "@senso/ui";
-import { createClient } from "@/lib/supabase/client";
+import { useLogout } from "@/hooks/useLogout";
 import { APP_NAME, NAV_ITEMS } from "@/lib/constants";
 
 const NAV_ICONS: Record<string, NavItem["icon"]> = {
@@ -25,16 +24,9 @@ export function ShellClient({
   children: React.ReactNode;
   customerName: string;
 }) {
-  const router = useRouter();
-
-  // Sign-out stays here rather than in the shared shell: each app has its own
-  // Supabase client and its own post-logout destination.
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
+  // Sign-out stays in this app rather than in the shared shell: each app has
+  // its own Supabase client and its own post-logout destination.
+  const handleLogout = useLogout();
 
   return (
     <AppShell

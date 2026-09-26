@@ -194,6 +194,43 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-09-26 — Billing step 5: suspension locks the customer app
+
+Until now Suspend was a label on admin. Now it is a consequence.
+
+**The lock.** The customer app's layout reads the account's status before
+any page renders. A suspended account gets `LockedAccount` instead,
+whatever the URL: the shell and a dashboard-shaped stand-in, blurred and
+inert, under a light-red card that says the account is locked, gives
+Senso's phone and email, and offers Log out. The stand-in is the loading
+skeleton, not the page, so there is no data under the blur to uncover
+with the browser's tools. Login and logout still work; nothing else does.
+Reactivate on admin unlocks on the next page load.
+
+**Server side.** The four routes the app writes through go through
+`requireActiveCustomer()`, which answers 403 for a suspended account, so
+a saved request cannot change thresholds or recipients while locked.
+
+**What continues.** Readings are recorded and alert emails go out as
+before. Stopping ingest would put a hole in a compliance record that
+cannot be refilled; stopping alerts would mean withholding a safety
+warning over an invoice. The app is the lever, not the record.
+
+**Groups.** A suspended member is withheld from its owner too:
+`loadScope()` leaves it out of the accounts it loads, and the dashboard
+shows its name with an "Account suspended" badge over blurred, empty tiles
+(`SuspendedSite`). Its sensors, alerts and reports do not exist to the
+owner until it is reactivated. A suspended group login is locked like any
+account.
+
+**Contact details.** `20260929_support_contact.sql`: a definer function
+returning `billing_settings.phone` and `billing_email` to a signed-in
+customer, and nothing else from that table.
+
+Also: the logout logic moved from the shell into `hooks/useLogout.ts`,
+since the lock card needs it too; the dashboard skeleton moved into a
+component so the lock screen can use it.
+
 ## 2026-09-25 — The customer pages stop reading the clock in render
 
 The dashboard and settings pages now load through `lib/dashboard/load.ts`

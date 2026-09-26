@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCustomer } from '@/lib/supabase/get-customer';
+import { requireActiveCustomer } from '@/lib/supabase/get-customer';
 import { createClient } from '@/lib/supabase/server';
 import {
   validateSensorName,
@@ -11,8 +11,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const customer = await getCustomer();
-  if (!customer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const gate = await requireActiveCustomer();
+  if ('response' in gate) return gate.response;
+  const { customer } = gate;
 
   const { id: sensorId } = await params;
   const supabase = await createClient();
