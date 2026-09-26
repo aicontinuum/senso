@@ -19,3 +19,17 @@ export const DEVEUI_RE = /^[0-9a-f]{16}$/;
 export function isValidDevEui(id: string): boolean {
   return DEVEUI_RE.test(id);
 }
+
+// The AppKey is the sensor's join secret, printed beside the DevEUI on the
+// label: 32 hex characters. It goes to the network server once and is
+// never stored on our side.
+
+export function normaliseAppKey(raw: string): string {
+  return raw.replace(/[\s\-:]/g, '').toLowerCase();
+}
+
+export const APPKEY_RE = /^[0-9a-f]{32}$/;
+
+export function isValidAppKey(key: string): boolean {
+  return APPKEY_RE.test(key);
+}
