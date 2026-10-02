@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing/route-helpers';
 import { BillingInputError, MAX_LABEL, requireText, requireUuid } from '@/lib/billing/validate';
 import { normaliseDevEui, isValidDevEui } from '@/lib/deveui';
+import { requireRegisteredSensor } from '@/lib/network/registered';
 
 /** The partial unique index counts live rows only, so a clash means the
  *  device is registered *and in service* somewhere else right now. */
@@ -20,6 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!isValidDevEui(devEui)) {
       throw new BillingInputError('Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c');
     }
+    await requireRegisteredSensor(devEui);
 
     const { data: gateway, error: gatewayError } = await ctx.admin
       .from('gateways')

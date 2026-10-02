@@ -21,8 +21,6 @@ export const NAV_ITEMS = [
 // chosen per device. See network-server/README.md §9.
 export const NETWORK_DEVICE_PROFILE = 'Dragino LHT65N';
 export const SENSOR_REPORTING_INTERVAL_MIN = 15;
-/** Shown on the register forms until the network server route exists. */
-export const NETWORK_NOT_CONNECTED_NOTICE = 'Network registration is not connected yet. Nothing was sent.';
 
 // ── Backfill from the sensor's memory ───────────────────────────────────────
 // When a live reading arrives after a gap, ingest asks the sensor for the

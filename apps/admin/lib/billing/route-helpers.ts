@@ -40,14 +40,19 @@ export async function readJson(request: Request): Promise<Record<string, unknown
 }
 
 /** A thrown error from a route becomes 400 for bad input, 409 for a rule the
- *  database refused, 500 for anything else. Only bad-input messages reach the
- *  client verbatim; the rest is logged with the route's label. */
+ *  database refused, 502 for a network server that gave no usable answer,
+ *  500 for anything else. Only bad-input and rule messages reach the client
+ *  verbatim; the rest is logged with the route's label. */
 export function failureResponse(label: string, error: unknown): NextResponse {
   if (error instanceof BillingInputError) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
   if (error instanceof BillingRuleError) {
     return NextResponse.json({ error: error.message }, { status: 409 });
+  }
+  if (error instanceof NetworkServerError) {
+    console.error(`[api] ${label}: network server`, error.message);
+    return NextResponse.json({ error: NETWORK_SERVER_UNAVAILABLE }, { status: 502 });
   }
   console.error(`[api] ${label} failed`, error);
   return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
@@ -56,6 +61,13 @@ export function failureResponse(label: string, error: unknown): NextResponse {
 /** A rule the database enforces (frozen invoice, paid cannot be voided…),
  *  reported in the words the migration raises. */
 export class BillingRuleError extends Error {}
+
+/** The network server (ChirpStack) could not be reached or gave no usable
+ *  answer. The detail is logged; the client gets one fixed sentence. */
+export class NetworkServerError extends Error {}
+
+export const NETWORK_SERVER_UNAVAILABLE = 'The network server did not answer. Nothing was changed; try again in a minute.';
+export const NETWORK_NOT_CONFIGURED = 'The network server is not connected to this site yet.';
 
 /** Postgres raises the billing rules as check_violation (23514). Anything
  *  else stays a 500. */

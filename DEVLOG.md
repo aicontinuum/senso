@@ -194,6 +194,37 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-02 — Devices page: register and remove on the network server
+
+The front half from 26 September now sends. Through ChirpStack's REST
+API (the route and key set up for backfill, plus three ids naming the
+one tenant, application and profile):
+
+- **Register a gateway** creates it under the tenant.
+- **Register a sensor** creates the device, sets its AppKey (as the
+  LoRaWAN 1.0 network key, which is what ChirpStack's own screen does),
+  and queues the 15-minute interval command for its first uplink. If the
+  key cannot be set the device is deleted again, so nothing half-made is
+  left. The key passes through our server once and is kept only there.
+- **The table** lists everything the network server knows, with when it
+  was last heard and the customer and branch it is linked to in our
+  records, unlinked first. Each sensor row can resend the interval.
+- **Remove** deletes a device from the network server, only while no
+  customer has it; a linked one says so and points at the customer page.
+  Unlinking on the customer page never deletes here, so a sensor coming
+  back from one customer can go to another without its key retyped.
+- **Linking** on the customer page now checks the network server knows
+  the EUI first and refuses one it does not, so a typo can never make a
+  sensor that "never comes online". Unconfigured: the check is skipped
+  as before; unreachable: the link is refused, since an unverified link
+  is the mistake this exists to prevent.
+
+A network server that gives no usable answer is a 502 with one fixed
+sentence; a refusal the office can act on (already registered, not
+found, still linked) is a 409 in words. Checked locally against
+stand-ins: the two forms, each refusal, the removal rules, the interval
+bytes, and the linking check both ways.
+
 ## 2026-10-02 — Backfill: a gap in the record is filled from the sensor's memory
 
 Sensor 2 missed a run of readings on 1 October with a strong, clean

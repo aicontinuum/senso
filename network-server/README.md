@@ -230,6 +230,32 @@ down, breaches are still recorded but nobody is told. The pulse below is how the
 admin dashboard notices; Alerting v2 phase 5 moves the schedule itself off this
 box so that only the pulse remains.
 
+## Registering hardware from the admin site
+
+Since 2026-10-02 the admin site's **Devices** page registers gateways and sensors
+on ChirpStack and removes them, through the same REST route and API key as the
+backfill below, plus three ids in Vercel naming where new devices go
+(`CHIRPSTACK_TENANT_ID`, `CHIRPSTACK_APPLICATION_ID`, `CHIRPSTACK_DEVICE_PROFILE_ID`;
+the values are in §9). What it does, so nobody has to do it here by hand:
+
+- **Register a gateway**: creates it under the tenant with its EUI and name.
+- **Register a sensor**: creates the device under the application with the LHT65N
+  profile, sets its AppKey (sent as the LoRaWAN 1.0 network key, as this screen does),
+  and queues the 15-minute interval command (`01 000384` on fPort 1) for its first
+  uplink. If the key cannot be set the device is deleted again, so nothing half-made
+  is left.
+- **Remove**: deletes a device from ChirpStack, only while no customer is linked to it
+  in our records. Unlinking a device on a customer's page does **not** delete it here,
+  so a sensor coming back from one customer can be relinked to another without its
+  AppKey being typed again.
+- **Linking** a device to a customer on the customer's page first checks it exists
+  here; an EUI ChirpStack does not know is refused with "register it on the Devices
+  page first".
+
+The page also lists everything ChirpStack knows, with last-heard and the customer each
+device is linked to. The dashboard here is still the place for anything else: device
+profiles, frames, events, the queue.
+
 ## Backfill from the sensor's memory
 
 An LHT65N keeps every reading it takes. When a sensor's readings resume after a
