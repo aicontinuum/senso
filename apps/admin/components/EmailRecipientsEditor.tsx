@@ -76,7 +76,7 @@ export function EmailRecipientsEditor({ emails, onChange, saving = false, emptyM
         />
         <Button variant="secondary" className="self-start" onClick={add} disabled={saving || newEmail.trim() === ''}>
           <Plus className="size-4" />
-          Add
+          {saving ? 'Saving…' : 'Add'}
         </Button>
       </div>
     </div>

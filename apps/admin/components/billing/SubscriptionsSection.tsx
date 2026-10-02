@@ -102,7 +102,7 @@ export function SubscriptionsSection({ customerId, settings, subscriptions, inst
             <span className="font-medium tabular-nums">{formatMoney(adjustment.suggestion.amount)}</span>.
           </p>
           <span className="flex gap-2">
-            <Button size="sm" onClick={raiseAdjustment} disabled={busy}>Draft adjustment invoice</Button>
+            <Button size="sm" onClick={raiseAdjustment} disabled={busy}>{busy ? 'Drafting…' : 'Draft adjustment invoice'}</Button>
             <Button variant="ghost" size="sm" onClick={() => setAdjustment(null)} disabled={busy}>Not now</Button>
           </span>
         </div>

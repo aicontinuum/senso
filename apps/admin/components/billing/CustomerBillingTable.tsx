@@ -144,7 +144,11 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
                   <li key={row.customerId}>
                     <ListLink href={href} className={LIST_ROW}>
                       <BillingStatusDot status={row.status} />
-                      <p className={cn('flex min-w-0 flex-1 items-center gap-2 truncate text-sm font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}{row.isTest && <Badge variant="outline">Test</Badge>}</p>
+                      {/* A div, not a paragraph: the Test badge is a block and may not sit in a p. */}
+                      <div className={cn('flex min-w-0 flex-1 items-center gap-2 text-sm font-medium', row.status === 'suspended' && 'text-muted-foreground')}>
+                        <span className="truncate">{row.name}</span>
+                        {row.isTest && <Badge variant="outline" className="shrink-0">Test</Badge>}
+                      </div>
                       <div className="shrink-0 text-right text-xs">
                         {row.subscriptionCount === 0 ? (
                           <p className="text-muted-foreground">No plan yet</p>
