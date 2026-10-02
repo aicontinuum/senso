@@ -1,29 +1,42 @@
-import { Card, CardContent } from '@senso/ui';
+import Link from 'next/link';
+import { Plus, Radio } from 'lucide-react';
+import { Button, Card, CardContent } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { loadNetworkDevices } from '@/lib/network/load';
 import { NETWORK_NOT_CONFIGURED, NETWORK_SERVER_UNAVAILABLE } from '@/lib/billing/route-helpers';
-import { RegisterGatewayForm } from '@/components/devices/RegisterGatewayForm';
-import { RegisterSensorForm } from '@/components/devices/RegisterSensorForm';
 import { NetworkDevicesTable } from '@/components/devices/NetworkDevicesTable';
 
-// Office prep for new hardware: register it on the network server here,
-// then link it to a customer on the customer's page. Two forms, one per
-// kind of device, and below them everything the network server knows.
+// Everything the network server knows, first, since that is what the
+// page is opened to check. Registering new hardware is rare, so it is two
+// buttons in the title row, each to its own page, and the device is then
+// linked to a customer on the customer's page.
 
 export default async function DevicesPage() {
   const devices = await loadNetworkDevices(createAdminClient());
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Register new hardware on the network server before it is linked to a customer.
-        </p>
-      </div>
-      <div className="grid items-start gap-6 xl:grid-cols-2">
-        <RegisterGatewayForm />
-        <RegisterSensorForm />
+      {/* The two ways in share a row with the title from tablet width up; on
+          a phone they take a full-width row of their own, as an even pair. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Hardware on the network server, and what it is linked to.</p>
+        </div>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button asChild variant="secondary" size="sm" className="flex-1 sm:flex-none">
+            <Link href="/devices/new-gateway">
+              <Radio className="size-4" />
+              Register gateway
+            </Link>
+          </Button>
+          <Button asChild size="sm" className="flex-1 sm:flex-none">
+            <Link href="/devices/new-sensor">
+              <Plus className="size-4" />
+              Register sensor
+            </Link>
+          </Button>
+        </div>
       </div>
       {devices.state === 'ok' ? (
         <NetworkDevicesTable rows={devices.rows} now={devices.now} />
