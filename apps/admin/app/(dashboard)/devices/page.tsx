@@ -4,12 +4,13 @@ import { Button, Card, CardContent } from '@senso/ui';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { loadNetworkDevices } from '@/lib/network/load';
 import { NETWORK_NOT_CONFIGURED, NETWORK_SERVER_UNAVAILABLE } from '@/lib/billing/route-helpers';
-import { NetworkDevicesTable } from '@/components/devices/NetworkDevicesTable';
+import { NetworkDevicesCard } from '@/components/devices/NetworkDevicesCard';
 
 // Everything the network server knows, first, since that is what the
-// page is opened to check. Registering new hardware is rare, so it is two
-// buttons in the title row, each to its own page, and the device is then
-// linked to a customer on the customer's page.
+// page is opened to check: gateways, the few things that can take a
+// whole site down, then the sensors. Registering new hardware is rare,
+// so it is two buttons in the title row, each to its own page, and the
+// device is then linked to a customer on the customer's page.
 
 export default async function DevicesPage() {
   const devices = await loadNetworkDevices(createAdminClient());
@@ -39,7 +40,10 @@ export default async function DevicesPage() {
         </div>
       </div>
       {devices.state === 'ok' ? (
-        <NetworkDevicesTable rows={devices.rows} now={devices.now} />
+        <>
+          <NetworkDevicesCard kind="gateway" rows={devices.rows.filter(r => r.kind === 'gateway')} now={devices.now} />
+          <NetworkDevicesCard kind="sensor" rows={devices.rows.filter(r => r.kind === 'sensor')} now={devices.now} />
+        </>
       ) : (
         <Card>
           <CardContent className="py-6">
