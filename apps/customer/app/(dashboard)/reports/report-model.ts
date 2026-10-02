@@ -58,6 +58,10 @@ export const FORMATS: { label: string; value: ReportFormat }[] = [
 
 export const DEFAULT_FORMAT: ReportFormat = "pdf";
 
+/** The three things that build the PDF after a press, so the bar can say
+ *  which one is working. */
+export type PdfAction = "print" | "share" | "download";
+
 // Which of the page's two views is showing lives in the URL, not in state, so
 // that the sidebar's Reports link and the browser's back button both return to
 // the settings — the two things people try first when they want out of a

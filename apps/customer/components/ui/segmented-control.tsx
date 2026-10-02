@@ -48,7 +48,8 @@ export function SegmentedControl<T extends string>({
             aria-checked={selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-button px-3.5 text-sm font-semibold tracking-tight",
+              // 40px tall on touch, where a finger lands; 32px from desktop width.
+              "inline-flex h-10 items-center gap-1.5 rounded-button px-3.5 text-sm font-semibold tracking-tight lg:h-8",
               "transition-[background-color,color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
               "active:scale-[0.97] motion-reduce:active:scale-100",
               "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32",

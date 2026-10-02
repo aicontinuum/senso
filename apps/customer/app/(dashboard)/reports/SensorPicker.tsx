@@ -45,7 +45,8 @@ export function SensorPicker({
         </span>
       </label>
 
-      <div className="max-h-64 divide-y divide-hairline overflow-y-auto">
+      {/* overscroll-contain: reaching the end of this list must not scroll the page behind it. */}
+      <div className="max-h-64 divide-y divide-hairline overflow-y-auto overscroll-contain">
         {sensors.map((s) => {
           // Listed but not selectable: showing it explains why a sensor on their
           // dashboard is missing here, which silently omitting it would not.

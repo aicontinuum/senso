@@ -4,8 +4,15 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { DASHBOARD_PATH, LOCKED_ERROR } from '@/lib/constants';
-import { Button } from '@senso/ui';
-import { Input } from '@senso/ui';
+import { Button, Input } from '@senso/ui';
+
+// What the server says when it sends a signed-in user back here. The locked
+// case has its own notice on the page, so it carries no message of its own.
+const URL_ERRORS: Record<string, string> = {
+  not_customer: 'This account is not registered as a customer.',
+  session: 'We couldn’t load your account. Please sign in again.',
+  [LOCKED_ERROR]: '',
+};
 
 export default function LoginForm() {
   const searchParams = useSearchParams();
@@ -14,25 +21,14 @@ export default function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // The reason is read from the URL; the only effect is ending the session
+  // that the server refused.
+  const urlError = searchParams.get('error');
+  const sentBack = urlError !== null && urlError in URL_ERRORS;
   useEffect(() => {
-    const err = searchParams.get('error');
-    if (err === 'not_customer') {
-      setLoading(false);
-      setError('This account is not registered as a customer.');
-      createClient().auth.signOut();
-    } else if (err === 'session') {
-      setLoading(false);
-      setError('We couldn’t load your account. Please sign in again.');
-      createClient().auth.signOut();
-    } else if (err === LOCKED_ERROR) {
-      // The page shows the locked notice; here only the session is ended.
-      setLoading(false);
-      setError('');
-      createClient().auth.signOut();
-    } else {
-      setError('');
-    }
-  }, [searchParams]);
+    if (sentBack) createClient().auth.signOut();
+  }, [sentBack]);
+  const shownError = error || (sentBack ? URL_ERRORS[urlError] : '');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,29 +59,34 @@ export default function LoginForm() {
       <Input
         label="Email"
         type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        enterKeyHint="next"
         value={email}
-        onChange={e => setEmail(e.target.value)}
+        onChange={e => { setEmail(e.target.value); setError(''); }}
         placeholder="you@example.com"
-        required
       />
       <Input
         label="Password"
         type="password"
+        autoComplete="current-password"
+        enterKeyHint="go"
         value={password}
-        onChange={e => setPassword(e.target.value)}
+        onChange={e => { setPassword(e.target.value); setError(''); }}
         placeholder="••••••••"
-        required
       />
 
       {/* Kept as a form-level message rather than a field error: it also covers
           cases like an account that is not a registered customer, which belong
           to neither field. */}
-      {error && (
-        <p role="alert" className="text-sm text-alert-text">{error}</p>
+      {shownError && (
+        <p role="alert" className="text-sm text-alert-text">{shownError}</p>
       )}
 
-      <Button type="submit" block disabled={loading}>
-        {loading ? 'Signing in…' : 'Sign In'}
+      <Button type="submit" block disabled={loading || email.trim() === '' || password === ''}>
+        {loading ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>
   );

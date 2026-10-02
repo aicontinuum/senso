@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TIMEZONES } from "@/lib/timezones";
-import { Select } from "@senso/ui";
+import { Select, Spinner } from "@senso/ui";
 import { SettingsCard } from "./SettingsCard";
 
 export function TimezoneSection({ initialTimezone }: { initialTimezone: string }) {
@@ -44,18 +44,22 @@ export function TimezoneSection({ initialTimezone }: { initialTimezone: string }
       description="All timestamps and reports are shown in this timezone."
     >
       <div className="space-y-2">
-        <Select
-          aria-label="Timezone"
-          value={timezone}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={saving}
-        >
-          {TIMEZONES.map((tz) => (
-            <option key={tz.value} value={tz.value}>
-              {tz.label}
-            </option>
-          ))}
-        </Select>
+        {/* A greyed select reads as locked; the spinner says the save is in flight. */}
+        <div className="flex items-center gap-3">
+          <Select
+            aria-label="Timezone"
+            value={timezone}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={saving}
+          >
+            {TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </Select>
+          {saving && <Spinner className="size-4 shrink-0" />}
+        </div>
         {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
         {saved && <p className="text-sm font-medium text-ok-text">Saved.</p>}
       </div>

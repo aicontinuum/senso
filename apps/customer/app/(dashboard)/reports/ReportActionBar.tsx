@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { ArrowLeft, Download, Mail, Printer, Share2 } from "lucide-react";
 import { Button } from "@senso/ui";
-import { rangeOption, type RangeValue, type ReportFormat } from "./report-model";
+import { rangeOption, type PdfAction, type RangeValue, type ReportFormat } from "./report-model";
 
 // The capability never changes during a page's life, so there is nothing to
 // subscribe to.
@@ -17,6 +17,8 @@ interface ReportActionBarProps {
   range: RangeValue;
   format: ReportFormat;
   sensorCount: number;
+  /** Which PDF action is building its file, if any: that button says so and the others wait. */
+  busy: PdfAction | null;
   /** Return to the settings card, keeping the report in memory. */
   onBack: () => void;
   onPrint: () => void;
@@ -27,6 +29,8 @@ interface ReportActionBarProps {
   mailtoHref: string;
 }
 
+const PREPARING = "Preparing…";
+
 // Once a report exists it is the focus. The settings collapse to this one line:
 // the way back and what was generated on the left, what to do with it on the
 // right. The chosen format's download is the primary action; Print and Share
@@ -36,6 +40,7 @@ export function ReportActionBar({
   range,
   format,
   sensorCount,
+  busy,
   onBack,
   onPrint,
   onDownload,
@@ -46,6 +51,7 @@ export function ReportActionBar({
   // server snapshot says no, which renders the mailto fallback first and keeps
   // server and client markup the same until hydration.
   const canShare = useSyncExternalStore(subscribeNever, readCanShare, () => false);
+  const working = busy !== null;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
@@ -60,14 +66,14 @@ export function ReportActionBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={onPrint}>
+        <Button variant="secondary" size="sm" onClick={onPrint} disabled={working}>
           <Printer className="size-4" />
-          Print
+          {busy === "print" ? PREPARING : "Print"}
         </Button>
         {canShare ? (
-          <Button variant="secondary" size="sm" onClick={onShare}>
+          <Button variant="secondary" size="sm" onClick={onShare} disabled={working}>
             <Share2 className="size-4" />
-            Share
+            {busy === "share" ? PREPARING : "Share"}
           </Button>
         ) : (
           <Button variant="secondary" size="sm" asChild>
@@ -77,9 +83,9 @@ export function ReportActionBar({
             </a>
           </Button>
         )}
-        <Button size="sm" onClick={onDownload}>
+        <Button size="sm" onClick={onDownload} disabled={working}>
           <Download className="size-4" />
-          Download {format.toUpperCase()}
+          {busy === "download" ? PREPARING : `Download ${format.toUpperCase()}`}
         </Button>
       </div>
     </div>
