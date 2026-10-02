@@ -40,6 +40,9 @@ export const BACKFILL_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 export const BACKFILL_MATCH_WINDOW_MS = 10 * 60 * 1000;
 /** The poll window is widened by this on each side for the same reason. */
 export const BACKFILL_CLOCK_SLACK_MS = 10 * 60 * 1000;
+/** The Devices page's reading-rate window. Admin only; no alert, no
+ *  email, by decision on 2026-10-02. */
+export const READING_RATE_WINDOW_DAYS = 7;
 /** Seconds the sensor waits between the frames of a long answer. */
 export const DATALOG_REPLY_INTERVAL_S = 5;
 /** Job name for a backfill request that could not be queued. */

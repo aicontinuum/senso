@@ -7,15 +7,20 @@ import { RefreshCw, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, CardTitle } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
-import { SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
+import { READING_RATE_WINDOW_DAYS, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
 import type { NetworkDeviceRow } from '@/lib/network/load';
 
 // Everything the network server knows, with what our records say about
-// each row. Two actions: remove an unlinked device from the network, and
-// resend a sensor's reporting interval. A linked device is removed from
-// its customer's page, never here.
+// each row, including how complete each sensor's record has been lately:
+// a sensor slipping from 100 to 90 has a radio or battery problem worth
+// a visit before it fails hard. Two actions: remove an unlinked device
+// from the network, and resend a sensor's reporting interval. A linked
+// device is removed from its customer's page, never here.
 
 type Props = { rows: NetworkDeviceRow[]; now: number };
+
+/** Below this share received live, the figure turns red: worth a visit. */
+const RATE_WARN_BELOW = 95;
 
 const TH = 'px-6 py-3 font-medium';
 const TD = 'px-6 py-3';
@@ -62,6 +67,7 @@ export function NetworkDevicesTable({ rows, now }: Props) {
                 <th className={TH}>EUI</th>
                 <th className={`${TH} whitespace-nowrap`}>Last heard</th>
                 <th className={TH}>Linked to</th>
+                <th className={`${TH} whitespace-nowrap`}>Readings, {READING_RATE_WINDOW_DAYS} days</th>
                 <th className={`${TH} relative`}><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -83,6 +89,16 @@ export function NetworkDevicesTable({ rows, now }: Props) {
                         </Link>
                       ) : (
                         <Badge variant="offline" dot>Not linked</Badge>
+                      )}
+                    </td>
+                    <td className={`${TD} whitespace-nowrap`}>
+                      {row.rate ? (
+                        <span className={row.rate.percent < RATE_WARN_BELOW ? 'font-medium text-alert-text' : ''}>
+                          <span className="tabular-nums">{row.rate.percent}%</span>
+                          {row.rate.recovered > 0 && <span className="text-muted-foreground"> · {row.rate.recovered} recovered</span>}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className={`${TD} text-right`}>
