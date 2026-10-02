@@ -3,6 +3,7 @@ import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing
 import { BillingInputError, MAX_LABEL, requireText } from '@/lib/billing/validate';
 import { isValidAppKey, isValidDevEui, normaliseAppKey, normaliseDevEui } from '@/lib/deveui';
 import { registerSensor } from '@/lib/network/registry';
+import { networkName } from '@/lib/network/naming';
 import { requireRegistry, unwrap } from '@/lib/network/route';
 
 /** Register a sensor on the network server: the device, its key, and the
@@ -18,13 +19,13 @@ export async function POST(request: Request) {
     if (!isValidDevEui(devEui)) throw new BillingInputError('Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c');
     const appKey = normaliseAppKey(requireText(body.appKey, 'AppKey', MAX_LABEL));
     if (!isValidAppKey(appKey)) throw new BillingInputError('Invalid AppKey — expected 32 hex characters');
-    const name = requireText(body.name, 'Name', MAX_LABEL);
+    const name = networkName('sensor', devEui);
 
     const { intervalQueued } = unwrap(
       await registerSensor(registry, devEui, appKey, name),
       { exists: 'A sensor with this DevEUI is already registered' },
     );
-    return NextResponse.json({ devEui, intervalQueued }, { status: 201 });
+    return NextResponse.json({ devEui, name, intervalQueued }, { status: 201 });
   } catch (error) {
     return failureResponse('register sensor', error);
   }

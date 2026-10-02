@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import { networkName } from '@/lib/network/naming';
 
 // Register a gateway on the network server so it can relay packets. This
 // is the radio side; linking it to a customer happens on the customer's
-// page.
+// page. Its network name is derived from the EUI (lib/network/naming.ts),
+// so there is nothing to decide here.
 
 export function RegisterGatewayForm() {
   const router = useRouter();
   const [eui, setEui] = useState('');
-  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const [saving, setSaving] = useState(false);
@@ -27,18 +28,17 @@ export function RegisterGatewayForm() {
       setError('Invalid Gateway EUI — expected 16 hex characters, e.g. 2cf7f11081400088');
       return;
     }
-    if (!name.trim()) { setError('Gateway name is required'); return; }
     setSaving(true);
-    const result = await callApi<{ gatewayId: string }>('/api/network/gateways', 'POST', { eui: normalised, name });
+    const result = await callApi<{ gatewayId: string; name: string }>('/api/network/gateways', 'POST', { eui: normalised });
     setSaving(false);
     if (!result.ok) { setError(result.error); return; }
-    setDone(`Registered ${result.data.gatewayId}. Link it to a customer on the customer's page.`);
+    setDone(`Registered as ${result.data.name}. Link it to a customer on the customer's page.`);
     setEui('');
-    setName('');
     router.refresh();
   }
 
-  const canSubmit = !saving && eui.trim() !== '' && name.trim() !== '';
+  const normalised = normaliseIdentifier(eui);
+  const canSubmit = !saving && eui.trim() !== '';
 
   return (
     <Card>
@@ -61,13 +61,9 @@ export function RegisterGatewayForm() {
             autoCapitalize="none"
             error={error || undefined}
           />
-          <Input
-            label="Name"
-            hint="How it appears on the network server, e.g. the customer and site."
-            value={name}
-            onChange={e => { setName(e.target.value); setDone(''); }}
-            placeholder="e.g. Fresh Foods — West Bay"
-          />
+          <p className="text-sm text-muted-foreground">
+            Network name: <span className="font-mono text-foreground">{isValidGatewayId(normalised) ? networkName('gateway', normalised) : 'G-…'}</span>, from the EUI. What the site calls it is set when it is linked.
+          </p>
           {done && <p role="status" className="text-sm font-medium text-ok-text">{done}</p>}
           <div className="pt-1">
             <Button type="submit" disabled={!canSubmit}>{saving ? 'Registering…' : 'Register gateway'}</Button>

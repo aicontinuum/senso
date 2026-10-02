@@ -194,6 +194,18 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-02 — Network names are derived, not typed
+
+Two names per device were inevitable: the one on the network server is
+ours, the one in Senso is the customer's to change, and they would have
+drifted. So they get different jobs. The network name is now a fixed
+office label derived from the EUI, `G-0088` or `S-011e`, the last four
+characters, unique in practice and readable off the device label; it
+never needs updating when the unit moves. The Senso name says what the
+fridge is. The register forms lose their Name field and show the derived
+name as the EUI is typed. The three existing devices are renamed by hand
+in ChirpStack to match.
+
 ## 2026-10-02 — Devices page: register and remove on the network server
 
 The front half from 26 September now sends. Through ChirpStack's REST

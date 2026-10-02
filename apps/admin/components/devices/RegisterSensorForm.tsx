@@ -6,18 +6,19 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { callApi } from '@/lib/api-client';
 import { normaliseDevEui, isValidDevEui, normaliseAppKey, isValidAppKey } from '@/lib/deveui';
 import { NETWORK_DEVICE_PROFILE, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
+import { networkName } from '@/lib/network/naming';
 
 // Register a sensor on the network server so it can join and be decoded.
 // The DevEUI and AppKey come off the device label; the profile and the
 // reporting interval are the same for every sensor, so they are stated,
-// not chosen.
+// not chosen, and the network name is derived from the DevEUI
+// (lib/network/naming.ts). What the fridge is called is set at install.
 
 export function RegisterSensorForm() {
   const router = useRouter();
   const [devEui, setDevEui] = useState('');
   const [appKey, setAppKey] = useState('');
-  const [name, setName] = useState('');
-  const [errors, setErrors] = useState<{ devEui?: string; appKey?: string; name?: string; form?: string }>({});
+  const [errors, setErrors] = useState<{ devEui?: string; appKey?: string; form?: string }>({});
   const [done, setDone] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -27,26 +28,25 @@ export function RegisterSensorForm() {
     const next: typeof errors = {};
     if (!isValidDevEui(normaliseDevEui(devEui))) next.devEui = 'Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c';
     if (!isValidAppKey(normaliseAppKey(appKey))) next.appKey = 'Invalid AppKey — expected 32 hex characters';
-    if (!name.trim()) next.name = 'Sensor name is required';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
     setSaving(true);
-    const result = await callApi<{ devEui: string; intervalQueued: boolean }>('/api/network/sensors', 'POST', {
-      devEui: normaliseDevEui(devEui), appKey: normaliseAppKey(appKey), name,
+    const result = await callApi<{ devEui: string; name: string; intervalQueued: boolean }>('/api/network/sensors', 'POST', {
+      devEui: normaliseDevEui(devEui), appKey: normaliseAppKey(appKey),
     });
     setSaving(false);
     if (!result.ok) { setErrors({ form: result.error }); return; }
     setDone(result.data.intervalQueued
-      ? `Registered ${result.data.devEui}. The ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval is queued for its first uplink.`
-      : `Registered ${result.data.devEui}, but the interval could not be queued; use Resend on its row.`);
+      ? `Registered as ${result.data.name}. The ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval is queued for its first uplink.`
+      : `Registered as ${result.data.name}, but the interval could not be queued; use Resend on its row.`);
     setDevEui('');
     setAppKey('');
-    setName('');
     router.refresh();
   }
 
   const clear = (field: keyof typeof errors) => setErrors(ev => ({ ...ev, [field]: undefined, form: undefined }));
-  const canSubmit = !saving && devEui.trim() !== '' && appKey.trim() !== '' && name.trim() !== '';
+  const normalised = normaliseDevEui(devEui);
+  const canSubmit = !saving && devEui.trim() !== '' && appKey.trim() !== '';
 
   return (
     <Card>
@@ -80,14 +80,9 @@ export function RegisterSensorForm() {
             autoCapitalize="none"
             error={errors.appKey}
           />
-          <Input
-            label="Name"
-            hint="How it appears on the network server, e.g. the customer and fridge."
-            value={name}
-            onChange={e => { setName(e.target.value); clear('name'); setDone(''); }}
-            placeholder="e.g. Fresh Foods — Walk-in fridge"
-            error={errors.name}
-          />
+          <p className="text-sm text-muted-foreground">
+            Network name: <span className="font-mono text-foreground">{isValidDevEui(normalised) ? networkName('sensor', normalised) : 'S-…'}</span>, from the DevEUI. What the fridge is called is set when it is added to a customer.
+          </p>
           {errors.form && <p role="alert" className="text-sm text-alert-text">{errors.form}</p>}
           {done && <p role="status" className="text-sm font-medium text-ok-text">{done}</p>}
           <div className="pt-1">
