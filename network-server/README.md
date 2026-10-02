@@ -158,7 +158,7 @@ which is the one tenant everything stays in (§8).
 
 | Object | Name | ID |
 |---|---|---|
-| Application | `senso-test` | `635fda7b-0428-495e-812f-027490bcaf9d` |
+| Application | `Senso Devices` (was `senso-test`) | `635fda7b-0428-495e-812f-027490bcaf9d` |
 | Device profile | `Dragino LHT65N` | `bc0b05d1-d5ec-4126-9451-42403f143a9f` |
 | Device | `sensor0` | DevEUI `a840419edb62011c` · DevAddr `01087309` · Class A |
 | Gateway | `gateway1` | EUI `2cf7f11081400088` |
