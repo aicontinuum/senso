@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { BillingStatus } from '@senso/types';
-import { Card, LinkRow, cn } from '@senso/ui';
+import { Badge, Card, LinkRow, cn } from '@senso/ui';
 import { formatDate, formatMoney } from '@/lib/format';
 import { BILLING_STATUSES, BILLING_STATUS_LABEL, TERM_LABEL, TIER_LABEL, billingDetailHref } from '@/lib/billing/constants';
 import { BillingStatusDot } from '@/components/billing/BillingStatusDot';
@@ -78,6 +78,7 @@ function NameCell({ row, href }: { row: CustomerBilling; href: string }) {
     <div className="flex items-center gap-2">
       <BillingStatusDot status={row.status} />
       <Link href={href} className={cn('font-medium hover:underline', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</Link>
+      {row.isTest && <Badge variant="outline" className="ml-2">Test</Badge>}
     </div>
   );
 }
@@ -143,7 +144,7 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
                   <li key={row.customerId}>
                     <Link href={href} className={LIST_ROW}>
                       <BillingStatusDot status={row.status} />
-                      <p className={cn('min-w-0 flex-1 truncate text-sm font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</p>
+                      <p className={cn('flex min-w-0 flex-1 items-center gap-2 truncate text-sm font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}{row.isTest && <Badge variant="outline">Test</Badge>}</p>
                       <div className="shrink-0 text-right text-xs">
                         {row.subscriptionCount === 0 ? (
                           <p className="text-muted-foreground">No plan yet</p>

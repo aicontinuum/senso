@@ -21,6 +21,8 @@ export type CustomerRow = {
   alert_recipients: string[] | null;
   /** An owner login that reads its members and owns no devices. */
   is_group: boolean;
+  /** A rehearsal account whose money is left out of every billing total. */
+  is_test: boolean;
 };
 
 
