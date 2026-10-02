@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Trash2 } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, CardTitle } from '@senso/ui';
+import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, cn } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
 import { READING_RATE_WINDOW_DAYS, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
@@ -28,14 +28,23 @@ type Props = { kind: Kind; rows: NetworkDeviceRow[]; now: number };
 /** Below this share received live, the figure turns red: worth a visit. */
 const RATE_WARN_BELOW = 95;
 
-const WORDS: Record<Kind, { title: string; empty: string; apiPath: string }> = {
-  gateway: { title: 'Gateways', empty: 'No gateways registered yet.', apiPath: 'gateways' },
-  sensor: { title: 'Sensors', empty: 'No sensors registered yet.', apiPath: 'sensors' },
+const WORDS: Record<Kind, { title: string; hint: string | null; empty: string; apiPath: string }> = {
+  gateway: { title: 'Gateways', hint: null, empty: 'No gateways registered yet.', apiPath: 'gateways' },
+  sensor: {
+    title: 'Sensors',
+    hint: `Readings is the share of expected readings received live over the last ${READING_RATE_WINDOW_DAYS} days. Under ${RATE_WARN_BELOW}% is worth a visit.`,
+    empty: 'No sensors registered yet.',
+    apiPath: 'sensors',
+  },
 };
 
 const TH = 'px-6 py-3 font-medium';
 const TD = 'px-6 py-3';
 const PANEL = 'border-t border-hairline bg-sunken px-5 py-4';
+/** Under a row, the panel and the outcome line arrive the same way. */
+const RISE = 'animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]';
+/** 44px targets on touch, the table's compact size from desktop width. */
+const ICON_BUTTON = 'size-11 lg:size-9';
 
 type Message = { eui: string; text: string; tone: 'ok' | 'error' };
 
@@ -65,6 +74,19 @@ function Rate({ row }: { row: NetworkDeviceRow }) {
       <span className="tabular-nums">{row.rate.percent}%</span>
       {row.rate.recovered > 0 && <span className="text-muted-foreground"> · {row.rate.recovered} recovered</span>}
     </span>
+  );
+}
+
+// The rate as a chip beside the name on a phone: tone and shape carry the
+// warning, not colour alone, and the words that explain it sit once in
+// the card header, since a tooltip never opens on touch.
+function RateChip({ row }: { row: NetworkDeviceRow }) {
+  if (!row.rate) return null;
+  const low = row.rate.percent < RATE_WARN_BELOW;
+  return (
+    <Badge variant={low ? 'alert' : 'outline'} className={cn('tabular-nums', !low && 'text-muted-foreground')}>
+      {row.rate.percent}%
+    </Badge>
   );
 }
 
@@ -106,12 +128,13 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
     return (
       <span className="flex shrink-0 items-center justify-end gap-1">
         {isSensor && (
-          <Button variant="ghost" size="icon" aria-label={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval to ${row.name || row.eui}`} title={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval`} onClick={() => open(row, 'resend')} disabled={busy || opened}>
-            <RefreshCw className="size-4" />
+          <Button variant="ghost" size="icon" aria-label={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval to ${row.name || row.eui}`} title={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval`} className={ICON_BUTTON} onClick={() => open(row, 'resend')} disabled={busy || opened}>
+            {/* Spins while the resend is in flight: feedback from the press, not the reply. */}
+            <RefreshCw className={cn('size-4', busy && confirm?.action === 'resend' && 'animate-spin')} />
           </Button>
         )}
         {!row.link && (
-          <Button variant="ghost" size="icon" aria-label={`Remove ${row.name || row.eui} from the network server`} title="Remove from the network server" className="hover:text-alert-text" onClick={() => open(row, 'remove')} disabled={busy || opened}>
+          <Button variant="ghost" size="icon" aria-label={`Remove ${row.name || row.eui} from the network server`} title="Remove from the network server" className={cn(ICON_BUTTON, 'hover:text-alert-text')} onClick={() => open(row, 'remove')} disabled={busy || opened}>
             <Trash2 className="size-4" />
           </Button>
         )}
@@ -159,7 +182,7 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
     }
     if (message?.eui === row.eui) {
       return (
-        <p role={message.tone === 'error' ? 'alert' : 'status'} className={`${PANEL} text-sm ${message.tone === 'error' ? 'text-alert-text' : 'text-muted-foreground'}`}>
+        <p role={message.tone === 'error' ? 'alert' : 'status'} className={cn(PANEL, RISE, 'text-sm', message.tone === 'error' ? 'text-alert-text' : 'text-muted-foreground')}>
           {message.text}
         </p>
       );
@@ -172,11 +195,12 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
   return (
     <Card asChild className="overflow-hidden">
       <section aria-label={words.title}>
-        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
+        <CardHeader className="space-y-0 border-b border-hairline">
           <div className="flex items-baseline gap-2">
             <CardTitle>{words.title}</CardTitle>
             <span className="font-display text-md font-semibold tabular-nums text-muted-foreground">{rows.length}</span>
           </div>
+          {words.hint && <CardDescription>{words.hint}</CardDescription>}
         </CardHeader>
         {rows.length === 0 ? (
           <p className="px-5 py-8 text-sm text-muted-foreground">{words.empty}</p>
@@ -188,7 +212,7 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
                 <tr className="border-b border-hairline text-left text-muted-foreground">
                   <th className={TH}>Name</th>
                   <th className={TH}>EUI</th>
-                  <th className={`${TH} whitespace-nowrap`}>Last heard</th>
+                  <th className={`${TH} whitespace-nowrap text-right`}>Last heard</th>
                   <th className={TH}>Linked to</th>
                   {isSensor && <th className={`${TH} whitespace-nowrap`}>Readings, {READING_RATE_WINDOW_DAYS} days</th>}
                   <th className={`${TH} relative`}><span className="sr-only">Actions</span></th>
@@ -202,7 +226,7 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
                       <tr>
                         <td className={`${TD} whitespace-nowrap font-mono font-medium`}>{row.name || <Dash />}</td>
                         <td className={`${TD} font-mono text-xs text-muted-foreground`}>{row.eui}</td>
-                        <td className={`${TD} whitespace-nowrap text-muted-foreground`}><LastHeard row={row} now={now} /></td>
+                        <td className={`${TD} whitespace-nowrap text-right text-muted-foreground`}><LastHeard row={row} now={now} /></td>
                         <td className={`${TD} whitespace-nowrap`}><LinkedTo row={row} /></td>
                         {isSensor && <td className={`${TD} whitespace-nowrap`}><Rate row={row} /></td>}
                         <td className={`${TD} text-right`}>{actions(row)}</td>
@@ -218,23 +242,24 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
               </tbody>
             </table>
 
-            {/* Phone: the same rows as a list. Name, then the EUI and what it
-                is linked to; on the right when it was heard and, for a
-                sensor, its readings rate. */}
+            {/* Phone: two lines. The name with its rate chip, then what it is
+                linked to; on the right when it was heard, then the buttons.
+                No EUI: the name is its last four characters, which is what
+                the label is checked against; the full string is for copying
+                and stays on the desktop table and the register page. */}
             <ul className="divide-y divide-hairline lg:hidden">
               {rows.map(row => (
                 <li key={row.eui}>
-                  <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="flex items-center gap-3 py-3 pl-4 pr-2">
                     <div className="min-w-0 flex-1">
-                      <p className="font-mono text-sm font-medium">{row.name || row.eui}</p>
-                      <p className="truncate font-mono text-xs text-muted-foreground">{row.eui}</p>
                       {/* Divs, not paragraphs: a badge is a block and may not sit in a p. */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-medium">{row.name || row.eui}</span>
+                        <RateChip row={row} />
+                      </div>
                       <div className="mt-1 text-xs text-muted-foreground"><LinkedTo row={row} /></div>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-0.5 text-right text-xs text-muted-foreground">
-                      <LastHeard row={row} now={now} />
-                      {row.rate && <Rate row={row} />}
-                    </div>
+                    <div className="shrink-0 text-right text-xs text-muted-foreground"><LastHeard row={row} now={now} /></div>
                     {actions(row)}
                   </div>
                   {underRow(row)}
