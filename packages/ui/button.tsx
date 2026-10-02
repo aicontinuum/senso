@@ -39,7 +39,9 @@ const buttonVariants = cva(
         sm: "h-8 px-3.5 text-sm",
         md: "h-10 px-4.5 text-base",
         lg: "h-12 px-6.5 text-md",
-        icon: "size-9 px-0",
+        // 44px on touch, where a finger lands; the compact 36px from desktop
+        // width, where a pointer does and tables are dense.
+        icon: "size-11 px-0 lg:size-9",
       },
       block: { true: "w-full", false: "" },
     },

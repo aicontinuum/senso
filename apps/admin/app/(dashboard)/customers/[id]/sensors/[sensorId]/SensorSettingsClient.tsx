@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Pencil } from 'lucide-react';
+import { Badge, Button, Card, CardHeader, CardTitle, Input, Select } from '@senso/ui';
+import { callApi } from '@/lib/api-client';
+
+// One sensor as the office sees it: its name, which gateway it hangs off,
+// and the thresholds that raise alerts, read as label and value pairs and
+// edited in place behind one Edit, the same shape as the customer's
+// Account info card. The DevEUI is shown and never edited: it is the
+// device's identity.
 
 interface SensorData {
   id: string;
@@ -26,43 +34,37 @@ interface Props {
   gateways: GatewayOption[];
 }
 
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-card shadow-sm">
-      <div className="border-b px-6 py-4 flex items-center justify-between">
-        <h2 className="font-semibold">{title}</h2>
-        {action}
-      </div>
-      <div className="px-6 py-5">{children}</div>
-    </div>
-  );
-}
+const TEMP_UNIT = '°C';
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-3 gap-4 text-sm items-start">
-      <dt className="text-muted-foreground pt-1">{label}</dt>
-      <dd className="col-span-2">{children}</dd>
-    </div>
-  );
-}
-
-const inputCls = 'w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring';
-
-export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
-  const router = useRouter();
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
+function formOf(sensor: SensorData) {
+  return {
     name: sensor.name,
     gatewayId: sensor.gatewayId,
     minTemp: String(sensor.minTemp),
     maxTemp: String(sensor.maxTemp),
-  });
+  };
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1 sm:grid-cols-3 sm:gap-4">
+      <dt className="text-sm text-muted-foreground sm:pt-2.5">{label}</dt>
+      <dd className="text-sm sm:col-span-2">{children}</dd>
+    </div>
+  );
+}
+
+export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(() => formOf(sensor));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const set = (key: keyof typeof form) => (value: string) => { setForm(f => ({ ...f, [key]: value })); setError(''); };
 
-  const gatewayName = gateways.find(g => g.id === form.gatewayId)?.name ?? form.gatewayId;
+  const gatewayName = gateways.find(g => g.id === sensor.gatewayId)?.name ?? sensor.gatewayId;
+  const online = sensor.status === 'online';
 
   const changed =
     form.name !== sensor.name ||
@@ -70,23 +72,21 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
     Number(form.minTemp) !== sensor.minTemp ||
     Number(form.maxTemp) !== sensor.maxTemp;
 
-  function cancel() {
-    setForm({
-      name: sensor.name,
-      gatewayId: sensor.gatewayId,
-      minTemp: String(sensor.minTemp),
-      maxTemp: String(sensor.maxTemp),
-    });
-    setError('');
+  function startEditing() {
     setSaved(false);
+    setError('');
+    setEditing(true);
+  }
+
+  function cancel() {
+    setForm(formOf(sensor));
+    setError('');
     setEditing(false);
   }
 
   async function save() {
     setError('');
-    setSaved(false);
     if (!changed) { setEditing(false); return; }
-
     if (!form.name.trim()) { setError('Sensor name is required'); return; }
     const min = Number(form.minTemp);
     const max = Number(form.maxTemp);
@@ -94,109 +94,86 @@ export function SensorSettingsClient({ customerId, sensor, gateways }: Props) {
     if (min >= max) { setError('Min must be less than max'); return; }
 
     setSaving(true);
-    try {
-      const res = await fetch(`/api/customers/${customerId}/sensors/${sensor.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, gatewayId: form.gatewayId, minTemp: min, maxTemp: max }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? 'Failed to save'); return; }
-      setSaved(true);
-      setEditing(false);
-      router.refresh();
-    } finally {
-      setSaving(false);
-    }
+    const result = await callApi(`/api/customers/${customerId}/sensors/${sensor.id}`, 'PATCH', {
+      name: form.name, gatewayId: form.gatewayId, minTemp: min, maxTemp: max,
+    });
+    setSaving(false);
+    if (!result.ok) { setError(result.error); return; }
+    setSaved(true);
+    setEditing(false);
+    router.refresh();
   }
 
   return (
     <div className="space-y-6">
-      <Link href={`/customers/${customerId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-4 w-4" /> Customer
-      </Link>
-
-      <div className="flex items-center justify-between">
-        <div>
+      <div>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
+          <Link href={`/customers/${customerId}`}>
+            <ChevronLeft className="size-4" />
+            Customer
+          </Link>
+        </Button>
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{sensor.name}</h1>
-          <span className={`mt-1 inline-flex items-center gap-1.5 text-sm ${sensor.status === 'online' ? 'text-ok-text' : 'text-muted-foreground'}`}>
-            <span className={`inline-block h-2 w-2 rounded-full ${sensor.status === 'online' ? 'bg-ok-500' : 'bg-offline-500'}`} />
-            {sensor.status === 'online' ? 'Online' : 'Offline'}
-          </span>
+          <Badge variant={online ? 'ok' : 'offline'} dot>{online ? 'Online' : 'Offline'}</Badge>
         </div>
       </div>
 
-      <Section
-        title="Settings"
-        action={
-          editing ? (
-            <div className="flex items-center gap-2">
-              <button onClick={cancel} disabled={saving} className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-muted disabled:opacity-50">
-                Cancel
-              </button>
-              <button onClick={save} disabled={saving} className="text-sm px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
+      <Card className="overflow-hidden">
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
+          <CardTitle>Settings</CardTitle>
+          {!editing ? (
+            <div className="flex items-center gap-3">
+              {saved && <span className="text-sm font-medium text-ok-text">Saved.</span>}
+              <Button variant="ghost" size="sm" onClick={startEditing}>
+                <Pencil className="size-4" />
+                Edit
+              </Button>
             </div>
           ) : (
-            <button onClick={() => { setSaved(false); setEditing(true); }} className="text-sm px-4 py-1.5 rounded-md border border-border hover:bg-muted">
-              Edit
-            </button>
-          )
-        }
-      >
-        <dl className="space-y-4">
-          <Row label="Sensor Name">
-            {editing ? (
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
-            ) : (
-              <span className="text-sm">{sensor.name}</span>
-            )}
-          </Row>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={cancel} disabled={saving}>Cancel</Button>
+              <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            </div>
+          )}
+        </CardHeader>
 
-          <Row label="Gateway">
-            {editing ? (
-              <select value={form.gatewayId} onChange={e => setForm(f => ({ ...f, gatewayId: e.target.value }))} className={inputCls}>
-                {gateways.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
-            ) : (
-              <span className="text-sm">{gatewayName}</span>
-            )}
-          </Row>
-
-          <Row label="Temperature Threshold">
-            {editing ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">Min</span>
-                  <input type="number" step="0.5" value={form.minTemp} onChange={e => setForm(f => ({ ...f, minTemp: e.target.value }))} className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-                  <span className="text-sm text-muted-foreground">°C</span>
+        <dl className="space-y-4 px-5 py-5">
+          <Field label="Sensor name">
+            {editing
+              ? <Input value={form.name} onChange={e => set('name')(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} />
+              : <span className="font-medium">{sensor.name}</span>}
+          </Field>
+          <Field label="Gateway">
+            {editing
+              ? (
+                <Select value={form.gatewayId} onChange={e => set('gatewayId')(e.target.value)}>
+                  {gateways.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </Select>
+              )
+              : gatewayName}
+          </Field>
+          <Field label="Temperature range">
+            {editing
+              ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Min" type="number" inputMode="decimal" step="0.5" suffix={TEMP_UNIT} value={form.minTemp} onChange={e => set('minTemp')(e.target.value)} />
+                  <Input label="Max" type="number" inputMode="decimal" step="0.5" suffix={TEMP_UNIT} value={form.maxTemp} onChange={e => set('maxTemp')(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} />
                 </div>
-                <span className="text-muted-foreground">—</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground">Max</span>
-                  <input type="number" step="0.5" value={form.maxTemp} onChange={e => setForm(f => ({ ...f, maxTemp: e.target.value }))} className="w-20 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
-                  <span className="text-sm text-muted-foreground">°C</span>
-                </div>
-              </div>
-            ) : (
-              <span className="text-sm">{sensor.minTemp}°C — {sensor.maxTemp}°C</span>
-            )}
-          </Row>
-
+              )
+              : <span className="tabular-nums">{sensor.minTemp}{TEMP_UNIT} to {sensor.maxTemp}{TEMP_UNIT}</span>}
+          </Field>
           {/* No recipients row: the list is account-wide and edited on the
               customer page. The per-sensor list that used to live here promised
               per-fridge routing it could not deliver — the two lists were
               unioned, so it could only add people, and one email covers every
               alert open for a customer. */}
-          <Row label="DevEUI">
-            <span className="font-mono text-sm text-muted-foreground">{sensor.hardwareId || '—'}</span>
-          </Row>
+          <Field label="DevEUI">
+            <span className="font-mono text-muted-foreground">{sensor.hardwareId || '—'}</span>
+          </Field>
+          {error && <p role="alert" className="text-sm text-alert-text">{error}</p>}
         </dl>
-
-        {error && <p className="mt-4 text-xs text-alert-text">{error}</p>}
-        {saved && !editing && <p className="mt-4 text-xs text-ok-text">✓ Saved</p>}
-      </Section>
+      </Card>
     </div>
   );
 }

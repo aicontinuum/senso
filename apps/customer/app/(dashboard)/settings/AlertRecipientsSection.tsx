@@ -115,7 +115,7 @@ export function AlertRecipientsSection({ initialEmails, branches }: Props) {
                   disabled={saving}
                   aria-label={`Remove ${email} from ${nameOf(scope)}`}
                   title="Remove"
-                  className="size-8 shrink-0 text-muted-foreground"
+                  className="-my-2 -mr-1 shrink-0 text-muted-foreground"
                 >
                   <X className="size-4" />
                 </Button>

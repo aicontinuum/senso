@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Plus, Unlink } from 'lucide-react';
-import { Button, Card, CardDescription, CardHeader, CardTitle, Select, cn } from '@senso/ui';
+import { Button, Card, CardDescription, CardHeader, CardTitle, cn, ListLink, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import type { AccountRef, GroupMember } from '@/lib/groups/load';
 import { InlinePanel } from '@/components/billing/InlinePanel';
@@ -116,7 +115,7 @@ export function GroupMembersSection({ groupId, members, candidates }: Props) {
               <div className="flex items-center">
                 {/* The row opens the account; the unlink button sits after
                     it, outside the link, so a tap on the name never removes. */}
-                <Link href={`/customers/${m.id}`} className={cn(LIST_ROW, 'min-w-0 flex-1 pr-2')}>
+                <ListLink href={`/customers/${m.id}`} wrapperClassName="min-w-0 flex-1" className={cn(LIST_ROW, 'pr-2')}>
                   <GatewayDot status={m.gwStatus} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{m.name}</p>
@@ -124,7 +123,7 @@ export function GroupMembersSection({ groupId, members, candidates }: Props) {
                   </div>
                   <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{sensorsLabel(m)}</p>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                </Link>
+                </ListLink>
                 <Button
                   variant="ghost"
                   size="icon"

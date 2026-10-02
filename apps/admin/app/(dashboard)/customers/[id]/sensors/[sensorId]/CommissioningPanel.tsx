@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@senso/ui';
 
 // Commissioning: the moment a sensor stops being a device on a bench and starts
 // being part of a customer's compliance record. ONBOARDING.md §6 step 5.
@@ -59,12 +60,14 @@ export function CommissioningPanel({ customerId, sensorId, commissionedAt }: Pro
   }
 
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
-      <div className="border-b px-6 py-4">
-        <h2 className="font-semibold">Service status</h2>
-      </div>
-      <div className="space-y-4 px-6 py-5">
-        <div className="flex items-start justify-between gap-4">
+    <Card>
+      <CardHeader className="border-b border-hairline">
+        <CardTitle>Service status</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-5">
+        {/* Words and the one button side by side from tablet width; on a
+            phone the button takes its own full-width row. */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-medium">
               {commissionedAt ? 'In service' : 'Not in service'}
@@ -76,18 +79,13 @@ export function CommissioningPanel({ customerId, sensorId, commissionedAt }: Pro
             </p>
           </div>
           {!commissionedAt && (
-            <button
-              onClick={commission}
-              disabled={busy}
-              className="shrink-0 rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {busy ? 'Working…' : 'Mark as installed'}
-            </button>
+            <Button onClick={commission} disabled={busy} className="w-full shrink-0 sm:w-auto">
+              {busy ? 'Marking…' : 'Mark as installed'}
+            </Button>
           )}
         </div>
-
-        {error && <p className="text-xs text-alert-text">{error}</p>}
-      </div>
-    </div>
+        {error && <p role="alert" className="mt-3 text-sm text-alert-text">{error}</p>}
+      </CardContent>
+    </Card>
   );
 }

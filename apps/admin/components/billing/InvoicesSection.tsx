@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Plus } from 'lucide-react';
-import { Button, Card, CardHeader, CardTitle, LinkRow } from '@senso/ui';
+import { Button, Card, CardHeader, CardTitle, LinkRow, ListLink } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatDate, formatMoney } from '@/lib/format';
 import { invoiceHref } from '@/lib/billing/constants';
@@ -21,7 +21,7 @@ type Props = { customerId: string; invoices: Invoice[] };
 
 const TH = 'px-4 py-3 font-medium sm:px-5';
 const TD = 'px-4 py-3.5 sm:px-5';
-const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
+const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 hover:bg-sunken active:bg-inset';
 
 function DueCell({ invoice }: { invoice: Invoice }) {
   return <span className={invoice.overdue ? 'font-medium text-alert-text' : 'text-muted-foreground'}>{formatDate(invoice.dueOn)}</span>;
@@ -103,7 +103,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
           <ul className="divide-y divide-hairline lg:hidden">
             {visible.map(inv => (
               <li key={inv.id}>
-                <Link href={invoiceHref(customerId, inv.id)} className={LIST_ROW}>
+                <ListLink href={invoiceHref(customerId, inv.id)} className={LIST_ROW}>
                   <div className="min-w-0 flex-1 text-sm">
                     {/* A draft has no number, so its state is its name and the
                         badge would only say it twice. */}
@@ -122,7 +122,7 @@ export function InvoicesSection({ customerId, invoices }: Props) {
                     {inv.paid > 0 && <p className="text-xs text-muted-foreground">Paid {formatMoney(inv.paid)}</p>}
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                </Link>
+                </ListLink>
               </li>
             ))}
           </ul>

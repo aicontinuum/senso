@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, ChevronRight } from 'lucide-react';
-import { Badge, Button, Card, LinkRow, StatusDot } from '@senso/ui';
+import { Badge, Button, Card, LinkRow, ListLink, StatusDot } from '@senso/ui';
 import { formatDate } from '@/lib/format';
 import type { DeviceSummary, GatewayStatus } from '@/lib/customers/device-summary';
 
@@ -24,7 +24,7 @@ export type CustomerListRow = DeviceSummary & {
 export const LIST_TH = 'px-6 py-3 font-medium';
 export const LIST_TD = 'px-6 py-4';
 /** A phone row: the same press feel as every other list in the app. */
-export const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
+export const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 hover:bg-sunken active:bg-inset';
 
 /** "6 sensors", or "No gateway" when there is nothing to count. */
 export function sensorsLabel({ sensorCount, gwStatus }: DeviceSummary): string {
@@ -115,12 +115,12 @@ export function CustomersTable({ rows }: { rows: CustomerListRow[] }) {
       <ul className="divide-y divide-hairline lg:hidden">
         {rows.map(row => (
           <li key={row.id}>
-            <Link href={`/customers/${row.id}`} className={LIST_ROW}>
+            <ListLink href={`/customers/${row.id}`} className={LIST_ROW}>
               <GatewayDot status={row.gwStatus} />
               <p className="flex min-w-0 flex-1 items-center gap-2 truncate text-sm font-medium">{row.name}{row.is_test && <Badge variant="outline">Test</Badge>}</p>
               <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{sensorsLabel(row)}</p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            </Link>
+            </ListLink>
           </li>
         ))}
       </ul>
