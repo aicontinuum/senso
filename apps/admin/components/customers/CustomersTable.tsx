@@ -17,6 +17,8 @@ export type CustomerListRow = DeviceSummary & {
   email: string;
   contact_name: string | null;
   created_at: string;
+  /** A rehearsal account, left out of billing totals. */
+  is_test: boolean;
 };
 
 export const LIST_TH = 'px-6 py-3 font-medium';
@@ -76,7 +78,7 @@ export function CustomersTable({ rows }: { rows: CustomerListRow[] }) {
             return (
               <LinkRow key={row.id} href={href}>
                 <td className={LIST_TD}>
-                  <p className="font-medium">{row.name}</p>
+                  <p className="flex items-center gap-2 font-medium">{row.name}{row.is_test && <Badge variant="outline">Test</Badge>}</p>
                   <p className="text-xs text-muted-foreground">{row.email}</p>
                 </td>
                 <td className={`${LIST_TD} text-muted-foreground`}>{row.contact_name ?? '—'}</td>
@@ -115,7 +117,7 @@ export function CustomersTable({ rows }: { rows: CustomerListRow[] }) {
           <li key={row.id}>
             <Link href={`/customers/${row.id}`} className={LIST_ROW}>
               <GatewayDot status={row.gwStatus} />
-              <p className="min-w-0 flex-1 truncate text-sm font-medium">{row.name}</p>
+              <p className="flex min-w-0 flex-1 items-center gap-2 truncate text-sm font-medium">{row.name}{row.is_test && <Badge variant="outline">Test</Badge>}</p>
               <p className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">{sensorsLabel(row)}</p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             </Link>

@@ -42,7 +42,7 @@ type RenewalRow = {
   customers: { name: string } | null;
 };
 
-export function toCustomerBilling(row: CustomerBillingSummaryRow, installedSensors: number): CustomerBilling {
+export function toCustomerBilling(row: CustomerBillingSummaryRow, installedSensors: number, isTest: boolean): CustomerBilling {
   return {
     customerId: row.customer_id,
     name: row.name,
@@ -64,6 +64,7 @@ export function toCustomerBilling(row: CustomerBillingSummaryRow, installedSenso
     daysOverdue: row.days_overdue,
     suspensionCandidate: row.suspension_candidate,
     lastPaymentOn: row.last_payment_on,
+    isTest,
   };
 }
 
@@ -90,23 +91,27 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
       .lte('renewal_date', windowEnd)
       .order('renewal_date'),
     loadInstalledSensorCounts(admin),
-    admin.from('payments').select('amount'),
-    // A group owns no devices and holds no plan; its members are billed.
-    admin.from('customers').select('id').eq('is_group', true),
+    admin.from('payments').select('amount, customer_id'),
+    // A group owns no devices and holds no plan; its members are billed. A
+    // test account is listed, so the office can see it, and counted nowhere.
+    admin.from('customers').select('id, is_group, is_test').or('is_group.eq.true,is_test.eq.true'),
   ]);
   if (summaryRes.error) throw new Error(`customer_billing_summary: ${summaryRes.error.message}`);
   if (groupsRes.error) throw new Error(`customers: ${groupsRes.error.message}`);
-  const groupIds = new Set((groupsRes.data ?? []).map(g => g.id));
+  const groupIds = new Set((groupsRes.data ?? []).filter(c => c.is_group).map(c => c.id));
+  const testIds = new Set((groupsRes.data ?? []).filter(c => c.is_test).map(c => c.id));
   if (invoicesRes.error) throw new Error(`invoices: ${invoicesRes.error.message}`);
   if (renewalsRes.error) throw new Error(`subscriptions: ${renewalsRes.error.message}`);
   if (paymentsRes.error) throw new Error(`payments: ${paymentsRes.error.message}`);
 
   const customers = (summaryRes.data as unknown as CustomerBillingSummaryRow[])
     .filter(row => !groupIds.has(row.customer_id))
-    .map(row => toCustomerBilling(row, installed.get(row.customer_id) ?? 0));
+    .map(row => toCustomerBilling(row, installed.get(row.customer_id) ?? 0, testIds.has(row.customer_id)));
   const byId = new Map(customers.map(c => [c.customerId, c]));
+  /** The customers whose money counts. */
+  const real = customers.filter(c => !c.isTest);
 
-  const openInvoices: OpenInvoice[] = (invoicesRes.data as unknown as OpenInvoiceRow[]).map(r => ({
+  const openInvoices: OpenInvoice[] = (invoicesRes.data as unknown as OpenInvoiceRow[]).filter(r => !testIds.has(r.customer_id)).map(r => ({
     id: r.id,
     number: r.number,
     customerId: r.customer_id,
@@ -118,7 +123,7 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
     daysOverdue: -daysUntil(r.due_on, now),
   }));
 
-  const renewals: UpcomingRenewal[] = (renewalsRes.data as unknown as RenewalRow[]).map(r => ({
+  const renewals: UpcomingRenewal[] = (renewalsRes.data as unknown as RenewalRow[]).filter(r => !testIds.has(r.customer_id)).map(r => ({
     subscriptionId: r.id,
     customerId: r.customer_id,
     customerName: r.customers?.name ?? byId.get(r.customer_id)?.name ?? 'Unknown customer',
@@ -129,13 +134,15 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
   }));
 
   const byStatus = Object.fromEntries(BILLING_STATUSES.map(s => [s, 0])) as Record<BillingStatus, number>;
-  for (const c of customers) byStatus[c.status]++;
+  for (const c of real) byStatus[c.status]++;
 
   const summary: BillingSummary = {
-    annualised: customers.reduce((sum, c) => sum + c.annualised, 0),
-    totalPaid: (paymentsRes.data as { amount: string }[]).reduce((sum, p) => sum + parseMoney(p.amount), 0),
-    overdueAmount: customers.reduce((sum, c) => sum + c.overdueAmount, 0),
-    overdueCustomers: customers.filter(c => c.overdueAmount > 0).length,
+    annualised: real.reduce((sum, c) => sum + c.annualised, 0),
+    totalPaid: (paymentsRes.data as { amount: string; customer_id: string }[])
+      .filter(p => !testIds.has(p.customer_id))
+      .reduce((sum, p) => sum + parseMoney(p.amount), 0),
+    overdueAmount: real.reduce((sum, c) => sum + c.overdueAmount, 0),
+    overdueCustomers: real.filter(c => c.overdueAmount > 0).length,
     renewalsDueCount: renewals.length,
     renewalsDueValue: renewals.reduce((sum, r) => sum + r.termTotal, 0),
     byStatus,
@@ -144,8 +151,8 @@ export async function loadBillingOverview(admin: Admin, now: number = Date.now()
   const needsAction: NeedsAction = {
     unpaid: openInvoices.filter(i => i.daysOverdue <= 0),
     overdue: openInvoices.filter(i => i.daysOverdue > 0).sort((a, b) => b.daysOverdue - a.daysOverdue),
-    suspensionCandidates: customers.filter(c => c.suspensionCandidate).sort((a, b) => b.daysOverdue - a.daysOverdue),
-    sensorMismatches: customers.filter(c => c.sensorMismatch),
+    suspensionCandidates: real.filter(c => c.suspensionCandidate).sort((a, b) => b.daysOverdue - a.daysOverdue),
+    sensorMismatches: real.filter(c => c.sensorMismatch),
   };
 
   return { customers, summary, needsAction, renewalNoticeDays };

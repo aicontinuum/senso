@@ -46,6 +46,7 @@ export function CustomerDetailClient({ customer, branches, gateways, sensors, me
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight">{customer.name}</h1>
           {customer.is_group && <Badge variant="offline">Group</Badge>}
+          {customer.is_test && <Badge variant="outline" title="A rehearsal account: its invoices and payments count in no billing total">Test</Badge>}
           {groupOf && (
             <Link href={`/customers/${groupOf.id}`} title={`Open ${groupOf.name}, whose owner login can see this account`} className="rounded-chip">
               <Badge variant="outline" className="text-muted-foreground transition-colors hover:bg-sunken hover:text-foreground">In {groupOf.name}</Badge>
@@ -55,7 +56,7 @@ export function CustomerDetailClient({ customer, branches, gateways, sensors, me
       </div>
 
       <AccountInfoSection customer={customer} />
-      <AccountStatusSection customerId={customer.id} name={customer.name} status={customer.status} suspendedAt={customer.suspended_at} />
+      <AccountStatusSection customerId={customer.id} name={customer.name} status={customer.status} suspendedAt={customer.suspended_at} isTest={customer.is_test} />
       {customer.is_group ? (
         <GroupMembersSection groupId={customer.id} members={members} candidates={candidates} />
       ) : (

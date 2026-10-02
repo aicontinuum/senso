@@ -194,6 +194,20 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-02 — Test accounts: rehearsal money counts nowhere
+
+The office's own Home account has an issued invoice and a payment from
+rehearsing billing, and they were adding to the Billing page's totals.
+Decided: a flag rather than a clean-up, so the account keeps its history
+and can rehearse again. `customers.is_test` (`20261002_test_accounts.sql`),
+set from a switch on the account status card. A test account keeps every
+feature; the Billing page lists it with a Test chip and leaves it out of
+the annualised figure, total received, overdue amount and count, the
+status counts, Needs Action and upcoming renewals, through the same door
+the group accounts already use. The customers list and the customer page
+carry the chip too. Device counts and alerts are untouched: the hardware
+is real.
+
 ## 2026-10-02 — Link gateway and Add sensor pick from the registered, not a typed EUI
 
 The customer page's Link gateway and Add sensor forms no longer take an

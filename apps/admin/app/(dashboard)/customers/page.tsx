@@ -23,6 +23,7 @@ export default async function CustomersPage() {
         contact_name,
         created_at,
         is_group,
+        is_test,
         ${GATEWAY_SUMMARY_SELECT}
       `)
       .order('created_at', { ascending: false }),
@@ -44,6 +45,7 @@ export default async function CustomersPage() {
       email: customer.email,
       contact_name: customer.contact_name,
       created_at: customer.created_at,
+      is_test: customer.is_test,
       ...summariseDevices(customer.gateways as GatewaySummaryRow[] | null),
     }));
 

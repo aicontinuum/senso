@@ -58,6 +58,8 @@ export type CustomerBilling = {
   overdueAmount: number;
   daysOverdue: number;
   suspensionCandidate: boolean;
+  /** A rehearsal account: listed with a chip, left out of every total. */
+  isTest: boolean;
   lastPaymentOn: string | null;
 };
 
