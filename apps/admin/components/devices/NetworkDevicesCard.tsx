@@ -47,8 +47,10 @@ function LastHeard({ row, now }: { row: NetworkDeviceRow; now: number }) {
   return row.lastSeenAt ? <>{formatAgo(row.lastSeenAt, now)}</> : <Badge variant="warn" dot>Never</Badge>;
 }
 
+// Unlinked is the normal state of hardware just registered, not a fault,
+// so it is an outlined chip: grey with a dot is kept for what is quiet.
 function LinkedTo({ row }: { row: NetworkDeviceRow }) {
-  if (!row.link) return <Badge variant="offline" dot>Not linked</Badge>;
+  if (!row.link) return <Badge variant="outline" className="text-muted-foreground">Not linked</Badge>;
   return (
     <Link href={`/customers/${row.link.customerId}`} className="font-medium hover:underline">
       {row.link.customerName}{row.link.branchName ? ` · ${row.link.branchName}` : ''}
