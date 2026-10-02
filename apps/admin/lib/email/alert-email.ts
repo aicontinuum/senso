@@ -58,7 +58,7 @@ function headline(alert: AlertLine): string {
     case "threshold":
       return `${alert.subject} is out of range`;
     case "sensor_offline":
-      return `${alert.subject} has stopped reporting`;
+      return `${alert.subject} is offline`;
   }
 }
 
@@ -94,7 +94,7 @@ export function alertEmailSubject(alerts: AlertLine[], customerName: string, bra
     const at = branchName ? ` at ${branchName}` : "";
     return only.kind === "threshold"
       ? `Senso: ${only.subject}${at} ${still}out of range${only.reading ? ` (${only.reading})` : ""}`
-      : `Senso: ${only.subject}${at} ${still}not reporting`;
+      : `Senso: ${only.subject}${at} is ${still}offline`;
   }
 
   return `Senso: ${alerts.length} alerts — ${where}`;
