@@ -6,11 +6,14 @@ import { useRouter } from 'next/navigation';
 import { Plus, Settings, Trash2 } from 'lucide-react';
 import { batteryTier } from '@senso/status';
 import { Badge, BatteryMeter, Button, Card, CardHeader, CardTitle, Input, Select } from '@senso/ui';
-import { normaliseDevEui, isValidDevEui } from '@/lib/deveui';
+import type { AvailableSensors } from '@/lib/network/available';
 
-// The customer's sensors, with the technician's two jobs on them: register a
-// new one against a gateway, and retire one that is being removed. Retiring is
-// a soft delete on the server; the readings stay for the compliance record.
+// The customer's sensors, with the technician's two jobs on them: add one
+// against a gateway, and retire one that is being removed. A sensor is
+// chosen from those registered on the network server and not yet linked
+// to anyone, never typed, so it always exists before it is linked. Retiring
+// is a soft delete on the server; the readings stay for the compliance
+// record.
 
 export type SensorRow = {
   id: string;
@@ -29,6 +32,8 @@ interface SensorsSectionProps {
   customerId: string;
   gateways: GatewayOption[];
   sensors: SensorRow[];
+  /** Registered on the network server, linked to no one: the choices for Add sensor. */
+  available: AvailableSensors;
 }
 
 const TH = 'px-6 py-3 font-medium';
@@ -46,7 +51,7 @@ function SensorStatus({ sensor }: { sensor: SensorRow }) {
   return <Badge variant="offline" dot>Offline</Badge>;
 }
 
-export function SensorsSection({ customerId, gateways, sensors }: SensorsSectionProps) {
+export function SensorsSection({ customerId, gateways, sensors, available }: SensorsSectionProps) {
   const router = useRouter();
 
   const [adding, setAdding] = useState(false);
@@ -60,13 +65,7 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
 
   async function addSensor() {
     setFormError('');
-    // Normalise here as well as server-side, so a DevEUI pasted from a label or
-    // QR with colons or dashes is accepted rather than bounced back.
-    const devEui = normaliseDevEui(form.hardwareId);
-    if (!isValidDevEui(devEui)) {
-      setFormError('Invalid DevEUI — expected 16 hex characters, e.g. a840419edb62011c');
-      return;
-    }
+    const devEui = form.hardwareId;
     setSaving(true);
     try {
       const res = await fetch(`/api/customers/${customerId}/sensors`, {
@@ -141,15 +140,24 @@ export function SensorsSection({ customerId, gateways, sensors }: SensorsSection
               placeholder="e.g. Cold Storage A"
             />
 
-            <Input
-              label="DevEUI"
-              hint="From the sensor label or QR code."
-              value={form.hardwareId}
-              onChange={e => setField('hardwareId')(e.target.value)}
-              placeholder="a840419edb62011c"
-              className="font-mono"
-              error={formError || undefined}
-            />
+            {available.state === 'unavailable' ? (
+              <p className="text-sm text-alert-text">The network server did not answer, so the registered sensors cannot be listed. Try again in a minute.</p>
+            ) : available.sensors.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No registered sensor is waiting. Register one on the Devices page first.</p>
+            ) : (
+              <Select
+                label="Sensor"
+                hint="Registered on the network server and not yet linked to a customer."
+                value={form.hardwareId}
+                onChange={e => setField('hardwareId')(e.target.value)}
+                error={formError || undefined}
+              >
+                <option value="">Choose a sensor</option>
+                {available.sensors.map(s => (
+                  <option key={s.devEui} value={s.devEui}>{s.name ? `${s.name} · ${s.devEui}` : s.devEui}</option>
+                ))}
+              </Select>
+            )}
 
             <div className="flex gap-2 pt-1">
               <Button size="sm" onClick={addSensor} disabled={!canSubmit}>
