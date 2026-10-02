@@ -72,7 +72,7 @@ function guidance(alert: AlertLine): string | null {
     case "threshold":
       return null;
     case "sensor_offline":
-      return "Please check that the sensor is in place and within range of the gateway, and that its battery is seated. Until readings resume, record this fridge's temperature manually.";
+      return "Please check that the sensor is in place, within range of the gateway, and that its battery is seated. If all of these are fine, readings should resume shortly. Until they do, record this fridge's temperature manually.";
   }
 }
 
