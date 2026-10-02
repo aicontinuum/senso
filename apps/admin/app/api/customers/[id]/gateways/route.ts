@@ -4,6 +4,7 @@ import { BillingInputError, MAX_LABEL, optionalText, optionalUuid, requireText, 
 // Same identifier rules ingest matches on — accepts the 16-hex LoRaWAN
 // Gateway EUI as the primary format, with the legacy colon-MAC as a fallback.
 import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import { requireRegisteredGateway } from '@/lib/network/registered';
 
 /** The partial unique index counts live rows only, so a clash means the
  *  device is registered somewhere else right now. */
@@ -22,6 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     const name = optionalText(body.name, 'name', MAX_LABEL);
     const branchId = optionalUuid(body.branchId, 'branch');
+    await requireRegisteredGateway(identifier);
 
     const { data: customer, error: customerError } = await ctx.admin
       .from('customers').select('id').eq('id', customerId).maybeSingle();
