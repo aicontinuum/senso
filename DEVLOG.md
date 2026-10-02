@@ -194,6 +194,20 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-02 — Devices page: how complete each sensor's record has been
+
+A column per sensor: readings received live over the last seven days as
+a share of the 672 expected at one every 15 minutes, with the number
+recovered by backfill beside it, red under 95 percent. It is the state
+between fine and offline: a sensor slipping from 100 to 90 is placed
+badly, running down, or sharing a room with something new, and it says
+so weeks before a customer gets an email. One SQL function
+(`20261002_sensor_reading_rates.sql`) counts from the readings already
+on record, so nothing is asked of the network server; a sensor
+commissioned inside the window is judged from its commissioning, so a
+day-old install does not read as 14 percent. By decision: admin site
+only, no alert, no email.
+
 ## 2026-10-02 — Network names are derived, not typed
 
 Two names per device were inevitable: the one on the network server is

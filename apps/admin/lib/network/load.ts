@@ -6,10 +6,19 @@
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { chirpstackRegistry } from '@/lib/chirpstack';
 import { listNetworkGateways, listNetworkSensors } from '@/lib/network/registry';
+import { READING_RATE_WINDOW_DAYS, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
 export type DeviceLink = { customerId: string; customerName: string; branchName: string | null };
+
+/** How complete a sensor's record has been over READING_RATE_WINDOW_DAYS. */
+export type ReadingRate = {
+  /** Received live, as a share of expected, 0–100. */
+  percent: number;
+  recovered: number;
+  expected: number;
+};
 
 export type NetworkDeviceRow = {
   kind: 'gateway' | 'sensor';
@@ -19,6 +28,8 @@ export type NetworkDeviceRow = {
   lastSeenAt: string | null;
   /** The customer it is linked to in our records, or null. */
   link: DeviceLink | null;
+  /** For a linked, commissioned sensor with a window to judge; otherwise null. */
+  rate: ReadingRate | null;
 };
 
 export type NetworkDevices =
@@ -29,6 +40,12 @@ export type NetworkDevices =
 
 type LinkedGateway = { mac_address: string | null; customer_id: string; customers: { name: string } | null; branches: { name: string } | null };
 type LinkedSensor = { hardware_id: string | null; gateways: LinkedGateway | null };
+type RateRow = { hardware_id: string | null; live_count: number; backfilled_count: number; expected: number };
+
+function toRate(r: RateRow): ReadingRate | null {
+  if (r.expected <= 0) return null;
+  return { percent: Math.min(100, Math.round((r.live_count / r.expected) * 100)), recovered: r.backfilled_count, expected: r.expected };
+}
 
 /** The branch is named only when the customer has more than one, the same
  *  rule the customer app follows: a single branch is the business itself. */
@@ -48,14 +65,19 @@ export async function loadNetworkDevices(admin: Admin): Promise<NetworkDevices> 
       admin.from('gateways').select('mac_address, customer_id, customers(name), branches(name)').is('decommissioned_at', null),
       admin.from('sensors').select('hardware_id, gateways!inner(mac_address, customer_id, customers(name), branches(name))').is('decommissioned_at', null),
       admin.from('branches').select('customer_id'),
+      admin.rpc('sensor_reading_rates', { window_days: READING_RATE_WINDOW_DAYS, interval_minutes: SENSOR_REPORTING_INTERVAL_MIN }),
     ]),
   ]);
   if (!gateways.ok) return { state: 'unreachable', error: gateways.error };
   if (!sensors.ok) return { state: 'unreachable', error: sensors.error };
-  const [{ data: ourGateways, error: gError }, { data: ourSensors, error: sError }, { data: branches, error: bError }] = ours;
+  const [{ data: ourGateways, error: gError }, { data: ourSensors, error: sError }, { data: branches, error: bError }, { data: rateRows, error: rError }] = ours;
   if (gError) throw new Error(`${gError.code} ${gError.message}`);
   if (sError) throw new Error(`${sError.code} ${sError.message}`);
   if (bError) throw new Error(`${bError.code} ${bError.message}`);
+  if (rError) throw new Error(`${rError.code} ${rError.message}`);
+
+  const rates = new Map<string, ReadingRate | null>();
+  for (const r of (rateRows ?? []) as RateRow[]) if (r.hardware_id) rates.set(r.hardware_id.toLowerCase(), toRate(r));
 
   const branchCount = new Map<string, number>();
   for (const b of branches ?? []) branchCount.set(b.customer_id, (branchCount.get(b.customer_id) ?? 0) + 1);
@@ -70,8 +92,8 @@ export async function loadNetworkDevices(admin: Admin): Promise<NetworkDevices> 
   }
 
   const rows: NetworkDeviceRow[] = [
-    ...gateways.data.map(g => ({ kind: 'gateway' as const, eui: g.gatewayId, name: g.name, lastSeenAt: g.lastSeenAt, link: gatewayLinks.get(g.gatewayId) ?? null })),
-    ...sensors.data.map(s => ({ kind: 'sensor' as const, eui: s.devEui, name: s.name, lastSeenAt: s.lastSeenAt, link: sensorLinks.get(s.devEui) ?? null })),
+    ...gateways.data.map(g => ({ kind: 'gateway' as const, eui: g.gatewayId, name: g.name, lastSeenAt: g.lastSeenAt, link: gatewayLinks.get(g.gatewayId) ?? null, rate: null })),
+    ...sensors.data.map(s => ({ kind: 'sensor' as const, eui: s.devEui, name: s.name, lastSeenAt: s.lastSeenAt, link: sensorLinks.get(s.devEui) ?? null, rate: rates.get(s.devEui) ?? null })),
   ];
   // Unlinked first: they are the ones waiting for a job.
   rows.sort((a, b) => Number(Boolean(a.link)) - Number(Boolean(b.link)) || a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name));
