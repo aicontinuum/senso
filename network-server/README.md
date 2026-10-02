@@ -230,6 +230,61 @@ down, breaches are still recorded but nobody is told. The pulse below is how the
 admin dashboard notices; Alerting v2 phase 5 moves the schedule itself off this
 box so that only the pulse remains.
 
+## Backfill from the sensor's memory
+
+An LHT65N keeps every reading it takes. When a sensor's readings resume after a
+gap, `/api/ingest` asks it for the ones it stored meanwhile and files them with
+the times the sensor took them, so the customer's record has no hole
+(`apps/admin/lib/ingest/backfill.ts`; frame layout in UPLINK-FORMAT.md §4).
+Decided 2026-10-02: readings up to 48 hours old are accepted, alerts are
+untouched, the customer sees nothing different, the admin sensor page shows a
+count.
+
+The ask is a downlink the admin app queues through ChirpStack's REST API, which
+needs two things on this box, once:
+
+**1. Route the REST API through Caddy.** The `chirpstack-rest-api` container
+listens on 8090. ChirpStack's own UI never uses paths under `/api/` (its calls
+are `/api.ServiceName/...`, with a dot), so a path route is enough and no new
+hostname is needed. In `/opt/senso/chirpstack-docker/Caddyfile`:
+
+```
+lns.sensoqa.com {
+    handle /api/* {
+        reverse_proxy chirpstack-rest-api:8090
+    }
+    handle {
+        reverse_proxy chirpstack:8080
+    }
+}
+```
+
+Then `docker compose restart caddy`. Check: `curl -s https://lns.sensoqa.com/api/devices`
+should answer `401`-ish JSON (unauthenticated), not the dashboard's HTML.
+
+> ⚠️ While there, check `docker-compose.yml` for a published `8090:8090` port on the
+> REST service. The stock compose file publishes it, and published ports bypass ufw
+> (§5), so it is reachable from the internet in plain HTTP. Remove the `ports:` lines
+> from that service; Caddy reaches it on the internal network either way.
+
+**2. An API key.** ChirpStack dashboard → **API keys** (left menu, under the
+tenant or global) → **Add API key**, named `admin-app`. Copy the token when shown; it
+is shown once. In Vercel, on the admin project, set `CHIRPSTACK_API_URL` to
+`https://lns.sensoqa.com` and `CHIRPSTACK_API_TOKEN` to the token, then redeploy.
+With either unset, backfill is skipped and live readings are stored exactly as before.
+
+**The poll by hand**, for a test or a one-off: device → Queue → Enqueue, FPort `1`,
+unconfirmed, HEX `31` + start + end as 8-hex-digit unix seconds + `05` (seconds between
+the frames of the answer). Verified on sensor 2, 2026-10-02: seven stored readings came
+back in one fPort 2 frame.
+
+**Known: the sensor's clock drifts.** Sensor 2's stored readings were stamped about six
+minutes ahead of when they were received. These sensors set their clock from the
+network at join and every ten days; six minutes in three weeks says that is not
+happening, so check that the device profile allows the time request (ChirpStack answers
+`DeviceTimeReq` by default) and watch the next datalog answer after a rejoin. Ingest
+tolerates the drift (readings are matched by proximity), but a correct clock is better.
+
 ## Platform pulse
 
 Once a minute the VPS tells Senso it is alive, and whether ChirpStack is

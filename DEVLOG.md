@@ -194,6 +194,53 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-02 — Backfill: a gap in the record is filled from the sensor's memory
+
+Sensor 2 missed a run of readings on 1 October with a strong, clean
+signal and the other sensor fine. The readings were never lost: an
+LHT65N keeps everything it takes. Asked by hand for the gap (downlink
+`31` + start + end + `05` on port 1), it returned all seven in one frame,
+on fPort 2, not the 3 our notes assumed, with the probe temperature,
+humidity and the time it took each. ChirpStack's decoder renders that as
+a `DATALOG` string; ingest reads the raw bytes instead, since the string
+formats the time in the server's zone and names nothing
+(UPLINK-FORMAT.md §4 has the layout; `lib/ingest/datalog.check.ts`
+checks the parser against the captured frame).
+
+**What ingest does now.** A frame whose status byte carries the poll bit
+is an answer from memory: its readings are filed with the sensor's own
+times and `backfilled = true` (`20261002_reading_backfill.sql`). A live
+reading that arrives more than twenty minutes after the previous one
+reveals a gap; ingest then queues the poll for that gap through
+ChirpStack's REST API (`lib/chirpstack.ts`, two new environment
+variables), and the answer comes back through the first path. Both are
+best effort around the live reading, which is stored first and
+regardless. Alerts are untouched: the readings trigger already ignores
+anything older than the sensor's latest, so a recovered reading can
+neither open nor close one.
+
+**Decided today.** Stored readings up to 48 hours old are accepted (two
+days covers a weekend). The customer sees recovered readings as ordinary
+readings; the admin sensor page shows a count of them for the last week,
+because a sensor that keeps needing recovery has a radio problem worth a
+visit.
+
+**The sensor's clock is its own.** Sensor 2 stamps its stored readings
+about six minutes ahead of when they are received, so a recovered
+reading is matched to the record by proximity (seven minutes), not
+equality, and the poll window is widened ten minutes each side. Checked
+locally against stand-ins: the captured frame files six readings and
+drops the one that duplicates a live reading; a live reading an hour
+after the previous one queues `31 <start> <end> 05` with the right
+times; one fifteen minutes after queues nothing. The drift itself is a
+network-server check, noted in the README.
+
+**To switch on**, on the VPS and in Vercel: route `/api/` to the REST
+container in Caddy, create an API key, set `CHIRPSTACK_API_URL` and
+`CHIRPSTACK_API_TOKEN`; and run the migration. Until then every live
+reading is stored exactly as before and a datalog frame is filed if one
+arrives.
+
 ## 2026-09-26 — Devices page: the register forms, without the send
 
 Decided today: new hardware will be registered on the network server
