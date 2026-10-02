@@ -3,8 +3,11 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { integrationSecretOk } from '@/lib/ingest-auth';
 import { stampPlatform } from '@/lib/platform-status';
 import { retry, describeError } from '@/lib/retry';
-import { MAX_READING_AGE_MS, JOB_INGEST } from '@/lib/constants';
+import { MAX_READING_AGE_MS, JOB_INGEST, BACKFILL_GAP_MS } from '@/lib/constants';
 import { THRESHOLD_MIN_C, THRESHOLD_MAX_C } from '@senso/thresholds';
+import { frameBytes, isDatalogFrame, parseDatalogFrame } from '@/lib/ingest/datalog';
+import { requestBackfill, storeDatalog } from '@/lib/ingest/backfill';
+import { chirpstackConfig } from '@/lib/chirpstack';
 
 // Ingest endpoint for ChirpStack's HTTP integration (LoRaWAN).
 //
@@ -16,7 +19,8 @@ import { THRESHOLD_MIN_C, THRESHOLD_MAX_C } from '@senso/thresholds';
 //
 // Payload contract and field mapping: network-server/UPLINK-FORMAT.md
 
-/** Only fPort 2 carries a sensor reading. See UPLINK-FORMAT.md §4. */
+/** Only fPort 2 carries a sensor reading, live or recovered from the
+ *  sensor's memory. See UPLINK-FORMAT.md §4. */
 const READING_FPORT = 2;
 
 /** Every Qatar device is registered eu868; anything else is misconfigured. */
@@ -34,6 +38,8 @@ type ChirpStackUplink = {
   deduplicationId?: string;
   time?: string;
   deviceInfo?: { devEui?: string; deviceName?: string };
+  /** The raw frame, base64. Read directly for a datalog answer. */
+  data?: string;
   fPort?: number;
   object?: Record<string, unknown>;
   rxInfo?: { gatewayId?: string; rssi?: number; snr?: number }[];
@@ -96,10 +102,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ignored: 'event', event });
   }
 
-  // 3. Only fPort 2 is a sensor reading. fPort 5 is device status and fPort 3 is
-  //    datalog backfill — both have a different payload shape, and fPort 3 carries
-  //    its own historical timestamps, so parsing either as a normal uplink would
-  //    write wrong data. Dropped deliberately rather than half-handled.
+  // 3. Only fPort 2 carries readings: live ones, and the answers from a
+  //    sensor's memory (step 5). fPort 5 is device status, with a different
+  //    shape; it is dropped deliberately rather than half-handled.
   if (body.fPort !== READING_FPORT) {
     return NextResponse.json({ ignored: 'fport', fPort: body.fPort ?? null });
   }
@@ -114,23 +119,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'deviceInfo.devEui is required' }, { status: 400 });
   }
 
-  // 4. Validate the payload before spending a database round-trip on it.
-  //
-  //    TempC_DS is the external probe — the value inside the fridge, and the one
-  //    the compliance record is about. TempC_SHT is the unit's internal sensor
-  //    reading the room outside it. Confusing them silently reports room
-  //    temperature while a freezer fails.
-  const temperature = num(body.object?.TempC_DS);
-  if (temperature === null) {
-    console.warn(`[ingest] ${devEui}: missing TempC_DS — external probe likely unseated`);
-    return NextResponse.json({ ignored: 'no_probe_reading', devEui });
-  }
-  if (temperature < MIN_TEMP_C || temperature > MAX_TEMP_C) {
-    console.warn(`[ingest] ${devEui}: temperature ${temperature} out of sane bounds`);
-    return NextResponse.json({ ignored: 'implausible_temperature', devEui });
-  }
-
-  // 5. Reject readings from any device we don't already know. Sensors are
+  // 4. Reject readings from any device we don't already know. Sensors are
   //    pre-registered during onboarding, so an unknown DevEUI means a mis-scan, a
   //    stray, or someone else's device — it must never enter a customer's
   //    compliance record. 200 (not 4xx) because this is a permanent condition and
@@ -148,7 +137,7 @@ export async function POST(request: Request) {
     'ingest sensor lookup',
     () => admin
       .from('sensors')
-      .select('id, gateway_id, commissioned_at')
+      .select('id, gateway_id, commissioned_at, last_reading_at')
       .eq('hardware_id', devEui)
       .is('decommissioned_at', null)
       .maybeSingle(),
@@ -162,6 +151,36 @@ export async function POST(request: Request) {
   if (!sensor) {
     console.warn(`[ingest] unregistered or retired DevEUI: ${devEui}`);
     return NextResponse.json({ ignored: 'unknown_device', devEui });
+  }
+
+  // 5. An answer from the sensor's memory. Same port as a live reading, told
+  //    apart by its status byte; its readings carry their own times, so it
+  //    never reaches the live path below, which would stamp them all "now".
+  const frame = body.data ? frameBytes(body.data) : null;
+  if (frame && isDatalogFrame(frame)) {
+    const result = await storeDatalog(admin, sensor, parseDatalogFrame(frame), Date.now());
+    if ('error' in result) {
+      await recordFailure(admin, { step: 'backfill_store', devEui, cause: result.error });
+      return NextResponse.json({ error: 'Could not store recovered readings' }, { status: 503 });
+    }
+    console.log(`[ingest] ${devEui}: recovered readings`, result);
+    return NextResponse.json({ backfill: result, devEui });
+  }
+
+  // 6. Validate a live reading.
+  //
+  //    TempC_DS is the external probe — the value inside the fridge, and the one
+  //    the compliance record is about. TempC_SHT is the unit's internal sensor
+  //    reading the room outside it. Confusing them silently reports room
+  //    temperature while a freezer fails.
+  const temperature = num(body.object?.TempC_DS);
+  if (temperature === null) {
+    console.warn(`[ingest] ${devEui}: missing TempC_DS — external probe likely unseated`);
+    return NextResponse.json({ ignored: 'no_probe_reading', devEui });
+  }
+  if (temperature < MIN_TEMP_C || temperature > MAX_TEMP_C) {
+    console.warn(`[ingest] ${devEui}: temperature ${temperature} out of sane bounds`);
+    return NextResponse.json({ ignored: 'implausible_temperature', devEui });
   }
 
   // Timestamp is ChirpStack's receive time, bounded on both sides.
@@ -199,7 +218,7 @@ export async function POST(request: Request) {
     dedup_id: body.deduplicationId ?? null,
   };
 
-  // 6. Idempotent insert. Two indexes make a repeat harmless: (sensor_id,
+  // 7. Idempotent insert. Two indexes make a repeat harmless: (sensor_id,
   //    recorded_at), which the upsert names, and ChirpStack's own dedup_id,
   //    which surfaces as a unique violation and is treated as the same answer.
   //    The trigger on readings stamps the sensor and judges the thresholds
@@ -238,6 +257,16 @@ export async function POST(request: Request) {
 
   if (duplicate) {
     return NextResponse.json({ accepted: 0, duplicate: true });
+  }
+
+  // 8. A reading after a gap: ask the sensor for what it stored meanwhile.
+  //    Only for a sensor in service, whose record matters, and only when the
+  //    network server is configured; the answer comes back through step 5.
+  const previousAt = sensor.last_reading_at ? Date.parse(sensor.last_reading_at) : NaN;
+  const network = chirpstackConfig();
+  if (network && sensor.commissioned_at !== null && Number.isFinite(previousAt)
+      && Date.parse(recordedAt) - previousAt > BACKFILL_GAP_MS) {
+    await requestBackfill(admin, network, devEui, new Date(previousAt), new Date(recordedAt));
   }
 
   // Stored, stamped and judged — all by the one insert. `notInService` is

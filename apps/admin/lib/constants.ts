@@ -24,6 +24,26 @@ export const SENSOR_REPORTING_INTERVAL_MIN = 15;
 /** Shown on the register forms until the network server route exists. */
 export const NETWORK_NOT_CONNECTED_NOTICE = 'Network registration is not connected yet. Nothing was sent.';
 
+// ── Backfill from the sensor's memory ───────────────────────────────────────
+// When a live reading arrives after a gap, ingest asks the sensor for the
+// readings it stored meanwhile (lib/ingest/backfill.ts).
+/** A gap worth filling: the previous reading is older than one interval
+ *  plus slack, so at least one reading was missed. */
+export const BACKFILL_GAP_MS = (SENSOR_REPORTING_INTERVAL_MIN + 5) * 60 * 1000;
+/** How far back a stored reading may be and still be accepted. Decided
+ *  2026-10-02: two days covers a weekend outage. */
+export const BACKFILL_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+/** A stored reading this close to one already on record is the same
+ *  measurement, seen twice; the sensor's clock is not ours (sensor 2 ran six
+ *  minutes fast on 2026-10-02), so the match is by proximity, not equality. */
+export const BACKFILL_MATCH_WINDOW_MS = 7 * 60 * 1000;
+/** The poll window is widened by this on each side for the same reason. */
+export const BACKFILL_CLOCK_SLACK_MS = 10 * 60 * 1000;
+/** Seconds the sensor waits between the frames of a long answer. */
+export const DATALOG_REPLY_INTERVAL_S = 5;
+/** Job name for a backfill request that could not be queued. */
+export const JOB_BACKFILL = 'backfill';
+
 // ── Watchdog ────────────────────────────────────────────────────────────────
 // The alert sender runs every five minutes. Six missed runs is unambiguous — a
 // slow run or a single blip will not trip it, and anything that has been quiet

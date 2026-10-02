@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:datalog": "node --experimental-strip-types lib/ingest/datalog.check.ts"
   },
   "dependencies": {
     "@senso/mock-data": "*",

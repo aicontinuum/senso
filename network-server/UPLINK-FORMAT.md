@@ -102,22 +102,39 @@ device fault rather than storing silently.
 
 | fPort | Contents | Handling |
 |---|---|---|
-| **2** | Normal sensor reading | **The one we ingest** |
+| **2** | Normal sensor reading, **or** the sensor's answer to a datalog poll | **Both ingested** — told apart by the status byte, see below |
 | 5 | Device status (firmware, band, battery) | Different structure — don't parse as a reading |
-| 3 | Datalog / backfill (historical, can arrive out of order) | Store, but **suppress alerts** |
+| 3 | Datalog in the decoder's other mode (not seen from our sensors) | Dropped |
 | 1 | Config/downlink commands | Not a normal uplink |
 
 Parse defensively per fPort; anything that isn't 2 must not fall through into the reading
 path.
 
-> ⚠️ **Timestamp caveat for fPort 3.** The top-level `time` is when *ChirpStack received
-> the packet*, not when the measurement was taken. That's correct for fPort 2, but for
-> fPort 3 backfill the readings are historical and carry their own timestamps inside the
-> decoded payload. Mapping `time` → `recorded_at` for a datalog frame would stamp a batch
-> of old readings with "now" and corrupt the history. Handle fPort 3 explicitly before
-> trusting `time`.
+### Datalog answers come on fPort 2 (captured 2026-10-02)
 
-The raw `data` field is the pre-decode base64 payload — use `object`, not `data`.
+Asked for a time range (downlink `0x31` + start + end as unix seconds + reply interval,
+on fPort 1 — see README "Backfill from the sensor's memory"), an LHT65N answers **on
+fPort 2**, not 3, with a frame of 11-byte records. Each record:
+
+| Bytes | Field |
+|---|---|
+| 0–1 | External probe temperature, int16, 1/100 °C — the compliance value |
+| 2–3 | Internal temperature, int16, 1/100 °C |
+| 4–5 | Humidity, low 12 bits, 1/10 % |
+| 6 | Status: low nibble = external sensor kind (1 = temperature probe); **bit 6 = answer to a poll; bit 7 = retransmission** |
+| 7–10 | Unix time the reading was taken, by the sensor's own clock |
+
+A live reading is also 11 bytes with neither bit 6 nor bit 7 set, which is how ingest
+tells them apart (`apps/admin/lib/ingest/datalog.ts`). ChirpStack's decoder renders the
+same records as the `DATALOG` string (`[probe, internal, humidity, time],…`) with the
+time formatted in the server's zone and no zone named, so ingest reads the raw `data`
+bytes for these frames and `object` for live ones.
+
+> ⚠️ **Timestamps.** The top-level `time` is when *ChirpStack received the packet*. Right
+> for a live reading; wrong for a datalog answer, whose readings are historical and
+> carry their own time in bytes 7–10. The sensor's clock is its own: sensor 2 ran six
+> minutes fast on 2026-10-02, so recovered readings are matched to the record by
+> proximity, not equality (`lib/ingest/backfill.ts`).
 
 ## 5. Ingest requirements (Phase 4)
 

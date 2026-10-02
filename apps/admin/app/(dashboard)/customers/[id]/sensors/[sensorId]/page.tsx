@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isSensorOnline } from '@senso/status';
 import { SensorSettingsClient } from './SensorSettingsClient';
 import { CommissioningPanel } from './CommissioningPanel';
+import { RecoveredReadingsCard } from '@/components/customers/RecoveredReadingsCard';
+import { loadRecoveredReadings, RECOVERED_WINDOW_DAYS } from '@/lib/customers/recovered-readings';
 
 export default async function SensorSettingsPage({
   params,
@@ -44,6 +46,9 @@ export default async function SensorSettingsPage({
     .select('type, threshold')
     .eq('sensor_id', sensorId);
 
+  // Readings recovered from the sensor's memory, for the office's eye only.
+  const recovered = await loadRecoveredReadings(admin, sensorId);
+
   const belowMin = alertConfigs?.find(c => c.type === 'min');
   const aboveMax = alertConfigs?.find(c => c.type === 'max');
   return (
@@ -66,6 +71,7 @@ export default async function SensorSettingsPage({
         sensorId={sensor.id}
         commissionedAt={sensor.commissioned_at}
       />
+      <RecoveredReadingsCard count={recovered.count} windowDays={RECOVERED_WINDOW_DAYS} latestAt={recovered.latestAt} />
     </div>
   );
 }
