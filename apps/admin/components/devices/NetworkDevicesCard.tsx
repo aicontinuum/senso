@@ -72,7 +72,10 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
   const router = useRouter();
   const words = WORDS[kind];
   const isSensor = kind === 'sensor';
-  const [confirmEui, setConfirmEui] = useState<string | null>(null);
+  // The one open confirmation, if any: which row and which of its two
+  // actions. Both ask once; a resend reaches the device, so a mis-tap
+  // should cost a Cancel, not a downlink.
+  const [confirm, setConfirm] = useState<{ eui: string; action: 'remove' | 'resend' } | null>(null);
   const [busyEui, setBusyEui] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
 
@@ -82,7 +85,7 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
     const result = await callApi(path, method);
     setBusyEui(null);
     if (!result.ok) { setMessage({ eui: row.eui, text: result.error, tone: 'error' }); return; }
-    setConfirmEui(null);
+    setConfirm(null);
     setMessage({ eui: row.eui, text: done, tone: 'ok' });
     router.refresh();
   }
@@ -92,19 +95,23 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
   const resend = (row: NetworkDeviceRow) =>
     act(row, 'POST', `/api/network/sensors/${row.eui}/interval`, `Interval queued; it takes effect after the sensor's next uplink.`);
 
-  // The icon buttons, the same in both forms. The remove confirmation
-  // and any outcome are drawn under the row, never squeezed in beside.
+  const open = (row: NetworkDeviceRow, action: 'remove' | 'resend') => { setMessage(null); setConfirm({ eui: row.eui, action }); };
+  const close = () => { setConfirm(null); setMessage(null); };
+
+  // The icon buttons, the same in both forms. Each opens its confirmation
+  // under the row; outcomes are drawn there too, never squeezed in beside.
   const actions = (row: NetworkDeviceRow) => {
     const busy = busyEui === row.eui;
+    const opened = confirm?.eui === row.eui;
     return (
       <span className="flex shrink-0 items-center justify-end gap-1">
         {isSensor && (
-          <Button variant="ghost" size="icon" aria-label={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval to ${row.name || row.eui}`} title={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval`} onClick={() => { setMessage(null); resend(row); }} disabled={busy}>
+          <Button variant="ghost" size="icon" aria-label={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval to ${row.name || row.eui}`} title={`Resend ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval`} onClick={() => open(row, 'resend')} disabled={busy || opened}>
             <RefreshCw className="size-4" />
           </Button>
         )}
         {!row.link && (
-          <Button variant="ghost" size="icon" aria-label={`Remove ${row.name || row.eui} from the network server`} title="Remove from the network server" className="hover:text-alert-text" onClick={() => { setMessage(null); setConfirmEui(row.eui); }} disabled={busy || confirmEui === row.eui}>
+          <Button variant="ghost" size="icon" aria-label={`Remove ${row.name || row.eui} from the network server`} title="Remove from the network server" className="hover:text-alert-text" onClick={() => open(row, 'remove')} disabled={busy || opened}>
             <Trash2 className="size-4" />
           </Button>
         )}
@@ -112,9 +119,10 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
     );
   };
 
-  // What sits under a row: the remove confirmation, or the last outcome.
+  // What sits under a row: the open confirmation, or the last outcome.
   const underRow = (row: NetworkDeviceRow) => {
-    if (confirmEui === row.eui) {
+    const error = message?.eui === row.eui && message.tone === 'error' ? message.text : undefined;
+    if (confirm?.eui === row.eui && confirm.action === 'remove') {
       return (
         <div className={PANEL}>
           <InlinePanel
@@ -122,13 +130,29 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
             description={isSensor
               ? 'It stops being able to join. Nothing in our records changes; it can be registered again with its key.'
               : 'It stops being able to relay. Nothing in our records changes; it can be registered again.'}
-            error={message?.eui === row.eui && message.tone === 'error' ? message.text : undefined}
+            error={error}
             confirmLabel="Remove"
             busyLabel="Removing…"
             busy={busyEui === row.eui}
             danger
             onConfirm={() => remove(row)}
-            onCancel={() => { setConfirmEui(null); setMessage(null); }}
+            onCancel={close}
+          />
+        </div>
+      );
+    }
+    if (confirm?.eui === row.eui && confirm.action === 'resend') {
+      return (
+        <div className={PANEL}>
+          <InlinePanel
+            title={`Resend the ${SENSOR_REPORTING_INTERVAL_MIN}-minute interval to ${row.name || row.eui}?`}
+            description="Queued on the network server now; the sensor picks it up on its next uplink. Harmless if it already has it."
+            error={error}
+            confirmLabel="Resend"
+            busyLabel="Sending…"
+            busy={busyEui === row.eui}
+            onConfirm={() => resend(row)}
+            onCancel={close}
           />
         </div>
       );
