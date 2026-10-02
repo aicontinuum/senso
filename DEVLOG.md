@@ -270,7 +270,7 @@ visit.
 
 **The sensor's clock is its own.** Sensor 2 stamps its stored readings
 about six minutes ahead of when they are received, so a recovered
-reading is matched to the record by proximity (seven minutes), not
+reading is matched to the record by proximity (ten minutes), not
 equality, and the poll window is widened ten minutes each side. Checked
 locally against stand-ins: the captured frame files six readings and
 drops the one that duplicates a live reading; a live reading an hour
