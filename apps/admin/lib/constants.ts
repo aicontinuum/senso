@@ -32,9 +32,12 @@ export const BACKFILL_GAP_MS = (SENSOR_REPORTING_INTERVAL_MIN + 5) * 60 * 1000;
  *  2026-10-02: two days covers a weekend outage. */
 export const BACKFILL_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 /** A stored reading this close to one already on record is the same
- *  measurement, seen twice; the sensor's clock is not ours (sensor 2 ran six
- *  minutes fast on 2026-10-02), so the match is by proximity, not equality. */
-export const BACKFILL_MATCH_WINDOW_MS = 7 * 60 * 1000;
+ *  measurement, seen twice; the sensor's clock is not ours (S-011E ran six
+ *  minutes fast on 2026-10-02, drifting about 45 seconds a day between its
+ *  ten-day syncs), so the match is by proximity, not equality. Ten minutes
+ *  covers the drift a sync cycle can reach and stays well inside the
+ *  15-minute spacing of readings. */
+export const BACKFILL_MATCH_WINDOW_MS = 10 * 60 * 1000;
 /** The poll window is widened by this on each side for the same reason. */
 export const BACKFILL_CLOCK_SLACK_MS = 10 * 60 * 1000;
 /** Seconds the sensor waits between the frames of a long answer. */
