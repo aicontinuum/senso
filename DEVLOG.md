@@ -194,12 +194,12 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
-## 2026-10-02 — Add sensor picks from the registered, not a typed DevEUI
+## 2026-10-02 — Link gateway and Add sensor pick from the registered, not a typed EUI
 
-The customer page's Add sensor form no longer takes a DevEUI. It offers
-a dropdown of the sensors registered on the network server and linked
-to no one (`lib/network/available.ts`), each shown as its network name
-and DevEUI. The order of work is now built into the screens: register on
+The customer page's Link gateway and Add sensor forms no longer take an
+EUI. Each offers a dropdown of the devices of its kind registered on the
+network server and linked to no one (`lib/network/available.ts`), shown
+as network name and EUI. The order of work is now built into the screens: register on
 the Devices page, wake the sensor, then pick it here. With nothing
 waiting the form says to register one first; with the network server
 not answering it says so and offers nothing, since linking already
