@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Unlink } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, CardTitle, Select } from '@senso/ui';
+import { Badge, Button, Card, CardHeader, CardTitle, Select, Spinner } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
 import { LinkGatewayForm } from '@/components/customers/LinkGatewayForm';
@@ -125,9 +125,13 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
                     <td className={`${TD} whitespace-nowrap font-medium`}>{g.name ?? g.id}</td>
                     {multiBranch && (
                       <td className={TD}>
-                        <Select aria-label={`Branch of ${g.name ?? g.id}`} value={g.branch_id} onChange={e => moveGateway(g.id, e.target.value)} disabled={busy} wrapperClassName="w-44">
-                          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </Select>
+                        {/* A greyed select reads as locked; the spinner says the move is in flight. */}
+                        <span className="flex items-center gap-2">
+                          <Select aria-label={`Branch of ${g.name ?? g.id}`} value={g.branch_id} onChange={e => moveGateway(g.id, e.target.value)} disabled={busy} wrapperClassName="w-44">
+                            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                          </Select>
+                          {busy && confirmUnlinkId !== g.id && <Spinner className="size-4" />}
+                        </span>
                       </td>
                     )}
                     <td className={`${TD} font-mono text-xs text-muted-foreground`}>{g.mac_address ?? '—'}</td>

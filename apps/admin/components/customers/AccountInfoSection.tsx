@@ -49,6 +49,7 @@ export function AccountInfoSection({ customer }: { customer: CustomerRow }) {
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [form, setForm] = useState(() => formOf(customer));
   const set = (key: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [key]: v }));
@@ -85,6 +86,7 @@ export function AccountInfoSection({ customer }: { customer: CustomerRow }) {
         return;
       }
       setEditing(false);
+      setSaved(true);
       router.refresh();
     } finally {
       setSaving(false);
@@ -122,10 +124,13 @@ export function AccountInfoSection({ customer }: { customer: CustomerRow }) {
       <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-hairline">
         <CardTitle>Account info</CardTitle>
         {!editing ? (
-          <Button variant="ghost" size="sm" onClick={() => { setSaveError(''); setEditing(true); }}>
-            <Pencil className="size-4" />
-            Edit
-          </Button>
+          <div className="flex items-center gap-3">
+            {saved && <span className="text-sm font-medium text-ok-text">Saved.</span>}
+            <Button variant="ghost" size="sm" onClick={() => { setSaveError(''); setSaved(false); setEditing(true); }}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          </div>
         ) : (
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={cancelEditing} disabled={saving}>Cancel</Button>
