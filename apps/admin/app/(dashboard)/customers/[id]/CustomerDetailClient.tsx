@@ -9,7 +9,7 @@ import { GatewaysSection, type GatewayRow } from '@/components/customers/Gateway
 import { GroupMembersSection } from '@/components/customers/GroupMembersSection';
 import { SensorsSection, type SensorRow } from '@/components/customers/SensorsSection';
 import type { AccountRef, GroupMember, GroupRef } from '@/lib/groups/load';
-import type { AvailableSensors } from '@/lib/network/available';
+import type { AvailableDevices } from '@/lib/network/available';
 import type { Branch } from '@/types/branches';
 
 interface Props {
@@ -20,8 +20,8 @@ interface Props {
   members: GroupMember[];
   candidates: AccountRef[];
   groupOf: GroupRef | null;
-  /** Registered sensors not yet linked to anyone, for Add sensor. */
-  availableSensors: AvailableSensors;
+  /** Registered devices not yet linked to anyone, for Link gateway and Add sensor. */
+  availableDevices: AvailableDevices;
   /** Server clock at render, so relative times match the rest of the page. */
   now: number;
 }
@@ -30,7 +30,7 @@ interface Props {
 // at them, the sensors on those, and who gets emailed. Each card owns its
 // own editing state. A group is who they are and who they can see: it owns
 // no devices and is emailed about nothing, so those cards do not exist.
-export function CustomerDetailClient({ customer, branches, gateways, sensors, members, candidates, groupOf, availableSensors, now }: Props) {
+export function CustomerDetailClient({ customer, branches, gateways, sensors, members, candidates, groupOf, availableDevices, now }: Props) {
   return (
     <div className="space-y-6">
       <div>
@@ -61,8 +61,8 @@ export function CustomerDetailClient({ customer, branches, gateways, sensors, me
       ) : (
         <>
           <BranchesSection customerId={customer.id} branches={branches} gateways={gateways} />
-          <GatewaysSection customerId={customer.id} branches={branches} gateways={gateways} sensors={sensors} now={now} />
-          <SensorsSection customerId={customer.id} gateways={gateways} sensors={sensors} available={availableSensors} />
+          <GatewaysSection customerId={customer.id} branches={branches} gateways={gateways} sensors={sensors} available={availableDevices} now={now} />
+          <SensorsSection customerId={customer.id} gateways={gateways} sensors={sensors} available={availableDevices} />
           <AlertRecipientsSection customer={customer} />
         </>
       )}

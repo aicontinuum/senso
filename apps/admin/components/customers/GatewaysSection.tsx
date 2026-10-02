@@ -8,6 +8,7 @@ import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
 import { LinkGatewayForm } from '@/components/customers/LinkGatewayForm';
 import type { Branch } from '@/types/branches';
+import type { AvailableDevices } from '@/lib/network/available';
 
 // The customer's gateways, with the technician's jobs on them: link a new
 // one by its EUI, move one to another branch, and unlink one that is being
@@ -34,6 +35,8 @@ interface GatewaysSectionProps {
   gateways: GatewayRow[];
   /** Live sensors, so the unlink confirmation can name what goes with the gateway. */
   sensors: LinkedSensor[];
+  /** Registered gateways not yet linked to anyone, for Link gateway. */
+  available: AvailableDevices;
   now: number;
 }
 
@@ -46,7 +49,7 @@ function unlinkWarning(linked: LinkedSensor[]): string {
   return `Unlinking retires ${linked.length} sensor${linked.length > 1 ? 's' : ''} (${names}). Readings are kept.`;
 }
 
-export function GatewaysSection({ customerId, branches, gateways, sensors, now }: GatewaysSectionProps) {
+export function GatewaysSection({ customerId, branches, gateways, sensors, available, now }: GatewaysSectionProps) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
@@ -90,7 +93,7 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, now }
 
       {adding && (
         <div className="border-b border-hairline px-5 py-4">
-          <LinkGatewayForm customerId={customerId} branches={branches} onDone={() => { setAdding(false); router.refresh(); }} onCancel={() => setAdding(false)} />
+          <LinkGatewayForm customerId={customerId} branches={branches} available={available} onDone={() => { setAdding(false); router.refresh(); }} onCancel={() => setAdding(false)} />
         </div>
       )}
 

@@ -1,37 +1,43 @@
-// The sensors waiting for a customer: registered on the network server
-// and not linked to anyone in our records. The customer page's Add sensor
-// form offers these instead of a typed DevEUI, so a sensor cannot be
-// linked before it exists on the network, and a typo cannot produce one
-// that "never comes online".
+// The devices waiting for a customer: registered on the network server
+// and not linked to anyone in our records. The customer page's Link
+// gateway and Add sensor forms offer these instead of a typed EUI, so a
+// device cannot be linked before it exists on the network, and a typo
+// cannot produce one that "never comes online".
 
 import type { createAdminClient } from '@/lib/supabase/admin';
 import { chirpstackRegistry } from '@/lib/chirpstack';
-import { listNetworkSensors } from '@/lib/network/registry';
+import { listNetworkGateways, listNetworkSensors } from '@/lib/network/registry';
 
-export type AvailableSensor = { devEui: string; name: string };
+export type AvailableDevice = { eui: string; name: string };
 
-export type AvailableSensors =
-  /** The network server is not connected or did not answer; the form says so. */
+export type AvailableDevices =
+  /** The network server is not connected or did not answer; the forms say so. */
   | { state: 'unavailable' }
-  | { state: 'ok'; sensors: AvailableSensor[] };
+  | { state: 'ok'; gateways: AvailableDevice[]; sensors: AvailableDevice[] };
 
-export async function loadAvailableSensors(admin: ReturnType<typeof createAdminClient>): Promise<AvailableSensors> {
+function unlinked(registered: { eui: string; name: string }[], taken: Set<string>): AvailableDevice[] {
+  return registered.filter(d => !taken.has(d.eui)).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function loadAvailableDevices(admin: ReturnType<typeof createAdminClient>): Promise<AvailableDevices> {
   const registry = chirpstackRegistry();
   if (!registry) return { state: 'unavailable' };
 
-  const [registered, { data: linked, error }] = await Promise.all([
+  const [gateways, sensors, { data: ourGateways, error: gError }, { data: ourSensors, error: sError }] = await Promise.all([
+    listNetworkGateways(registry),
     listNetworkSensors(registry),
+    admin.from('gateways').select('mac_address').is('decommissioned_at', null),
     admin.from('sensors').select('hardware_id').is('decommissioned_at', null),
   ]);
-  if (!registered.ok) return { state: 'unavailable' };
-  if (error) throw new Error(`${error.code} ${error.message}`);
+  if (!gateways.ok || !sensors.ok) return { state: 'unavailable' };
+  if (gError) throw new Error(`${gError.code} ${gError.message}`);
+  if (sError) throw new Error(`${sError.code} ${sError.message}`);
 
-  const taken = new Set((linked ?? []).map(s => s.hardware_id?.toLowerCase()).filter(Boolean));
+  const takenGateways = new Set((ourGateways ?? []).map(g => g.mac_address?.toLowerCase()).filter(Boolean));
+  const takenSensors = new Set((ourSensors ?? []).map(s => s.hardware_id?.toLowerCase()).filter(Boolean));
   return {
     state: 'ok',
-    sensors: registered.data
-      .filter(s => !taken.has(s.devEui))
-      .map(s => ({ devEui: s.devEui, name: s.name }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    gateways: unlinked(gateways.data.map(g => ({ eui: g.gatewayId, name: g.name })), takenGateways),
+    sensors: unlinked(sensors.data.map(s => ({ eui: s.devEui, name: s.name })), takenSensors),
   };
 }

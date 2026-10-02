@@ -3,20 +3,24 @@
 import { useState } from 'react';
 import { Button, Card, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
+import type { AvailableDevices } from '@/lib/network/available';
 import type { Branch } from '@/types/branches';
 
-// Link a gateway by its EUI. The branch picker appears only when the
-// customer has more than one; with one, the server picks it.
+// Link a gateway chosen from those registered on the network server and
+// not yet linked to anyone, so it always exists before it is linked. The
+// branch picker appears only when the customer has more than one; with
+// one, the server picks it.
 
 type Props = {
   customerId: string;
   branches: Branch[];
+  /** Registered on the network server, linked to no one: the choices. */
+  available: AvailableDevices;
   onDone: () => void;
   onCancel: () => void;
 };
 
-export function LinkGatewayForm({ customerId, branches, onDone, onCancel }: Props) {
+export function LinkGatewayForm({ customerId, branches, available, onDone, onCancel }: Props) {
   const [eui, setEui] = useState('');
   const [name, setName] = useState('');
   const [branchId, setBranchId] = useState(branches[0]?.id ?? '');
@@ -25,14 +29,9 @@ export function LinkGatewayForm({ customerId, branches, onDone, onCancel }: Prop
 
   async function link() {
     setError('');
-    const normalised = normaliseIdentifier(eui);
-    if (!isValidGatewayId(normalised)) {
-      setError('Invalid Gateway EUI — expected 16 hex characters, e.g. 2cf7f11081400088');
-      return;
-    }
     if (!name.trim()) { setError('Gateway name is required'); return; }
     setLinking(true);
-    const result = await callApi(`/api/customers/${customerId}/gateways`, 'POST', { macAddress: normalised, name, branchId });
+    const result = await callApi(`/api/customers/${customerId}/gateways`, 'POST', { macAddress: eui, name, branchId });
     setLinking(false);
     if (!result.ok) { setError(result.error); return; }
     onDone();
@@ -43,22 +42,30 @@ export function LinkGatewayForm({ customerId, branches, onDone, onCancel }: Prop
   return (
     <Card tone="sunken" className="space-y-4 p-4 animate-[senso-rise_var(--dur-base)_var(--ease-out)_both]">
       <p className="text-sm font-semibold">Link a gateway</p>
-      <Input
-        label="Gateway EUI"
-        hint="From the label on the gateway."
-        value={eui}
-        onChange={e => { setEui(e.target.value); setError(''); }}
-        onKeyDown={e => e.key === 'Enter' && link()}
-        placeholder="2cf7f11081400088"
-        className="font-mono"
-        error={error || undefined}
-      />
+      {available.state === 'unavailable' ? (
+        <p className="text-sm text-alert-text">The network server did not answer, so the registered gateways cannot be listed. Try again in a minute.</p>
+      ) : available.gateways.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No registered gateway is waiting. Register one on the Devices page first.</p>
+      ) : (
+        <Select
+          label="Gateway"
+          hint="Registered on the network server and not yet linked to a customer."
+          value={eui}
+          onChange={e => { setEui(e.target.value); setError(''); }}
+        >
+          <option value="">Choose a gateway</option>
+          {available.gateways.map(g => (
+            <option key={g.eui} value={g.eui}>{g.name ? `${g.name} · ${g.eui}` : g.eui}</option>
+          ))}
+        </Select>
+      )}
       <Input
         label="Name"
         value={name}
         onChange={e => setName(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && link()}
         placeholder="e.g. Kitchen gateway"
+        error={error || undefined}
       />
       {branches.length > 1 && (
         <Select label="Branch" hint="Where this gateway is installed." value={branchId} onChange={e => setBranchId(e.target.value)}>

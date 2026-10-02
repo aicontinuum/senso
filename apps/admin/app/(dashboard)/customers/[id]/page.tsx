@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { loadCustomerDetail } from '@/lib/customers/detail';
-import { loadAvailableSensors } from '@/lib/network/available';
+import { loadAvailableDevices } from '@/lib/network/available';
 import { CustomerDetailClient } from './CustomerDetailClient';
 
 export default async function CustomerDetailPage({
@@ -15,7 +15,7 @@ export default async function CustomerDetailPage({
   if (!detail) notFound();
   const { now, customer, branches, gateways, sensors, members, candidates, groupOf } = detail;
   // A group owns no devices, so the network server is not asked for it.
-  const availableSensors = customer.is_group ? { state: 'unavailable' as const } : await loadAvailableSensors(admin);
+  const availableDevices = customer.is_group ? { state: 'unavailable' as const } : await loadAvailableDevices(admin);
 
   return (
     <CustomerDetailClient
@@ -26,7 +26,7 @@ export default async function CustomerDetailPage({
       members={members}
       candidates={candidates}
       groupOf={groupOf}
-      availableSensors={availableSensors}
+      availableDevices={availableDevices}
       now={now}
     />
   );

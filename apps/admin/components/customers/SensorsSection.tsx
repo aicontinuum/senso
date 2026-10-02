@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Settings, Trash2 } from 'lucide-react';
 import { batteryTier } from '@senso/status';
 import { Badge, BatteryMeter, Button, Card, CardHeader, CardTitle, Input, Select } from '@senso/ui';
-import type { AvailableSensors } from '@/lib/network/available';
+import type { AvailableDevices } from '@/lib/network/available';
 
 // The customer's sensors, with the technician's two jobs on them: add one
 // against a gateway, and retire one that is being removed. A sensor is
@@ -33,7 +33,7 @@ interface SensorsSectionProps {
   gateways: GatewayOption[];
   sensors: SensorRow[];
   /** Registered on the network server, linked to no one: the choices for Add sensor. */
-  available: AvailableSensors;
+  available: AvailableDevices;
 }
 
 const TH = 'px-6 py-3 font-medium';
@@ -154,7 +154,7 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
               >
                 <option value="">Choose a sensor</option>
                 {available.sensors.map(s => (
-                  <option key={s.devEui} value={s.devEui}>{s.name ? `${s.name} · ${s.devEui}` : s.devEui}</option>
+                  <option key={s.eui} value={s.eui}>{s.name ? `${s.name} · ${s.eui}` : s.eui}</option>
                 ))}
               </Select>
             )}
