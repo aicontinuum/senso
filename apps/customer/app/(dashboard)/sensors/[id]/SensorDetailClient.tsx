@@ -264,10 +264,13 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
           {managedBy ? (
             <ManagedBy>Managed by {managedBy}</ManagedBy>
           ) : !editing ? (
-            <Button variant="ghost" size="sm" onClick={startEditing}>
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
+            <div className="flex items-center gap-3">
+              {saved && <span className="text-sm font-medium text-ok-text">Saved.</span>}
+              <Button variant="ghost" size="sm" onClick={startEditing}>
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            </div>
           ) : (
             <Button variant="ghost" size="sm" onClick={cancelEditing}>
               Cancel
@@ -280,7 +283,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
           <div className="space-y-1.5">
             {editing ? (
               <Input
-                label="Sensor Name"
+                label="Sensor name"
                 value={name}
                 onChange={(e) => { setName(e.target.value); setNameError(""); }}
                 maxLength={SENSOR_NAME_MAX_LENGTH}
@@ -289,7 +292,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
             ) : (
               <>
                 <p className="text-xs font-medium text-muted-foreground">
-                  Sensor Name
+                  Sensor name
                 </p>
                 <p className="text-sm font-medium">{name}</p>
               </>
@@ -308,7 +311,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
           {/* Thresholds */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">
-              Temperature Threshold
+              Temperature range
             </p>
             {editing ? (
               <div className="grid grid-cols-2 gap-3">
@@ -342,7 +345,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
               place to change it. */}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">
-              Alert Recipients
+              Alert recipients
             </p>
             {accountRecipients.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -373,16 +376,10 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
           {editing && (
             <div className="space-y-2">
               <Button block onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Changes'}
+                {saving ? 'Saving…' : 'Save'}
               </Button>
-              {saveError && <p className="text-center text-xs text-alert-text">{saveError}</p>}
+              {saveError && <p role="alert" className="text-center text-xs text-alert-text">{saveError}</p>}
             </div>
-          )}
-
-          {saved && !editing && (
-            <p className="text-center text-xs font-medium text-ok-text">
-              ✓ Changes saved
-            </p>
           )}
         </div>
       </section>
@@ -392,7 +389,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
       <Card asChild className="p-5">
         <section>
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Device Info
+          Device info
         </p>
         <div className="space-y-2 text-sm">
           {branchName && <InfoRow label="Branch">{branchName}</InfoRow>}

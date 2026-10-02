@@ -32,6 +32,7 @@ import {
   reportFileName,
   reportSubject as subjectOf,
   retiredNote,
+  type PdfAction,
   type RangeValue,
   type ReadingShape,
   type ReportFormat,
@@ -95,6 +96,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
   const generated = generatedAt !== null;
   const [generating, setGenerating] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState<PdfAction | null>(null);
 
   // The view is read from the URL (see VIEW_PARAM). A generated report is shown
   // only while the URL says so; leaving by any route — the back button here,
@@ -301,13 +303,22 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   const shareText = `Temperature monitoring report for ${reportSubject}.\n\nPeriod: ${periodLabel}\nGenerated: ${formatDateTimeLong(now, timezone)}\n${tzNote}`;
   const mailtoHref = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareText)}`;
 
-  async function handlePrint() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
-    doc.output("dataurlnewwindow");
+  // Building the PDF takes a moment on the main thread, so the pressed
+  // button says so and the others wait; a silent second after a tap reads
+  // as a dead button.
+  async function withPdf(action: PdfAction, run: (doc: Awaited<ReturnType<typeof buildReportPDF>>) => Promise<void> | void) {
+    setPdfBusy(action);
+    try {
+      const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
+      await run(doc);
+    } finally {
+      setPdfBusy(null);
+    }
   }
 
-  async function handleShare() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
+  const handlePrint = () => withPdf("print", (doc) => { doc.output("dataurlnewwindow"); });
+
+  const handleShare = () => withPdf("share", async (doc) => {
     const blob = doc.output("blob");
     const file = new File([blob], reportFileName("pdf", now), { type: "application/pdf" });
     if (navigator.canShare?.({ files: [file] })) {
@@ -315,7 +326,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     } else {
       try { await navigator.share({ title: shareTitle, text: shareText }); } catch { /* cancelled */ }
     }
-  }
+  });
 
   function downloadCSV() {
     const lines: string[] = [
@@ -363,10 +374,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     URL.revokeObjectURL(url);
   }
 
-  async function downloadPDF() {
-    const doc = await buildReportPDF(reportSensors, rangeMs, now, customerName, timezone);
-    doc.save(reportFileName("pdf", now));
-  }
+  const downloadPDF = () => withPdf("download", (doc) => { doc.save(reportFileName("pdf", now)); });
 
   return (
     <div>
@@ -397,6 +405,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
             range={range}
             format={format}
             sensorCount={reportSensors.length}
+            busy={pdfBusy}
             onBack={backToSettings}
             onPrint={handlePrint}
             onDownload={format === "pdf" ? downloadPDF : downloadCSV}

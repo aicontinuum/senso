@@ -1,14 +1,17 @@
 'use client';
 
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Select } from '@senso/ui';
+import { Select, cn } from '@senso/ui';
 import { ALL_BRANCHES, BRANCH_PARAM } from '@/lib/branches';
 
 // All, or one site (a branch, or for an owner login a member account), as
 // a dropdown: one control on one line at any count, and on a phone the
 // native picker, which is the best list there is for a dozen sites. The
 // choice lives in the URL, so the page stays a server component and a
-// filtered view is a link you can send to someone.
+// filtered view is a link you can send to someone. The navigation runs in
+// a transition, so the dropdown dims until the page has caught up: on a
+// slow connection the choice never reads as ignored.
 
 type Props = {
   branches: { id: string; name: string }[];
@@ -21,16 +24,23 @@ type Props = {
 
 export function BranchFilter({ branches, selected, label, allLabel, className }: Props) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
 
   function choose(value: string) {
     const params = new URLSearchParams(window.location.search);
     if (value === ALL_BRANCHES) params.delete(BRANCH_PARAM); else params.set(BRANCH_PARAM, value);
     const query = params.toString();
-    router.push(query ? `?${query}` : window.location.pathname);
+    startTransition(() => router.push(query ? `?${query}` : window.location.pathname));
   }
 
   return (
-    <Select aria-label={label} value={selected} onChange={e => choose(e.target.value)} wrapperClassName={className}>
+    <Select
+      aria-label={label}
+      aria-busy={pending || undefined}
+      value={selected}
+      onChange={e => choose(e.target.value)}
+      wrapperClassName={cn(className, 'transition-opacity duration-[--dur-fast]', pending && 'opacity-60')}
+    >
       <option value={ALL_BRANCHES}>{allLabel}</option>
       {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
     </Select>
