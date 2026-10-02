@@ -30,8 +30,11 @@ export type NetworkDevices =
 type LinkedGateway = { mac_address: string | null; customer_id: string; customers: { name: string } | null; branches: { name: string } | null };
 type LinkedSensor = { hardware_id: string | null; gateways: LinkedGateway | null };
 
-function toLink(g: LinkedGateway): DeviceLink {
-  return { customerId: g.customer_id, customerName: g.customers?.name ?? '', branchName: g.branches?.name ?? null };
+/** The branch is named only when the customer has more than one, the same
+ *  rule the customer app follows: a single branch is the business itself. */
+function toLink(g: LinkedGateway, branchCount: Map<string, number>): DeviceLink {
+  const multiBranch = (branchCount.get(g.customer_id) ?? 0) > 1;
+  return { customerId: g.customer_id, customerName: g.customers?.name ?? '', branchName: multiBranch ? g.branches?.name ?? null : null };
 }
 
 export async function loadNetworkDevices(admin: Admin): Promise<NetworkDevices> {
@@ -44,21 +47,26 @@ export async function loadNetworkDevices(admin: Admin): Promise<NetworkDevices> 
     Promise.all([
       admin.from('gateways').select('mac_address, customer_id, customers(name), branches(name)').is('decommissioned_at', null),
       admin.from('sensors').select('hardware_id, gateways!inner(mac_address, customer_id, customers(name), branches(name))').is('decommissioned_at', null),
+      admin.from('branches').select('customer_id'),
     ]),
   ]);
   if (!gateways.ok) return { state: 'unreachable', error: gateways.error };
   if (!sensors.ok) return { state: 'unreachable', error: sensors.error };
-  const [{ data: ourGateways, error: gError }, { data: ourSensors, error: sError }] = ours;
+  const [{ data: ourGateways, error: gError }, { data: ourSensors, error: sError }, { data: branches, error: bError }] = ours;
   if (gError) throw new Error(`${gError.code} ${gError.message}`);
   if (sError) throw new Error(`${sError.code} ${sError.message}`);
+  if (bError) throw new Error(`${bError.code} ${bError.message}`);
+
+  const branchCount = new Map<string, number>();
+  for (const b of branches ?? []) branchCount.set(b.customer_id, (branchCount.get(b.customer_id) ?? 0) + 1);
 
   const gatewayLinks = new Map<string, DeviceLink>();
   for (const g of (ourGateways ?? []) as unknown as LinkedGateway[]) {
-    if (g.mac_address) gatewayLinks.set(g.mac_address.toLowerCase(), toLink(g));
+    if (g.mac_address) gatewayLinks.set(g.mac_address.toLowerCase(), toLink(g, branchCount));
   }
   const sensorLinks = new Map<string, DeviceLink>();
   for (const s of (ourSensors ?? []) as unknown as LinkedSensor[]) {
-    if (s.hardware_id && s.gateways) sensorLinks.set(s.hardware_id.toLowerCase(), toLink(s.gateways));
+    if (s.hardware_id && s.gateways) sensorLinks.set(s.hardware_id.toLowerCase(), toLink(s.gateways, branchCount));
   }
 
   const rows: NetworkDeviceRow[] = [
