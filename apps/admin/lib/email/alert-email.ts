@@ -62,6 +62,20 @@ function headline(alert: AlertLine): string {
   }
 }
 
+/** What the reader should do now, when the alert kind has a next step.
+ *  A silent sensor is usually range or battery, and readings are not
+ *  being recorded in the meantime, so the fridge needs a manual log until
+ *  they resume. An out-of-range reading needs no instruction: the number
+ *  is the message. */
+function guidance(alert: AlertLine): string | null {
+  switch (alert.kind) {
+    case "threshold":
+      return null;
+    case "sensor_offline":
+      return "Please check that the sensor is in place and within range of the gateway, and that its battery is seated. Until readings resume, record this fridge's temperature manually.";
+  }
+}
+
 /** "Customer" or "Customer · Branch": where the alerts are. */
 function whereLabel(customerName: string, branchName: string | null): string {
   return branchName ? `${customerName} · ${branchName}` : customerName;
@@ -98,6 +112,8 @@ export function alertEmailText(input: AlertEmailInput): string {
     }
     if (alert.deviceId) lines.push(`  Device:  ${alert.deviceId}`);
     lines.push(`  Since:   ${formatInstant(alert.triggeredAt, timezone)}`);
+    const advice = guidance(alert);
+    if (advice) lines.push(`  ${advice}`);
     lines.push("");
   }
 
@@ -136,6 +152,7 @@ export function alertEmailHtml(input: AlertEmailInput): string {
         ${detail ? `<div style="margin-top:6px;font-size:14px">${detail}</div>` : ""}
         ${alert.deviceId ? `<div style="margin-top:6px;font-family:monospace;font-size:12px;color:#757589">${escapeHtml(alert.deviceId)}</div>` : ""}
         <div style="margin-top:6px;font-size:13px;color:#55556a">Since ${escapeHtml(formatInstant(alert.triggeredAt, timezone))}</div>
+        ${guidance(alert) ? `<div style="margin-top:10px;font-size:13px;line-height:1.5;color:#17161c">${escapeHtml(guidance(alert)!)}</div>` : ""}
       </td></tr>`;
     })
     .join("");
