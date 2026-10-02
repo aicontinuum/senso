@@ -153,7 +153,7 @@ whatever their owner. Leave the tenant's **private gateways** setting off (the d
 
 ## 9. Registered objects (test)
 
-All under the default tenant `ChirpStack` (`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`),
+All under the one tenant, renamed `Senso` on 2026-10-02 (`ae2e1b59-bf1e-420f-a733-bfbf08eb8aca`),
 which is the one tenant everything stays in (§8).
 
 | Object | Name | ID |
