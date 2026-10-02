@@ -49,7 +49,7 @@ export function EmailRecipientsEditor({ emails, onChange, saving = false, emptyM
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7"
+                className="-my-1.5 -mr-1.5"
                 onClick={() => remove(email)}
                 disabled={saving}
                 aria-label={`Remove ${email}`}

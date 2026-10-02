@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, ChevronRight } from 'lucide-react';
-import { Button, Card, LinkRow } from '@senso/ui';
+import { Button, Card, LinkRow, ListLink } from '@senso/ui';
 import { formatDate } from '@/lib/format';
 import { LIST_ROW, LIST_TD, LIST_TH } from '@/components/customers/CustomersTable';
 
@@ -63,11 +63,11 @@ export function GroupsTable({ rows }: { rows: GroupListRow[] }) {
       <ul className="divide-y divide-hairline lg:hidden">
         {rows.map(row => (
           <li key={row.id}>
-            <Link href={`/customers/${row.id}`} className={LIST_ROW}>
+            <ListLink href={`/customers/${row.id}`} className={LIST_ROW}>
               <p className="min-w-0 flex-1 truncate text-sm font-medium">{row.name}</p>
               <p className="shrink-0 text-xs tabular-nums text-muted-foreground">{membersLabel(row.memberCount)}</p>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            </Link>
+            </ListLink>
           </li>
         ))}
       </ul>

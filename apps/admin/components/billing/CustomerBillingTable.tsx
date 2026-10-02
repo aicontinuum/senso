@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { BillingStatus } from '@senso/types';
-import { Card, LinkRow, cn } from '@senso/ui';
+import { Card, cn, LinkRow, ListLink } from '@senso/ui';
 import { formatDate, formatMoney } from '@/lib/format';
 import { BILLING_STATUSES, BILLING_STATUS_LABEL, TERM_LABEL, TIER_LABEL, billingDetailHref } from '@/lib/billing/constants';
 import { BillingStatusDot } from '@/components/billing/BillingStatusDot';
@@ -23,7 +23,7 @@ const TD = 'px-4 py-3.5 sm:px-6';
 const FILTER_BASE = 'rounded-chip border px-3 py-1 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-[--dur-fast] ease-[--ease-out] active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100';
 const FILTER_ON = 'border-transparent bg-primary text-primary-foreground';
 const FILTER_OFF = 'border-border bg-card text-muted-foreground hover:bg-sunken hover:text-foreground';
-const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset';
+const LIST_ROW = 'flex items-center gap-3 px-4 py-3.5 hover:bg-sunken active:bg-inset';
 
 function FilterLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -141,7 +141,7 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
                 const href = billingDetailHref(row.customerId);
                 return (
                   <li key={row.customerId}>
-                    <Link href={href} className={LIST_ROW}>
+                    <ListLink href={href} className={LIST_ROW}>
                       <BillingStatusDot status={row.status} />
                       <p className={cn('min-w-0 flex-1 truncate text-sm font-medium', row.status === 'suspended' && 'text-muted-foreground')}>{row.name}</p>
                       <div className="shrink-0 text-right text-xs">
@@ -156,7 +156,7 @@ export function CustomerBillingTable({ rows, filter, renewalNoticeDays }: Props)
                         {row.outstanding > 0 && <p className="mt-0.5 tabular-nums"><OutstandingCell row={row} /> owed</p>}
                       </div>
                       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                    </Link>
+                    </ListLink>
                   </li>
                 );
               })}

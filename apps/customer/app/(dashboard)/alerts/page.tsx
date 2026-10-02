@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { Badge, Button, Card, LinkRow } from "@senso/ui";
+import { Badge, Button, Card, LinkRow, ListLink } from "@senso/ui";
 import { createClient } from "@/lib/supabase/server";
 import { requireCustomer } from "@/lib/supabase/get-customer";
 import { formatDateTimeLong } from "@/lib/temperature";
@@ -166,7 +166,7 @@ export default async function AlertsPage() {
               const branchName = multiBranch && sensorId ? branchNameBySensor.get(sensorId) : undefined;
               return (
                 <li key={alert.id}>
-                  <Link href={`/alerts/${alert.id}`} className="flex items-center gap-3 px-4 py-3.5 transition-colors duration-[--dur-fast] hover:bg-sunken active:bg-inset">
+                  <ListLink href={`/alerts/${alert.id}`} className="flex items-center gap-3 px-4 py-3.5 hover:bg-sunken active:bg-inset">
                     <div className="min-w-0 flex-1 text-sm">
                       <p className="truncate font-medium">{sensorId ? (sensorNameById.get(sensorId) ?? sensorId) : "—"}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -180,7 +180,7 @@ export default async function AlertsPage() {
                       <Badge variant="alert" dot className="shrink-0">Active</Badge>
                     )}
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  </Link>
+                  </ListLink>
                 </li>
               );
             })}
