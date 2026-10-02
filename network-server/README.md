@@ -239,7 +239,7 @@ backfill below, plus three ids in Vercel naming where new devices go
 the values are in §9). What it does, so nobody has to do it here by hand:
 
 - **Names.** A device's name here is a fixed office label for the physical unit, derived
-  from its EUI by the admin site: `G-0088` for a gateway, `S-011e` for a sensor (the last
+  from its EUI by the admin site: `G-0088` for a gateway, `S-011E` for a sensor (the last
   four characters). It never changes when the device moves between customers. What the
   fridge *is* ("Walk-in fridge") is the Senso-side name, set at install and the
   customer's to change. Decided 2026-10-02; devices registered before then were renamed
