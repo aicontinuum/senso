@@ -33,11 +33,9 @@ Fill these when the office decides them:
 - ~~WhatsApp number~~ done: +974 5028 8285 in every `wa.me` link
 - ~~Email~~ done: `info@sensoqa.com`, forwarded through Cloudflare Email Routing
 - Privacy and Terms links in the footer (`href="#"`)
-- ~~The **Book a site visit** form~~ done: two buttons, "Send by email"
-  and "Send on WhatsApp". Either opens the visitor's own app with the
-  answers typed into a message to the office. The number and address live
-  in `site.js` (`WHATSAPP_NUMBER`, `OFFICE_EMAIL`) as well as in the page
-  links; change both.
+- ~~The **Book a site visit** form~~ done: it opens WhatsApp with the
+  answers typed into a message to the office number. The number lives in
+  `site.js` (`WHATSAPP_NUMBER`) as well as in the `wa.me` links; change both.
 
 ## Where the pages came from
 

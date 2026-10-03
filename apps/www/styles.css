@@ -240,10 +240,7 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
 @media (hover: hover) {
   .dialog-close:hover { background: var(--surface-sunken); color: var(--text-primary); }
 }
-@media (max-width: 480px) {
-  .dialog-row { grid-template-columns: minmax(0, 1fr); }
-  .dialog-foot .btn { flex: 1 1 100%; }
-}
+@media (max-width: 480px) { .dialog-row { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- Toast ---------- */
 .toast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 80; display: flex; align-items: flex-start; gap: var(--space-3); padding: 14px 16px; width: max-content; max-width: min(400px, calc(100vw - 40px)); background: var(--neutral-900); color: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); animation: senso-rise var(--dur-slow) var(--ease-out); }
