@@ -90,8 +90,13 @@
   --text-input: var(--text-base);
 }
 
+/* A press under a thumb needs more give than one under a pointer to be seen at all. */
+@media (pointer: coarse) {
+  :root { --press-scale: 0.97; }
+}
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --press-scale: 1; }
+  .dialog[open], .toast { animation: none; }
 }
 
 /* ---------- Base ---------- */
@@ -100,7 +105,9 @@ html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 html, body { margin: 0; background: var(--surface-page); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 h1, h2, h3, p { margin: 0; }
 a { color: var(--text-accent); }
-img { max-width: 100%; }
+/* Images carry their intrinsic size in the markup, so the page keeps its
+   shape while they load; height: auto keeps the ratio where CSS sets a width. */
+img { max-width: 100%; height: auto; }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 /* Controls never double-tap-zoom, so a tap fires at once, and a long press
    on a button must not select its label. */
@@ -120,12 +127,21 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
 .section-hero { padding: var(--hero-top) var(--gutter) var(--hero-bottom); }
 .section-flush-top { padding-top: 0; }
 .section-footer { padding: 64px var(--gutter) calc(32px + env(safe-area-inset-bottom)); }
+/* Footer links are small text but full-height targets: 44px each, laid out so
+   the rows still read as a list. */
+.footer-links { display: grid; margin: -11px 0; }
+.footer-link { display: inline-flex; align-items: center; min-height: 44px; font: 400 14px/1.5 var(--font-sans); color: rgba(255, 255, 255, .72); text-decoration: none; }
+.footer-legal { display: flex; gap: 20px; }
+.footer-legal .footer-link { color: inherit; }
+@media (hover: hover) {
+  .footer-link:hover { color: #fff; }
+}
 
 /* ---------- Header and navigation ---------- */
 .site-header { position: sticky; top: 0; z-index: 30; background: var(--surface-glass); backdrop-filter: var(--blur-glass); -webkit-backdrop-filter: var(--blur-glass); border-bottom: 1px solid var(--border-subtle); padding-top: env(safe-area-inset-top); }
 .site-header-inner { max-width: 1200px; margin: 0 auto; padding: 0 var(--gutter); height: var(--header-h); display: flex; align-items: center; gap: 32px; }
 .site-logo { display: flex; }
-.site-logo img { height: 26px; display: block; }
+.site-logo img { height: 26px; width: auto; display: block; }
 .nav-desktop { display: flex; gap: 24px; flex: 1; flex-wrap: wrap; }
 .nav-desktop a { font: 500 14px/1 var(--font-sans); color: var(--text-secondary); text-decoration: none; }
 .nav-desktop a[aria-current="page"] { color: var(--text-primary); font-weight: 600; }
@@ -177,16 +193,26 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
 .card-raised { box-shadow: var(--shadow-lg); }
 .card-sunken { background: var(--surface-sunken); border-color: transparent; }
 .card-gradient { background: var(--brand-gradient); border-color: transparent; color: #fff; }
+/* One icon treatment for every card: the brand colour in a soft circle. */
+.card-icon { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: var(--radius-full); background: var(--accent-soft); color: var(--text-accent); }
 .badge { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: var(--radius-chip); border: 1px solid; font: var(--weight-semibold) var(--text-xs)/1 var(--font-sans); white-space: nowrap; }
 .badge-accent { background: var(--accent-soft); color: var(--text-accent); border-color: var(--brand-200); }
 .badge-ok { background: var(--ok-soft); color: var(--ok-text); border-color: var(--ok-border); }
 .badge-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; opacity: .9; }
 
 /* ---------- FAQ ---------- */
-details summary { list-style: none; }
-details summary::-webkit-details-marker { display: none; }
-details summary .icon { transition: transform var(--dur-base) var(--ease-out); }
-details[open] summary .icon { transform: rotate(180deg); }
+.faq { background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 0 20px; box-shadow: var(--shadow-sm); }
+.faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; font: 600 16px/1.3 var(--font-sans); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .icon { color: var(--text-muted); transition: transform var(--dur-base) var(--ease-out); }
+.faq[open] summary .icon { transform: rotate(180deg); }
+.faq-answer { font: 400 15px/1.65 var(--font-sans); color: var(--text-secondary); padding: 0 0 20px; }
+/* The answer slides open rather than cutting in, where the browser can
+   animate a details element (Chrome, Edge, Safari 18.4+); elsewhere it opens
+   as before. interpolate-size lets height tween to auto. */
+:root { interpolate-size: allow-keywords; }
+.faq::details-content { block-size: 0; opacity: 0; overflow: hidden; transition: block-size var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out), content-visibility var(--dur-base) allow-discrete; }
+.faq[open]::details-content { block-size: auto; opacity: 1; }
 
 /* ---------- Form fields ---------- */
 .field-label { display: block; font: var(--type-label); color: var(--text-secondary); margin-bottom: 6px; }
