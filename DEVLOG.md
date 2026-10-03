@@ -207,9 +207,9 @@ keeps the switch to retired sensors, so a live one can never be hidden
 and a report never silently shortened. The customer's one update grant
 on sensors widens from `name` to `name, hidden_at`; the row rule is
 unchanged, so an owner login cannot hide a member's sensor, and the
-picker shows no bin to one. The confirmation says the readings are
-kept. Not built: a way to unhide; the admin can clear `hidden_at` by
-hand if ever asked.
+picker shows no bin to one. By decision, the confirmation tells the
+customer there is no undo, and there is none on their side; the office
+can clear `hidden_at` by hand if it ever must.
 
 ## 2026-10-02 — Test accounts: rehearsal money counts nowhere
 
