@@ -307,9 +307,9 @@ Vercel project. These were left as placeholders by decision when it went up.
 
 - [ ] **Contact details.** The WhatsApp number is `97400000000` in every
   `wa.me` link (three on the home page, two on How it works, one in each
-  footer) and the email is now `info@sensoqa.com`, forwarded by Cloudflare Email Routing (done 2026-10-03). Replace the number with the real one and
-  the real address, most likely on sensoqa.com since mail already sends from
-  there. Search both HTML files for `wa.me` and `hello@`.
+  footer). Replace it with the real number; search both HTML files for
+  `wa.me`. The email is done: `info@sensoqa.com`, forwarded to the office
+  inbox by Cloudflare Email Routing (2026-10-03).
 
 - [ ] **The booking form sends nothing.** "Request a visit" closes the dialog
   and shows "Request received"; the details go nowhere. Either wire it to an
