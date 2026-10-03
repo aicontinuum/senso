@@ -231,13 +231,16 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
 .dialog-title { font: var(--type-h3); letter-spacing: var(--tracking-tight); }
 .dialog-subtitle { font: var(--type-body-sm); color: var(--text-muted); margin-top: 4px; }
 .dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: none; border-radius: var(--radius-full); cursor: pointer; padding: 0; background: transparent; color: var(--text-muted); transition: var(--transition-control); }
-.dialog-body { padding: 0 var(--space-6) var(--space-6); display: grid; gap: 16px; }
-.dialog-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* minmax(0, 1fr): a plain 1fr track cannot shrink below a text input's
+   intrinsic width, so the two-up row would overflow the dialog and widen
+   every field below it. */
+.dialog-body { padding: 0 var(--space-6) var(--space-6); display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.dialog-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-4) var(--space-6); background: var(--surface-sunken); border-top: 1px solid var(--border-subtle); }
 @media (hover: hover) {
   .dialog-close:hover { background: var(--surface-sunken); color: var(--text-primary); }
 }
-@media (max-width: 480px) { .dialog-row { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .dialog-row { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- Toast ---------- */
 .toast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 80; display: flex; align-items: flex-start; gap: var(--space-3); padding: 14px 16px; width: max-content; max-width: min(400px, calc(100vw - 40px)); background: var(--neutral-900); color: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); animation: senso-rise var(--dur-slow) var(--ease-out); }
