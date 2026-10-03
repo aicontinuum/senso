@@ -36,11 +36,16 @@ Two separate Next.js apps, deliberately sharing no session or auth context:
 
 `/api/ingest` and `/api/cron/*` both live in the admin app.
 
+The public marketing site at www.sensoqa.com is `apps/www`: plain HTML,
+CSS and one small script, no framework, its own Vercel project. See its
+README.
+
 ## Repository map
 
 ```
 apps/customer        Customer site (Next.js App Router)
 apps/admin           Admin site + every API route
+apps/www             Marketing site, static HTML (www.sensoqa.com)
 packages/tokens      Design-system CSS, vendored verbatim — diff, don't hand-merge
 packages/ui          App shell shared by both sites (AppShell, Sidebar, Header, Logo)
 packages/types       Shared TypeScript types
