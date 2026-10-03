@@ -194,6 +194,28 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-03 — Marketing site: `apps/www`, plain HTML for www.sensoqa.com
+
+The home and How-it-works pages arrived as a Claude Design export: two
+`.dc.html` files that, on every visit, pulled React, ReactDOM and a 3 MB
+Babel from unpkg, compiled the page in the browser, and fetched each
+icon from unpkg one by one. Blank if unpkg is slow, and the opposite of
+the "few moving parts" rule. Rebuilt as static files in `apps/www`: two
+pages, one stylesheet (the design system's tokens plus class rules that
+stand in for its Button, Card, Badge, field, Dialog and Toast
+components), a 60-line script for the mobile menu and the booking
+dialog, and the five images the pages use. Icons are inline SVG from
+lucide. Nothing is loaded from a third party except the Google fonts.
+The layout keeps the designer's inline styles; this folder is not one
+of the Next apps, and the no-inline-styles rule is theirs. Its own
+Vercel project, root `apps/www`, `sensoqa.com` redirects to
+`www.sensoqa.com` in `vercel.json`, and the app sites are untouched.
+Placeholders kept on purpose until the office fills them: the WhatsApp
+number, the hello@ address, the Privacy and Terms links, and the
+booking form, which closes with a "Request received" toast and sends
+nothing anywhere yet. Also unconfirmed copy: humidity, two years of
+history, a 20-minute grace period.
+
 ## 2026-10-03 — A retired sensor can be taken off the Reports page
 
 Reports is the one customer screen that lists retired sensors, so a
