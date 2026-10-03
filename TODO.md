@@ -309,10 +309,10 @@ Vercel project. These were left as placeholders by decision when it went up.
   every `wa.me` link; email `info@sensoqa.com`, forwarded to the office inbox
   by Cloudflare Email Routing.
 
-- [x] ~~**The booking form sends nothing.**~~ **DONE 2026-10-03** — "Continue on
-  WhatsApp" opens a chat with the office number and the answers already typed
-  in; the visitor presses send. No backend. The number is in `site.js` and in
-  the `wa.me` links; change both together.
+- [x] ~~**The booking form sends nothing.**~~ **DONE 2026-10-03** — the visitor
+  chooses "Send on WhatsApp" or "Send by email"; either opens their own app
+  with the answers already typed in and they press send. No backend. The
+  number and address are in `site.js` and in the page links; change both.
 
 - [ ] **Confirm the copy's claims.** The pages promise humidity readings, two
   years of history, batteries that last years, and a 20-minute grace period.

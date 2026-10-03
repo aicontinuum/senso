@@ -338,7 +338,7 @@
     <div class="dialog-head">
       <div style="flex: 1; min-width: 0;">
         <div class="dialog-title" id="dialog-title">Book a site visit</div>
-        <div class="dialog-subtitle">About an hour, around your service. Your details open in WhatsApp, ready to send.</div>
+        <div class="dialog-subtitle">About an hour, around your service. Your details open in WhatsApp or your mail app, ready to send.</div>
       </div>
       <button type="button" class="dialog-close" aria-label="Close" data-close-dialog><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon " aria-hidden="true" width="15" height="15"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
     </div>
@@ -353,7 +353,8 @@
     </div>
     <div class="dialog-foot">
       <button type="button" class="btn btn-ghost btn-md" data-close-dialog>Cancel</button>
-      <button type="submit" class="btn btn-primary btn-md">Continue on WhatsApp</button>
+      <button type="submit" class="btn btn-secondary btn-md" value="email">Send by email</button>
+      <button type="submit" class="btn btn-primary btn-md" value="whatsapp">Send on WhatsApp</button>
     </div>
   </form>
 </dialog>
@@ -361,7 +362,7 @@
 <div class="toast" role="status" hidden>
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true" width="18" height="18"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
   <div style="flex: 1; min-width: 0;">
-    <div class="toast-title">Your message is ready in WhatsApp</div>
+    <div class="toast-title">Your message is ready to send</div>
     <div class="toast-body">Press send there and we will reply within one working day to fix a time.</div>
   </div>
 </div>
