@@ -307,7 +307,7 @@ Vercel project. These were left as placeholders by decision when it went up.
 
 - [ ] **Contact details.** The WhatsApp number is `97400000000` in every
   `wa.me` link (three on the home page, two on How it works, one in each
-  footer) and the email is `hello@senso.qa`. Replace with the real number and
+  footer) and the email is now `info@sensoqa.com`, forwarded by Cloudflare Email Routing (done 2026-10-03). Replace the number with the real one and
   the real address, most likely on sensoqa.com since mail already sends from
   there. Search both HTML files for `wa.me` and `hello@`.
 
