@@ -1,5 +1,6 @@
-import { Badge } from "@senso/ui";
-import { Card } from "@senso/ui";
+import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import { Badge, Button, Card } from "@senso/ui";
 import { cn } from "@/lib/utils";
 import type { SensorShape } from "./report-model";
 
@@ -14,6 +15,9 @@ interface SensorPickerProps {
    *  off when one branch was chosen and the tag would say the same thing
    *  on every row. */
   showBranch: boolean;
+  /** Remove a retired sensor from this page, for good. Absent for an owner
+   *  login, which changes nothing on a member's account. */
+  onHide?: (id: string) => Promise<string | null>;
 }
 
 const CHECKBOX = "size-4 shrink-0 accent-primary";
@@ -25,7 +29,22 @@ export function SensorPicker({
   onToggleAll,
   onToggleSensor,
   showBranch,
+  onHide,
 }: SensorPickerProps) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [hideError, setHideError] = useState<{ id: string; message: string } | null>(null);
+
+  async function hide(id: string) {
+    if (!onHide) return;
+    setHideError(null);
+    setBusyId(id);
+    const error = await onHide(id);
+    setBusyId(null);
+    setConfirmId(null);
+    if (error) setHideError({ id, message: error });
+  }
+
   if (sensors.length === 0) {
     return <p className="text-sm text-muted-foreground">No sensors available.</p>;
   }
@@ -78,6 +97,22 @@ export function SensorPicker({
               {!reportable && (
                 <Badge variant="offline" className="shrink-0">Not in service</Badge>
               )}
+              {/* A retired sensor can be taken off this page. Its readings
+                  stay, and the confirmation says so. */}
+              {onHide && s.decommissionedAt && (confirmId === s.id ? (
+                <span className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+                  <span className="text-xs text-muted-foreground">Remove from reports? Its readings are kept.</span>
+                  <Button variant="danger" size="sm" onClick={() => hide(s.id)} disabled={busyId === s.id}>{busyId === s.id ? "Removing…" : "Remove"}</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)} disabled={busyId === s.id}>Cancel</Button>
+                </span>
+              ) : (
+                <span className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+                  {hideError?.id === s.id && <span className="text-xs text-alert-text">{hideError.message}</span>}
+                  <Button variant="ghost" size="icon" aria-label={`Remove ${s.name} from reports`} title="Remove from reports" className="hover:text-alert-text" onClick={() => setConfirmId(s.id)}>
+                    <Trash2 className="size-4" />
+                  </Button>
+                </span>
+              ))}
               </span>
             </label>
           );

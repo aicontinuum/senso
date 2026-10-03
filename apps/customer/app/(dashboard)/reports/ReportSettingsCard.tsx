@@ -27,6 +27,8 @@ interface ReportSettingsCardProps {
   allSelected: boolean;
   onToggleAll: () => void;
   onToggleSensor: (id: string) => void;
+  /** Remove a retired sensor from the page; absent for an owner login. */
+  onHideSensor?: (id: string) => Promise<string | null>;
   /** Called with the instant the button was pressed: the report's clock. */
   onGenerate: (now: number) => void;
   generating: boolean;
@@ -66,6 +68,7 @@ export function ReportSettingsCard({
   allSelected,
   onToggleAll,
   onToggleSensor,
+  onHideSensor,
   onGenerate,
   generating,
 }: ReportSettingsCardProps) {
@@ -106,6 +109,7 @@ export function ReportSettingsCard({
             onToggleAll={onToggleAll}
             onToggleSensor={onToggleSensor}
             showBranch={branchId === ALL_BRANCHES}
+            onHide={onHideSensor}
           />
         </Field>
 

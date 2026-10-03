@@ -12,7 +12,9 @@ export default async function ReportsPage() {
   // Reports are the one screen that deliberately includes retired sensors. Every
   // live view hides them, but a report is inherently historical: an auditor asking
   // for a fridge's records from before it was decommissioned must still be able to
-  // produce them. They're listed with a "Retired" marker and unselected by default.
+  // produce them. They're listed with a "Retired" marker and unselected by default,
+  // until the customer removes one from this page; it is then hidden here and
+  // nowhere else, its readings untouched.
   //
   // Sensors that were never commissioned are the opposite case: they have no
   // history to report, only bench readings, so they are listed but cannot be
@@ -20,7 +22,7 @@ export default async function ReportsPage() {
   const scope = await loadScope(supabase, customer);
   const { data: gateways } = await supabase
     .from("gateways")
-    .select("customer_id, branch_id, sensors (id, name, hardware_id, decommissioned_at, commissioned_at)")
+    .select("customer_id, branch_id, sensors (id, name, hardware_id, decommissioned_at, commissioned_at, hidden_at)")
     .in("customer_id", scope.customerIds);
 
   // Sites: branches, or for an owner login the member accounts.
@@ -37,7 +39,9 @@ export default async function ReportsPage() {
       hardware_id: string | null;
       decommissioned_at: string | null;
       commissioned_at: string | null;
+      hidden_at: string | null;
     }[])
+      .filter((s) => s.hidden_at === null)
       .map((s) => ({
         id: s.id,
         name: s.name,
