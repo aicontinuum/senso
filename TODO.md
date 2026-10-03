@@ -305,11 +305,9 @@ Vercel project. These were left as placeholders by decision when it went up.
   the booking form takes names and phone numbers), add them to `apps/www`,
   and point the footer links at them.
 
-- [ ] **Contact details.** The WhatsApp number is `97400000000` in every
-  `wa.me` link (three on the home page, two on How it works, one in each
-  footer). Replace it with the real number; search both HTML files for
-  `wa.me`. The email is done: `info@sensoqa.com`, forwarded to the office
-  inbox by Cloudflare Email Routing (2026-10-03).
+- [x] ~~**Contact details.**~~ **DONE 2026-10-03** — WhatsApp +974 5028 8285 in
+  every `wa.me` link; email `info@sensoqa.com`, forwarded to the office inbox
+  by Cloudflare Email Routing.
 
 - [ ] **The booking form sends nothing.** "Request a visit" closes the dialog
   and shows "Request received"; the details go nowhere. Either wire it to an

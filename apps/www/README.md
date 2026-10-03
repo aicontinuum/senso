@@ -30,7 +30,7 @@ needs adding there or the browser blocks it.
 
 Fill these when the office decides them:
 
-- WhatsApp number `97400000000` (every `wa.me` link)
+- ~~WhatsApp number~~ done: +974 5028 8285 in every `wa.me` link
 - ~~Email~~ done: `info@sensoqa.com`, forwarded through Cloudflare Email Routing
 - Privacy and Terms links in the footer (`href="#"`)
 - The **Book a site visit** form: it shows "Request received" and sends
