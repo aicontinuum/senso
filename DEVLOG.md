@@ -201,11 +201,10 @@ it closed with "Request received" and nothing was received. Decided
 against wiring an email backend: "Continue on WhatsApp" now opens a
 chat with the office number with the answers already typed in (name,
 business, what to monitor, how many units, and a phone number only if
-one was given), and the visitor presses send. For a laptop without
-WhatsApp there is a second button, "Send by email", which opens the
-visitor's mail app with the same message addressed to the office; the
-site itself still sends nothing, by decision, over a Resend-backed
-function. Nothing to host, no secrets, and the visitor sees the message go. Name is the one required
+one was given), and the visitor presses send. A "Send by email" button that opened the
+visitor's mail app was tried the same day and dropped by decision:
+WhatsApp only. Nothing to host, no secrets, and the visitor sees the
+message go. Name is the one required
 field; the phone field is optional since the chat carries their number.
 The number lives in `site.js` and in the `wa.me` links; the README says
 to change both. The contact email is `info@sensoqa.com`, forwarded by
