@@ -98,11 +98,12 @@ export function SensorPicker({
               {!reportable && (
                 <Badge variant="offline" className="shrink-0">Not in service</Badge>
               )}
-              {/* A retired sensor can be taken off this page. Its readings
-                  stay, and the confirmation says so. */}
+              {/* A retired sensor can be taken off this page, for good as
+                  far as the customer is concerned; the readings stay on
+                  record for the office. */}
               {onHide && s.decommissionedAt && (confirmId === s.id ? (
                 <span className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
-                  <span className="text-xs text-muted-foreground">Remove from reports? Its readings are kept.</span>
+                  <span className="text-xs text-muted-foreground">Remove retired sensor? There is no way to undo this.</span>
                   <Button variant="danger" size="sm" onClick={() => hide(s.id)} disabled={busyId === s.id}>{busyId === s.id ? "Removing…" : "Remove"}</Button>
                   <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)} disabled={busyId === s.id}>Cancel</Button>
                 </span>
