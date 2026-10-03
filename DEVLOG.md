@@ -194,6 +194,23 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-03 — A retired sensor can be taken off the Reports page
+
+Reports is the one customer screen that lists retired sensors, so a
+record from before a sensor was replaced can still be produced. Asked
+for: a bin on those rows so the customer can clear them. Built as hide,
+not delete: `sensors.hidden_at` (`20261003_sensor_hidden.sql`), set by
+the customer through `POST /api/sensors/[id]/hide`, drops the sensor
+from the Reports picker and nowhere else. The row and every reading
+stay, the admin site still sees everything, and a check in the database
+keeps the switch to retired sensors, so a live one can never be hidden
+and a report never silently shortened. The customer's one update grant
+on sensors widens from `name` to `name, hidden_at`; the row rule is
+unchanged, so an owner login cannot hide a member's sensor, and the
+picker shows no bin to one. The confirmation says the readings are
+kept. Not built: a way to unhide; the admin can clear `hidden_at` by
+hand if ever asked.
+
 ## 2026-10-02 — Test accounts: rehearsal money counts nowhere
 
 The office's own Home account has an issued invoice and a payment from

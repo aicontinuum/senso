@@ -138,6 +138,24 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     setGeneratedAt(null);
   }
 
+  // Takes a retired sensor off this page for good; its readings stay. The
+  // server refuses anything that is not retired. On success the row leaves
+  // the list on refresh, and the selection forgets it so the count stays
+  // honest. Returns the message to show, or null when it worked.
+  async function hideSensor(id: string): Promise<string | null> {
+    const res = await fetch(`/api/sensors/${id}/hide`, { method: "POST" });
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) return data?.error ?? "Could not remove the sensor. Please try again.";
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setGeneratedAt(null);
+    router.refresh();
+    return null;
+  }
+
   function changeRange(next: RangeValue) {
     setRange(next);
     setGeneratedAt(null);
@@ -397,6 +415,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
             allSelected={allSelected}
             onToggleAll={toggleAll}
             onToggleSensor={toggleSensor}
+            onHideSensor={isGroup ? undefined : hideSensor}
             onGenerate={generate}
             generating={generating}
           />
