@@ -4,9 +4,15 @@
   'use strict';
 
   var TOAST_MS = 5000;
-  // The office WhatsApp number, digits only. The wa.me links in the pages
-  // carry the same number; change both together.
+  // The office contacts. The wa.me and mailto links in the pages carry the
+  // same values; change them together.
   var WHATSAPP_NUMBER = '97450288285';
+  var OFFICE_EMAIL = 'info@sensoqa.com';
+  var EMAIL_SUBJECT = 'Site visit request';
+  var TOAST_TITLE = {
+    whatsapp: 'Your message is ready in WhatsApp',
+    email: 'Your message is ready in your mail app',
+  };
 
   // Mobile menu.
   var toggle = document.querySelector('.nav-toggle');
@@ -25,13 +31,15 @@
   }
 
   // Booking dialog. There is no server behind the site, so the form does not
-  // send anything itself: it opens WhatsApp with the answers already typed
-  // into a message to the office, and the visitor presses send there.
+  // send anything itself: it opens WhatsApp or the visitor's mail app with
+  // the answers already typed into a message to the office, and the visitor
+  // presses send there. Which one depends on the button they pressed.
   var dialog = document.querySelector('.dialog');
   var toast = document.querySelector('.toast');
   var toastTimer = null;
 
-  function showToast() {
+  function showToast(channel) {
+    toast.querySelector('.toast-title').textContent = TOAST_TITLE[channel];
     toast.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toast.hidden = true; }, TOAST_MS);
@@ -51,6 +59,10 @@
 
   function whatsappUrl(message) {
     return 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message);
+  }
+
+  function mailtoUrl(message) {
+    return 'mailto:' + OFFICE_EMAIL + '?subject=' + encodeURIComponent(EMAIL_SUBJECT) + '&body=' + encodeURIComponent(message);
   }
 
   if (dialog) {
@@ -79,12 +91,20 @@
     });
     form.addEventListener('submit', function (event) {
       event.preventDefault();
-      // Opened from the submit click so browsers treat it as the visitor's
-      // own action: a new tab on a laptop, the app on a phone.
-      window.open(whatsappUrl(bookingMessage(form)), '_blank', 'noopener');
+      var channel = event.submitter && event.submitter.value === 'email' ? 'email' : 'whatsapp';
+      var message = bookingMessage(form);
+      if (channel === 'email') {
+        // A mailto link hands the message to the mail app and leaves the page
+        // where it is.
+        window.location.assign(mailtoUrl(message));
+      } else {
+        // Opened from the submit click so browsers treat it as the visitor's
+        // own action: a new tab on a laptop, the app on a phone.
+        window.open(whatsappUrl(message), '_blank', 'noopener');
+      }
       form.reset();
       dialog.close();
-      showToast();
+      showToast(channel);
     });
   }
 })();
