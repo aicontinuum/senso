@@ -309,11 +309,10 @@ Vercel project. These were left as placeholders by decision when it went up.
   every `wa.me` link; email `info@sensoqa.com`, forwarded to the office inbox
   by Cloudflare Email Routing.
 
-- [ ] **The booking form sends nothing.** "Request a visit" closes the dialog
-  and shows "Request received"; the details go nowhere. Either wire it to an
-  email (a small serverless function in the www project, or an admin API
-  route) or replace the dialog with a WhatsApp link carrying a pre-written
-  message. Do this before the site is promoted, so no enquiry is lost.
+- [x] ~~**The booking form sends nothing.**~~ **DONE 2026-10-03** — "Continue on
+  WhatsApp" opens a chat with the office number and the answers already typed
+  in; the visitor presses send. No backend. The number is in `site.js` and in
+  the `wa.me` links; change both together.
 
 - [ ] **Confirm the copy's claims.** The pages promise humidity readings, two
   years of history, batteries that last years, and a 20-minute grace period.

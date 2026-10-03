@@ -3,8 +3,10 @@
 (function () {
   'use strict';
 
-  var TOAST_MS = 3600;
-  var SENDING_LABEL = 'Sending…';
+  var TOAST_MS = 5000;
+  // The office WhatsApp number, digits only. The wa.me links in the pages
+  // carry the same number; change both together.
+  var WHATSAPP_NUMBER = '97450288285';
 
   // Mobile menu.
   var toggle = document.querySelector('.nav-toggle');
@@ -22,7 +24,9 @@
     });
   }
 
-  // Booking dialog.
+  // Booking dialog. There is no server behind the site, so the form does not
+  // send anything itself: it opens WhatsApp with the answers already typed
+  // into a message to the office, and the visitor presses send there.
   var dialog = document.querySelector('.dialog');
   var toast = document.querySelector('.toast');
   var toastTimer = null;
@@ -33,26 +37,27 @@
     toastTimer = setTimeout(function () { toast.hidden = true; }, TOAST_MS);
   }
 
-  // The form is a placeholder: nothing is sent anywhere yet. This is the one
-  // function to replace when it is; the button's busy state and the toast
-  // around it already behave as they will then.
-  function sendBooking() {
-    return Promise.resolve();
+  function bookingMessage(form) {
+    var value = function (name) { return form.elements[name].value.trim(); };
+    var lines = [
+      'Hi Senso, I would like to book a site visit.',
+      'Name: ' + value('name'),
+      'Business: ' + (value('business') || '-'),
+      'Monitoring: ' + value('site') + ', ' + value('units'),
+    ];
+    if (value('phone')) lines.push('Call me on: ' + value('phone'));
+    return lines.join('\n');
+  }
+
+  function whatsappUrl(message) {
+    return 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(message);
   }
 
   if (dialog) {
     var form = dialog.querySelector('form');
     var firstField = form.querySelector('input, select');
-    var buttons = form.querySelectorAll('button');
-    var submit = form.querySelector('button[type="submit"]');
-    var submitLabel = submit.textContent;
     // Where focus goes back to when the dialog closes: the button that opened it.
     var opener = null;
-
-    function setBusy(busy) {
-      submit.textContent = busy ? SENDING_LABEL : submitLabel;
-      buttons.forEach(function (button) { button.disabled = busy; });
-    }
 
     document.querySelectorAll('[data-open-dialog]').forEach(function (button) {
       button.addEventListener('click', function () {
@@ -65,27 +70,21 @@
     dialog.querySelectorAll('[data-close-dialog]').forEach(function (button) {
       button.addEventListener('click', function () { dialog.close(); });
     });
-    // A click on the backdrop lands on the dialog element itself. Neither it
-    // nor Escape (which closes a modal dialog by itself) may close the form
-    // while it is sending.
+    // A click on the backdrop lands on the dialog element itself.
     dialog.addEventListener('click', function (event) {
-      if (event.target === dialog && !submit.disabled) dialog.close();
-    });
-    dialog.addEventListener('cancel', function (event) {
-      if (submit.disabled) event.preventDefault();
+      if (event.target === dialog) dialog.close();
     });
     dialog.addEventListener('close', function () {
       if (opener) opener.focus();
     });
     form.addEventListener('submit', function (event) {
       event.preventDefault();
-      setBusy(true);
-      sendBooking().then(function () {
-        setBusy(false);
-        form.reset();
-        dialog.close();
-        showToast();
-      });
+      // Opened from the submit click so browsers treat it as the visitor's
+      // own action: a new tab on a laptop, the app on a phone.
+      window.open(whatsappUrl(bookingMessage(form)), '_blank', 'noopener');
+      form.reset();
+      dialog.close();
+      showToast();
     });
   }
 })();

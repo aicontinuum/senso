@@ -194,6 +194,21 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-03 — www: the booking form hands over to WhatsApp
+
+The site has no server, so the booking dialog could not send anything;
+it closed with "Request received" and nothing was received. Decided
+against wiring an email backend: "Continue on WhatsApp" now opens a
+chat with the office number with the answers already typed in (name,
+business, what to monitor, how many units, and a phone number only if
+one was given), and the visitor presses send. Nothing to host, no
+secrets, and the visitor sees the message go. Name is the one required
+field; the phone field is optional since the chat carries their number.
+The number lives in `site.js` and in the `wa.me` links; the README says
+to change both. The contact email is `info@sensoqa.com`, forwarded by
+Cloudflare Email Routing on the bare domain (MX records added, the SPF
+was already Cloudflare's; Resend's records stay on `send.`).
+
 ## 2026-10-03 — Marketing site: `apps/www`, plain HTML for www.sensoqa.com
 
 The home and How-it-works pages arrived as a Claude Design export: two
