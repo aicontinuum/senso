@@ -294,3 +294,29 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
   migration are still judged against today's threshold — the exact behaviour the feature
   removes. Accepted at the time because those were test runs. If any pre-migration reading
   ever needs to be defensible, this is the gap.
+
+## Marketing site (www.sensoqa.com) — added 2026-10-03
+
+The site is static HTML in `apps/www`; see its README. Live on its own
+Vercel project. These were left as placeholders by decision when it went up.
+
+- [ ] **Privacy policy and Terms pages.** The footer's Privacy and Terms links
+  on both pages go to `#`. Write the two pages (the privacy one matters more:
+  the booking form takes names and phone numbers), add them to `apps/www`,
+  and point the footer links at them.
+
+- [ ] **Contact details.** The WhatsApp number is `97400000000` in every
+  `wa.me` link (three on the home page, two on How it works, one in each
+  footer) and the email is `hello@senso.qa`. Replace with the real number and
+  the real address, most likely on sensoqa.com since mail already sends from
+  there. Search both HTML files for `wa.me` and `hello@`.
+
+- [ ] **The booking form sends nothing.** "Request a visit" closes the dialog
+  and shows "Request received"; the details go nowhere. Either wire it to an
+  email (a small serverless function in the www project, or an admin API
+  route) or replace the dialog with a WhatsApp link carrying a pre-written
+  message. Do this before the site is promoted, so no enquiry is lost.
+
+- [ ] **Confirm the copy's claims.** The pages promise humidity readings, two
+  years of history, batteries that last years, and a 20-minute grace period.
+  Check each against what is sold today and correct the text where it differs.
