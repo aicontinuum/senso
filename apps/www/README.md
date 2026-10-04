@@ -21,6 +21,10 @@ Its own Vercel project, separate from the two apps:
   redirects to www; the rule is in `vercel.json`, so Vercel's own
   domain redirect can be left off.
 
+Vercel deploys from `main` on its own, but only when a commit touches a
+file inside `apps/www`. To force a redeploy, use **Redeploy** on the
+latest entry in the project's Deployments tab.
+
 The only third-party request a visitor makes is for the Google fonts.
 Everything else is served from this folder. The Content-Security-Policy
 in `vercel.json` says so; a new external script, image host or embed
