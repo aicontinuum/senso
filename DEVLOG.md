@@ -194,6 +194,22 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-09 — www: no form, every inquiry button is a WhatsApp link
+
+Asked whether the booking form was needed when it only led to WhatsApp.
+It was not: five fields on a phone before anything happens, and two
+WhatsApp buttons on one page that behaved differently. Dropped it. Every
+"Inquire on WhatsApp" button, the pricing buttons and the footer link now
+open a chat with the office number and one line pre-filled, "Hi Senso,
+I'd like to inquire about temperature monitoring for my business."; the
+office asks for the site details in its reply. The dialog, its toast, the
+form styles and most of `site.js` went with it; the script is the mobile
+menu only. Same day: privacy policy page at `/privacy` from the office's
+text (retention at least one year after the subscription ends, no Terms
+page), FAQ trimmed and extended, footer contact column simplified, the
+WhatsApp glyph on every WhatsApp button, and the header button hidden on
+phones where the menu carries it.
+
 ## 2026-10-03 — www: the booking form hands over to WhatsApp
 
 The site has no server, so the booking dialog could not send anything;

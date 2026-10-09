@@ -7,7 +7,7 @@ index.html          Home
 how-it-works.html   How it works   (served as /how-it-works)
 privacy.html        Privacy policy (served as /privacy)
 styles.css          Design tokens + the few component rules
-site.js             Mobile menu, booking dialog, toast
+site.js             Mobile menu
 assets/             Logos, the sensor photo, the Bloctech mark
 vercel.json         Clean URLs, sensoqa.com → www redirect, security headers
 ```
@@ -39,9 +39,10 @@ Fill these when the office decides them:
 - ~~Email~~ done: `info@sensoqa.com`, forwarded through Cloudflare Email Routing
 - ~~Privacy~~ done: `/privacy`, text supplied by the office 2026-10-09. No
   Terms page, by decision; the footer links only to Privacy.
-- ~~The **Book a site visit** form~~ done: it opens WhatsApp with the
-  answers typed into a message to the office number. The number lives in
-  `site.js` (`WHATSAPP_NUMBER`) as well as in the `wa.me` links; change both.
+- ~~The **Book a site visit** form~~ gone, by decision (2026-10-09): every
+  inquiry button is a plain link to WhatsApp with a short message pre-filled.
+  The number and the message are in the `wa.me` links in the three pages;
+  search for `wa.me` to change them.
 
 ## Where the pages came from
 
