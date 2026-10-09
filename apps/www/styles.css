@@ -121,7 +121,9 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
 /* ---------- Sections ---------- */
 .section { padding: var(--section-y) var(--gutter); }
 .section-compact { padding: var(--section-y-compact) var(--gutter); }
-.section-hero { padding: var(--hero-top) var(--gutter) var(--hero-bottom); }
+/* The glow behind the hero cards bleeds past them on purpose; it must not
+   bleed past the page, or a phone can be dragged sideways. */
+.section-hero { padding: var(--hero-top) var(--gutter) var(--hero-bottom); overflow-x: clip; }
 .section-flush-top { padding-top: 0; }
 .section-footer { padding: 64px var(--gutter) calc(32px + env(safe-area-inset-bottom)); }
 /* Footer links are small text but full-height targets: 44px each, laid out so
