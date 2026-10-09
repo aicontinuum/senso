@@ -256,9 +256,9 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
   .nav-toggle { display: inline-flex; }
   .site-header-inner { gap: 12px; }
   .site-logo img { height: 22px; }
-  /* The booking button stays in the header, at the same 44px as the menu
-     toggle beside it; the menu's own copy is for people already in the menu. */
-  .cta-header { height: 44px; padding: 0 14px; }
+  /* "Inquire on WhatsApp" is too long for a phone header next to the logo
+     and the menu toggle; the same button sits in the menu instead. */
+  .site-header .cta-header { display: none; }
 }
 @media (max-width: 640px) {
   :root { --section-y: 56px; --section-y-compact: 48px; --hero-top: 40px; --hero-bottom: 40px; }
