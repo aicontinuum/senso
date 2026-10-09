@@ -151,8 +151,8 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
 .nav-toggle[aria-expanded="true"] .icon-close { display: inline-block; }
 .nav-mobile { background: var(--surface-card); border-top: 1px solid var(--border-subtle); padding: 8px 20px 20px; box-shadow: var(--shadow-md); }
 .nav-mobile[hidden] { display: none; }
-.nav-mobile a { display: block; padding: 14px 4px; font: 600 17px/1.2 var(--font-sans); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-subtle); }
-.nav-mobile a:last-of-type { border-bottom: none; }
+.nav-mobile a:not(.btn) { display: block; padding: 14px 4px; font: 600 17px/1.2 var(--font-sans); color: var(--text-primary); text-decoration: none; border-bottom: 1px solid var(--border-subtle); }
+.nav-mobile a:not(.btn):last-of-type { border-bottom: none; }
 .nav-mobile .btn { width: 100%; margin-top: 16px; }
 @media (hover: hover) {
   .nav-desktop a:hover { color: var(--text-primary); }
