@@ -300,10 +300,9 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 The site is static HTML in `apps/www`; see its README. Live on its own
 Vercel project. These were left as placeholders by decision when it went up.
 
-- [ ] **Privacy policy and Terms pages.** The footer's Privacy and Terms links
-  on both pages go to `#`. Write the two pages (the privacy one matters more:
-  the booking form takes names and phone numbers), add them to `apps/www`,
-  and point the footer links at them.
+- [ ] **Terms page.** The Privacy policy is live at `/privacy` (text from the
+  office, 2026-10-09). The footer's Terms link on all three pages still goes to
+  `#`; write the page, add it to `apps/www`, point the links at it.
 
 - [x] ~~**Contact details.**~~ **DONE 2026-10-03** — WhatsApp +974 5028 8285 in
   every `wa.me` link; email `info@sensoqa.com`, forwarded to the office inbox
