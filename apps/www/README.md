@@ -8,7 +8,8 @@ how-it-works.html   How it works   (served as /how-it-works)
 privacy.html        Privacy policy (served as /privacy)
 styles.css          Design tokens + the few component rules
 site.js             Mobile menu
-assets/             Logos, the sensor photo, the Bloctech mark
+assets/             Logos, the how-it-works illustration, the sensor photo
+                    (now only the link-preview image), the Bloctech mark
 vercel.json         Clean URLs, sensoqa.com → www redirect, security headers
 ```
 
