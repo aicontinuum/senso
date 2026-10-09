@@ -308,10 +308,10 @@ Vercel project. These were left as placeholders by decision when it went up.
   every `wa.me` link; email `info@sensoqa.com`, forwarded to the office inbox
   by Cloudflare Email Routing.
 
-- [x] ~~**The booking form sends nothing.**~~ **DONE 2026-10-03** — "Continue on
-  WhatsApp" opens a chat with the office number and the answers already typed
-  in; the visitor presses send. No backend, WhatsApp only by decision. The
-  number is in `site.js` and in the `wa.me` links; change both together.
+- [x] ~~**The booking form sends nothing.**~~ **DONE 2026-10-09** — the form was
+  removed; every inquiry button is a WhatsApp link with a short message
+  pre-filled ("Hi Senso, I'd like to inquire about temperature monitoring for
+  my business."). No script beyond the mobile menu.
 
 - [ ] **Confirm the copy's claims.** The pages promise humidity readings, two
   years of history, batteries that last years, and a 20-minute grace period.
