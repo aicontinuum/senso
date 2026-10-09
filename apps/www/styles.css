@@ -259,6 +259,7 @@ a, button, summary { touch-action: manipulation; user-select: none; -webkit-user
   /* "Inquire on WhatsApp" is too long for a phone header next to the logo
      and the menu toggle; the same button sits in the menu instead. */
   .site-header .cta-header { display: none; }
+  .nav-toggle { margin-left: auto; }
 }
 @media (max-width: 640px) {
   :root { --section-y: 56px; --section-y-compact: 48px; --hero-top: 40px; --hero-bottom: 40px; }
