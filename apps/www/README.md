@@ -37,8 +37,8 @@ Fill these when the office decides them:
 
 - ~~WhatsApp number~~ done: +974 5028 8285 in every `wa.me` link
 - ~~Email~~ done: `info@sensoqa.com`, forwarded through Cloudflare Email Routing
-- ~~Privacy~~ done: `/privacy`, text supplied by the office 2026-10-09. The
-  Terms link in the footer still goes to `#`.
+- ~~Privacy~~ done: `/privacy`, text supplied by the office 2026-10-09. No
+  Terms page, by decision; the footer links only to Privacy.
 - ~~The **Book a site visit** form~~ done: it opens WhatsApp with the
   answers typed into a message to the office number. The number lives in
   `site.js` (`WHATSAPP_NUMBER`) as well as in the `wa.me` links; change both.

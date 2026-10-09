@@ -300,9 +300,9 @@ Full audit of the customer app, admin app + APIs, and gateway kit + repo hygiene
 The site is static HTML in `apps/www`; see its README. Live on its own
 Vercel project. These were left as placeholders by decision when it went up.
 
-- [ ] **Terms page.** The Privacy policy is live at `/privacy` (text from the
-  office, 2026-10-09). The footer's Terms link on all three pages still goes to
-  `#`; write the page, add it to `apps/www`, point the links at it.
+- [x] ~~**Privacy policy and Terms pages.**~~ **DONE 2026-10-09** — Privacy policy
+  live at `/privacy` with the office's text (retention: at least one year after
+  the subscription ends). No Terms page, by decision; the footer link was removed.
 
 - [x] ~~**Contact details.**~~ **DONE 2026-10-03** — WhatsApp +974 5028 8285 in
   every `wa.me` link; email `info@sensoqa.com`, forwarded to the office inbox
