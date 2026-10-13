@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Input, Select } from '@senso/ui';
+import { InlinePanel, Input, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatMoney, todayIso } from '@/lib/format';
 import { PAYMENT_METHOD_LABEL } from '@/lib/billing/constants';
 import { balanceOf } from '@/lib/billing/pricing';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 import type { Invoice, PaymentMethod } from '@/types/billing';
 
 // Money in, with the details: amount (the balance unless typed over, so a

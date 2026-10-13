@@ -4,11 +4,10 @@ import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Trash2 } from 'lucide-react';
-import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, cn } from '@senso/ui';
+import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, cn, InlinePanel } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
 import { READING_RATE_WINDOW_DAYS, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 import type { NetworkDeviceRow } from '@/lib/network/load';
 
 // One kind of device the network server knows, with what our records say
