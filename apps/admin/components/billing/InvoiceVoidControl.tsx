@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Input } from '@senso/ui';
+import { InlinePanel, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 
 // Voiding an issued invoice, with an optional reason kept on the record.
 // The number is retired for good; correcting an amount means void and

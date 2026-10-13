@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Input } from '@senso/ui';
+import { InlinePanel, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 
 // The "send this invoice" confirmation: who it goes to, editable, then one
 // click. Recipients default to the customer's account email. Several can be

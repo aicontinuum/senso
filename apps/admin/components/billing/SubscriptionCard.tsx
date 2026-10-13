@@ -1,11 +1,10 @@
 'use client';
 
 import { CalendarOff, Pencil } from 'lucide-react';
-import { Button } from '@senso/ui';
+import { Button, InlinePanel } from '@senso/ui';
 import { daysUntil, formatDate, formatDaysRelative, formatMoney } from '@/lib/format';
 import { TERM_LABEL, TIER_LABEL } from '@/lib/billing/constants';
 import { effectiveMonthly, listMonthlyRate } from '@/lib/billing/pricing';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 import type { BillingSettings, Subscription } from '@/types/billing';
 
 // The plan block and the term block for one subscription: what they are on,
