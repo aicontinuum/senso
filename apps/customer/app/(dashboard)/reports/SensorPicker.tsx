@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Badge, Button, Card, InlinePanel } from "@senso/ui";
+import { Badge, Button, Card, InlinePanel, useDismiss } from "@senso/ui";
 import { cn } from "@/lib/utils";
 import type { SensorShape } from "./report-model";
 
@@ -35,6 +35,13 @@ export function SensorPicker({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hideError, setHideError] = useState<string | null>(null);
+  // The row whose panel is open; a click anywhere else is a Cancel. Only
+  // that row's panel is closed: a click on another row's remove button has
+  // already opened that row's panel, which must stay.
+  const confirmRow = useRef<HTMLDivElement | null>(null);
+  useDismiss(confirmRow, confirmId !== null && !busy, () =>
+    setConfirmId((open) => (open === confirmId ? null : open)),
+  );
 
   function openConfirm(id: string) {
     setHideError(null);
@@ -80,7 +87,7 @@ export function SensorPicker({
           const reportable = s.commissionedAt !== null;
           const removable = onHide !== undefined && s.decommissionedAt !== null;
           return (
-            <div key={s.id}>
+            <div key={s.id} ref={confirmId === s.id ? confirmRow : undefined}>
               {/* The checkbox label covers the name and chips; the remove
                   button sits beside it, outside the label, so pressing it
                   never toggles the box. */}
