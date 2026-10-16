@@ -300,7 +300,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
           </div>
 
           {/* Sensor ID is the short label on the device, the one to quote to
-              the office; Device ID is its full permanent hardware identity.
+              the office; the EUI is its full permanent hardware identity.
               Neither is editable: they keep a record traceable across a rename. */}
           {hardwareId && formatDevEui(hardwareId) && (
             <>
@@ -309,7 +309,7 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
                 <p className="font-mono text-sm">{networkName("sensor", hardwareId)}</p>
               </div>
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">Device ID</p>
+                <p className="text-xs font-medium text-muted-foreground">EUI</p>
                 <p className="font-mono text-sm">{formatDevEui(hardwareId)}</p>
               </div>
             </>
