@@ -53,36 +53,38 @@ export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps)
     // controls drawn as tints of white, with the filled button white so it
     // is still the only filled button in the card.
     <Card className={`${QUICK_ACTION_TILE} border-transparent bg-brand-gradient text-white shadow-accent-sm`}>
-      <div className="flex items-center justify-between">
-        <span className="flex size-8 items-center justify-center rounded-control bg-white/15 ring-1 ring-white/25">
-          <FileText className="size-4" />
-        </span>
-        <Button asChild variant="ghost" size="icon" aria-label="Customise report" title="Customise" className="-m-1 size-8 text-white/80 hover:bg-white/15 hover:text-white lg:size-8">
+      {/* The title at the top with the icon before it, the controls at the
+          bottom; the space between is the square's breathing room. */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <FileText className="mt-px size-5 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-semibold leading-tight">Quick report</p>
+            <p className="mt-0.5 text-xs text-white/75">{none ? "No sensors in service" : "All sensors"}</p>
+          </div>
+        </div>
+        <Button asChild variant="ghost" size="icon" aria-label="Customise report" title="Customise" className="-m-1 size-8 shrink-0 text-white/80 hover:bg-white/15 hover:text-white lg:size-8">
           <Link href={hrefOf(false)}>
             <SlidersHorizontal className="size-4" />
           </Link>
         </Button>
       </div>
 
-      <div>
-        <p className="font-semibold leading-tight">Quick report</p>
-        <p className="mt-0.5 text-xs text-white/75">{none ? "No sensors in service" : "All sensors"}</p>
+      <div className="space-y-2">
+        <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block columns={2} tone="inverse" />
+        {none ? (
+          <Button block size="sm" variant="secondary" disabled>
+            <Download className="size-4" />
+            Generate
+          </Button>
+        ) : (
+          <Button block size="sm" variant="secondary" asChild>
+            <Link href={hrefOf(true)}>
+              <GenerateLabel />
+            </Link>
+          </Button>
+        )}
       </div>
-
-      <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block columns={2} tone="inverse" />
-
-      {none ? (
-        <Button block size="sm" variant="secondary" disabled>
-          <Download className="size-4" />
-          Generate
-        </Button>
-      ) : (
-        <Button block size="sm" variant="secondary" asChild>
-          <Link href={hrefOf(true)}>
-            <GenerateLabel />
-          </Link>
-        </Button>
-      )}
     </Card>
   );
 }
