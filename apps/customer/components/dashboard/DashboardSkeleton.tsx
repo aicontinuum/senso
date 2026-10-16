@@ -1,9 +1,10 @@
 import { Card } from "@senso/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Mirrors dashboard/page.tsx: title + action, the three-up summary bar, then
-// the responsive sensor-card grid. Shown while the page loads, and as the
-// stand-in behind a lock screen: it has the page's shape and none of its data.
+// Mirrors dashboard/page.tsx: title + action, the three-up summary bar with
+// the quick-report widget beside it, then the responsive sensor-card grid.
+// Shown while the page loads, and as the stand-in behind a lock screen: it
+// has the page's shape and none of its data.
 
 export function SensorCardSkeleton() {
   return (
@@ -42,14 +43,27 @@ export function DashboardSkeleton() {
         <Skeleton className="h-8 w-28" />
       </div>
 
-      <Card className="mb-6 grid grid-cols-3 divide-x divide-hairline overflow-hidden">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex flex-col gap-2 px-4 py-4 sm:px-5">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-4 w-24" />
+      <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <Card className="grid grid-cols-3 divide-x divide-hairline overflow-hidden">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col gap-2 px-4 py-4 sm:px-5">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          ))}
+        </Card>
+        <Card className="flex flex-col gap-4 p-5">
+          <div className="flex items-start gap-3">
+            <Skeleton className="size-11 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-36" />
+            </div>
           </div>
-        ))}
-      </Card>
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </Card>
+      </div>
 
       <Skeleton className="mb-3 h-6 w-20" />
 
