@@ -18,6 +18,8 @@ interface ReportActionBarProps {
   sensorCount: number;
   /** Which PDF action is building its file, if any: that button says so and the others wait. */
   busy: PdfAction | null;
+  /** Back was pressed and the settings are on their way: the button says so. */
+  leaving: boolean;
   /** Return to the settings card, keeping the report in memory. */
   onBack: () => void;
   onPrint: () => void;
@@ -42,6 +44,7 @@ export function ReportActionBar({
   range,
   sensorCount,
   busy,
+  leaving,
   onBack,
   onPrint,
   onDownloadPdf,
@@ -58,9 +61,9 @@ export function ReportActionBar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={onBack}>
+        <Button variant="secondary" size="sm" onClick={onBack} disabled={leaving || working}>
           <ArrowLeft className="size-4" />
-          Back to settings
+          {leaving ? "Loading…" : "Back to settings"}
         </Button>
         <span className="text-sm text-muted-foreground">
           {rangeOption(range).label} · {sensorCount} sensor{sensorCount !== 1 ? "s" : ""}
