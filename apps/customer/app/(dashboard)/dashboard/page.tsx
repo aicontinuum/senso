@@ -6,7 +6,7 @@ import { BranchFilter } from "@/components/dashboard/BranchFilter";
 import { BranchHeading } from "@/components/dashboard/BranchHeading";
 import { SuspendedSite } from "@/components/dashboard/SuspendedSite";
 import { QuickReportCard } from "@/components/dashboard/QuickReportCard";
-import { SENSOR_GRID } from "@/components/dashboard/DashboardSkeleton";
+import { QUICK_ACTIONS_GRID } from "@/components/dashboard/DashboardSkeleton";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { cn } from "@/lib/utils";
 import { ALL_BRANCHES } from "@/lib/branches";
@@ -94,10 +94,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </SummaryItem>
       </Card>
 
-      {/* Things to do from here, as tiles on the same grid as the sensors,
-          so an action sits at the size of a sensor card. */}
+      {/* Things to do from here, as widgets: half a sensor tile wide. */}
       <h2 className="mb-3 text-lg font-semibold tracking-tight">Quick actions</h2>
-      <div className={cn(SENSOR_GRID, "mb-8")}>
+      <div className={cn(QUICK_ACTIONS_GRID, "mb-8")}>
         <QuickReportCard sensorCount={sensorCount - pendingCount} branchId={branch} />
       </div>
 

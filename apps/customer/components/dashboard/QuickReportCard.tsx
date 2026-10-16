@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link, { useLinkStatus } from "next/link";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, SlidersHorizontal } from "lucide-react";
 import { Button, Card } from "@senso/ui";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { BRANCH_PARAM, ALL_BRANCHES } from "@/lib/branches";
@@ -11,9 +11,10 @@ import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/r
 // The report most people want, one press away: every sensor in service on
 // the dashboard, over a day or a week. The press opens the reports page
 // with the report already running, so the next press is Download or
-// Share; Customise opens the same page with its settings open instead.
-// The dashboard's branch goes along, so the report covers what the page
-// shows.
+// Share; the sliders open the same page with its settings instead. The
+// dashboard's branch goes along, so the report covers what the page
+// shows. A widget, half a sensor tile wide, so everything in it is short:
+// the periods as 24h and 7d, the action as Generate.
 
 interface QuickReportCardProps {
   /** Sensors in service in the dashboard's current scope; none means no report. */
@@ -24,18 +25,18 @@ interface QuickReportCardProps {
 
 const QUICK_RANGES = RANGES.filter((r) => r.value === "24h" || r.value === "7d").map((r) => ({
   value: r.value,
-  label: r.value === "24h" ? "24 hours" : "7 days",
+  label: r.value === "24h" ? "24h" : "7d",
 }));
 const DEFAULT_QUICK_RANGE: RangeValue = "7d";
 
-// The label dims and says so between the press and the reports page, so
-// a slow connection never reads as an ignored press.
+// The label says so between the press and the reports page, so a slow
+// connection never reads as an ignored press.
 function GenerateLabel() {
   const { pending } = useLinkStatus();
   return (
     <>
       <Download className="size-4" />
-      {pending ? "Opening…" : "Generate report"}
+      {pending ? "Opening…" : "Generate"}
     </>
   );
 }
@@ -50,29 +51,32 @@ export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps)
     // it carries the brand: the gradient surface, white type, and the
     // controls drawn as tints of white, with the filled button white so it
     // is still the only filled button in the card.
-    <Card className="flex flex-col gap-4 border-transparent bg-brand-gradient p-5 text-white shadow-accent-sm">
-      <div className="flex items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-white/15 ring-1 ring-white/25">
-          <FileText className="size-5" />
+    <Card className="flex flex-col gap-3 border-transparent bg-brand-gradient p-4 text-white shadow-accent-sm">
+      <div className="flex items-center justify-between">
+        <span className="flex size-9 items-center justify-center rounded-control bg-white/15 ring-1 ring-white/25">
+          <FileText className="size-4" />
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold leading-tight">Quick report</p>
-          <p className="mt-0.5 text-sm text-white/75">{none ? "No sensors in service yet" : "All sensors"}</p>
-        </div>
-        <Button asChild variant="ghost" size="sm" className="shrink-0 rounded-full border border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-          <Link href={hrefOf(false)}>Customise</Link>
+        <Button asChild variant="ghost" size="icon" aria-label="Customise report" title="Customise" className="-m-1.5 size-9 text-white/80 hover:bg-white/15 hover:text-white lg:size-9">
+          <Link href={hrefOf(false)}>
+            <SlidersHorizontal className="size-4" />
+          </Link>
         </Button>
       </div>
 
-      <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block tone="inverse" />
+      <div>
+        <p className="font-semibold leading-tight">Quick report</p>
+        <p className="mt-0.5 text-xs text-white/75">{none ? "No sensors in service" : "All sensors"}</p>
+      </div>
+
+      <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block columns={2} tone="inverse" />
 
       {none ? (
-        <Button block variant="secondary" disabled>
+        <Button block size="sm" variant="secondary" disabled>
           <Download className="size-4" />
-          Generate report
+          Generate
         </Button>
       ) : (
-        <Button block variant="secondary" asChild>
+        <Button block size="sm" variant="secondary" asChild>
           <Link href={hrefOf(true)}>
             <GenerateLabel />
           </Link>

@@ -28,8 +28,14 @@ interface SegmentedControlProps<T extends string> {
   /** On a brand-coloured surface the track is a tint of white, the
    *  selected segment solid white, so the control reads the same way. */
   tone?: "default" | "inverse";
+  /** With block, a fixed number of equal columns instead of as many as
+   *  fit: for a control whose labels are short enough to share a narrow
+   *  width, such as "24h" and "7d" in a widget. */
+  columns?: 2 | 3 | 4;
   className?: string;
 }
+
+const COLUMNS = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" } as const;
 
 export function SegmentedControl<T extends string>({
   options,
@@ -38,6 +44,7 @@ export function SegmentedControl<T extends string>({
   "aria-label": ariaLabel,
   block = false,
   tone = "default",
+  columns,
   className,
 }: SegmentedControlProps<T>) {
   const inverse = tone === "inverse";
@@ -48,7 +55,9 @@ export function SegmentedControl<T extends string>({
       className={cn(
         "gap-1 rounded-control p-1",
         inverse ? "bg-white/15" : "bg-sunken",
-        block ? "grid w-full grid-cols-[repeat(auto-fit,minmax(6.75rem,1fr))]" : "inline-flex flex-wrap",
+        block
+          ? cn("grid w-full", columns ? COLUMNS[columns] : "grid-cols-[repeat(auto-fit,minmax(6.75rem,1fr))]")
+          : "inline-flex flex-wrap",
         className,
       )}
     >
@@ -64,8 +73,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               // 40px tall on touch, where a finger lands; 32px from desktop width.
-              "inline-flex h-10 items-center gap-1.5 rounded-button px-3.5 text-sm font-semibold tracking-tight lg:h-8",
-              block && "justify-center",
+              "inline-flex h-10 items-center gap-1.5 rounded-button text-sm font-semibold tracking-tight lg:h-8",
+              block ? "justify-center px-2" : "px-3.5",
               "transition-[background-color,color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
               "active:scale-[0.97] motion-reduce:active:scale-100",
               "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32",
