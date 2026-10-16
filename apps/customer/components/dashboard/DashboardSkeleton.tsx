@@ -35,11 +35,12 @@ export function SensorCardSkeleton() {
 
 export const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]";
 
-// Quick actions are widgets, not tiles: square, on a fixed column well
+// Quick actions are widgets, not tiles: near-square, on a fixed column well
 // under a sensor tile's width, never stretched to fill the row, so one
-// action stays small and more line up beside it.
+// action stays small and more line up beside it. The gap between the
+// title and the controls is the widget's breathing room.
 export const QUICK_ACTIONS_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,14rem)]";
-export const QUICK_ACTION_TILE = "flex aspect-square flex-col justify-between p-3.5";
+export const QUICK_ACTION_TILE = "flex flex-col gap-8 p-3.5";
 
 export function DashboardSkeleton() {
   return (

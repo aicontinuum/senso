@@ -14,7 +14,7 @@ import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/r
 // with the report already running, so the next press is Download or
 // Share; the sliders open the same page with its settings instead. The
 // dashboard's branch goes along, so the report covers what the page
-// shows. A square widget, well under a sensor tile's width, so everything
+// shows. A small widget, well under a sensor tile's width, so everything
 // in it is short: the periods as "24 hours" and "7 days", the action as Generate.
 
 interface QuickReportCardProps {
@@ -53,8 +53,8 @@ export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps)
     // controls drawn as tints of white, with the filled button white so it
     // is still the only filled button in the card.
     <Card className={`${QUICK_ACTION_TILE} border-transparent bg-brand-gradient text-white shadow-accent-sm`}>
-      {/* The title at the top with the icon before it, the controls at the
-          bottom; the space between is the square's breathing room. */}
+      {/* The title with the icon before it, then the controls, a clear
+          gap between them. */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
           <FileText className="mt-px size-5 shrink-0" />
