@@ -35,10 +35,11 @@ export function SensorCardSkeleton() {
 
 export const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]";
 
-// Quick actions are widgets, not tiles: a fixed column half a sensor tile
-// wide, never stretched to fill the row, so one action stays small and
-// more line up beside it.
-export const QUICK_ACTIONS_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,9.5rem)]";
+// Quick actions are widgets, not tiles: square, on a fixed column well
+// under a sensor tile's width, never stretched to fill the row, so one
+// action stays small and more line up beside it.
+export const QUICK_ACTIONS_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,12.5rem)]";
+export const QUICK_ACTION_TILE = "flex aspect-square flex-col justify-between p-3.5";
 
 export function DashboardSkeleton() {
   return (
@@ -59,9 +60,9 @@ export function DashboardSkeleton() {
 
       <Skeleton className="mb-3 h-6 w-28" />
       <div className={`${QUICK_ACTIONS_GRID} mb-8`}>
-        <Card className="flex flex-col gap-3 p-4">
+        <Card className={QUICK_ACTION_TILE}>
           <div className="flex items-center justify-between">
-            <Skeleton className="size-9 rounded-control" />
+            <Skeleton className="size-8 rounded-control" />
             <Skeleton className="size-8 rounded-button" />
           </div>
           <div className="space-y-1.5">
