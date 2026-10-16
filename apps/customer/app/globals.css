@@ -28,6 +28,10 @@
  * typography}.css — keep them in sync when the design system is re-exported.
  */
 @theme inline {
+  /* The brand gradient as a surface (bg-brand-gradient): for the one tile
+     on a page that is an action rather than a reading. */
+  --background-image-brand-gradient: var(--brand-gradient);
+
   /* ── Surfaces and text ─────────────────────────────────────────────── */
   --color-background: var(--surface-page);
   --color-foreground: var(--text-primary);
