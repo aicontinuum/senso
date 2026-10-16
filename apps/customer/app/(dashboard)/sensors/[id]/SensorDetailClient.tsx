@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil, Settings } from "lucide-react";
 import type { Sensor, AlertConfig, Gateway, Reading } from "@senso/types";
-import { batteryTier } from "@senso/status";
+import { batteryTier, networkName } from "@senso/status";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { TEMP_UNIT } from "@/lib/constants";
@@ -299,13 +299,20 @@ export function SensorDetailClient({ sensor, config, gateway, branchName, manage
             )}
           </div>
 
-          {/* Device ID — the sensor's permanent hardware identity. Deliberately
-              not editable: it is what keeps a record traceable across a rename. */}
-          {formatDevEui(hardwareId) && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Device ID</p>
-              <p className="font-mono text-sm">{formatDevEui(hardwareId)}</p>
-            </div>
+          {/* Sensor ID is the short label on the device, the one to quote to
+              the office; Device ID is its full permanent hardware identity.
+              Neither is editable: they keep a record traceable across a rename. */}
+          {hardwareId && formatDevEui(hardwareId) && (
+            <>
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Sensor ID</p>
+                <p className="font-mono text-sm">{networkName("sensor", hardwareId)}</p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Device ID</p>
+                <p className="font-mono text-sm">{formatDevEui(hardwareId)}</p>
+              </div>
+            </>
           )}
 
           {/* Thresholds */}

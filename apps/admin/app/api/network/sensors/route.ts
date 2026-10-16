@@ -3,7 +3,7 @@ import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing
 import { BillingInputError, MAX_LABEL, requireText } from '@/lib/billing/validate';
 import { isValidAppKey, isValidDevEui, normaliseAppKey, normaliseDevEui } from '@/lib/deveui';
 import { registerSensor } from '@/lib/network/registry';
-import { networkName } from '@/lib/network/naming';
+import { networkName } from '@senso/status';
 import { requireRegistry, unwrap } from '@/lib/network/route';
 
 /** Register a sensor on the network server: the device, its key, and the

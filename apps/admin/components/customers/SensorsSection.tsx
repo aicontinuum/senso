@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Settings, Trash2 } from 'lucide-react';
-import { batteryTier } from '@senso/status';
+import { batteryTier, networkName } from '@senso/status';
 import { Badge, BatteryMeter, Button, Card, CardHeader, CardTitle, Input, Select } from '@senso/ui';
 import type { AvailableDevices } from '@/lib/network/available';
 
@@ -24,6 +24,8 @@ export type SensorRow = {
   gateway_id: string;
   /** Null until a technician marks the sensor installed. */
   commissioned_at: string | null;
+  /** The DevEUI; its tail is the sensor ID the office and the customer read. */
+  hardware_id: string | null;
 };
 
 type GatewayOption = { id: string; name: string | null };
@@ -182,6 +184,7 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Name</th>
+                <th className={`${TH} whitespace-nowrap`}>Sensor ID</th>
                 <th className={TH}>Gateway</th>
                 <th className={TH}>Status</th>
                 <th className={TH}>Battery</th>
@@ -192,6 +195,7 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
               {sensors.map(s => (
                 <tr key={s.id}>
                   <td className={`${TD} whitespace-nowrap font-medium`}>{s.name}</td>
+                  <td className={`${TD} font-mono text-xs text-muted-foreground`}>{s.hardware_id ? networkName('sensor', s.hardware_id) : '—'}</td>
                   <td className={`${TD} text-muted-foreground`}>
                     {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
                   </td>
