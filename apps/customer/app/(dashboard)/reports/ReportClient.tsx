@@ -99,18 +99,31 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   // only while the URL says so; leaving by any route — the back button here,
   // the sidebar link, the browser's back — lands on the settings with the
   // report still in memory, so a tweak and regenerate stays quick.
+  //
+  // The view changes through the browser's own history, which the router
+  // keeps in step with, rather than router.push: nothing on the server
+  // depends on the view, and a push would fetch the page again for no
+  // reason, leaving the screen still for as long as that took. The
+  // switch is then only the render, and until the URL has caught up with
+  // the view that was asked for, the button that asked stays busy: a
+  // report of a week's readings is a long table, and the press must look
+  // answered while it is drawn.
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const reportView = searchParams.get(VIEW_PARAM) === REPORT_VIEW;
   const showReport = generated && reportView;
+  const [requestedView, setRequestedView] = useState<"report" | "settings" | null>(null);
+  const switching = requestedView !== null && requestedView !== (reportView ? "report" : "settings");
 
   function openReportView() {
-    router.push(`${pathname}?${VIEW_PARAM}=${REPORT_VIEW}`);
+    setRequestedView("report");
+    window.history.pushState(null, "", `${pathname}?${VIEW_PARAM}=${REPORT_VIEW}`);
   }
 
   function backToSettings() {
-    router.push(pathname);
+    setRequestedView("settings");
+    window.history.pushState(null, "", pathname);
   }
   const [readingsBySensor, setReadingsBySensor] = useState<Map<string, ReadingShape[]>>(new Map());
   const [historyBySensor, setHistoryBySensor] = useState<Map<string, ThresholdVersion[]>>(new Map());
@@ -412,13 +425,14 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
             onToggleSensor={toggleSensor}
             onHideSensor={isGroup ? undefined : hideSensor}
             onGenerate={generate}
-            generating={generating}
+            generating={generating || switching}
           />
         ) : (
           <ReportActionBar
             range={range}
             sensorCount={reportSensors.length}
             busy={pdfBusy}
+            leaving={switching}
             onBack={backToSettings}
             onPrint={handlePrint}
             onDownloadPdf={downloadPDF}
