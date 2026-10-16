@@ -27,10 +27,11 @@ type Props = { kind: Kind; rows: NetworkDeviceRow[]; now: number };
 /** Below this share received live, the figure turns red: worth a visit. */
 const RATE_WARN_BELOW = 95;
 
-const WORDS: Record<Kind, { title: string; hint: string | null; empty: string; apiPath: string }> = {
-  gateway: { title: 'Gateways', hint: null, empty: 'No gateways registered yet.', apiPath: 'gateways' },
+const WORDS: Record<Kind, { title: string; idColumn: string; hint: string | null; empty: string; apiPath: string }> = {
+  gateway: { title: 'Gateways', idColumn: 'Gateway ID', hint: null, empty: 'No gateways registered yet.', apiPath: 'gateways' },
   sensor: {
     title: 'Sensors',
+    idColumn: 'Sensor ID',
     hint: `Readings is the share of expected readings received live over the last ${READING_RATE_WINDOW_DAYS} days. Under ${RATE_WARN_BELOW}% is worth a visit.`,
     empty: 'No sensors registered yet.',
     apiPath: 'sensors',
@@ -209,7 +210,7 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
             <table className="hidden w-full text-sm lg:table">
               <thead>
                 <tr className="border-b border-hairline text-left text-muted-foreground">
-                  <th className={TH}>Name</th>
+                  <th className={TH}>{words.idColumn}</th>
                   <th className={TH}>EUI</th>
                   <th className={`${TH} whitespace-nowrap text-right`}>Last heard</th>
                   <th className={TH}>Linked to</th>
