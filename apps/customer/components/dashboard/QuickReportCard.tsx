@@ -15,7 +15,7 @@ import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/r
 // Share; the sliders open the same page with its settings instead. The
 // dashboard's branch goes along, so the report covers what the page
 // shows. A square widget, well under a sensor tile's width, so everything
-// in it is short: the periods as 24h and 7d, the action as Generate.
+// in it is short: the periods as "24 hours" and "7 days", the action as Generate.
 
 interface QuickReportCardProps {
   /** Sensors in service in the dashboard's current scope; none means no report. */
@@ -26,7 +26,7 @@ interface QuickReportCardProps {
 
 const QUICK_RANGES = RANGES.filter((r) => r.value === "24h" || r.value === "7d").map((r) => ({
   value: r.value,
-  label: r.value === "24h" ? "24h" : "7d",
+  label: r.value === "24h" ? "24 hours" : "7 days",
 }));
 const DEFAULT_QUICK_RANGE: RangeValue = "7d";
 
