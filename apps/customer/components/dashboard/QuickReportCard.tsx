@@ -46,29 +46,33 @@ export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps)
   const none = sensorCount === 0;
 
   return (
-    <Card className="flex flex-col gap-4 p-5">
-      <div className="flex items-start gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+    // The one tile on the page that is an action rather than a reading, so
+    // it carries the brand: the gradient surface, white type, and the
+    // controls drawn as tints of white, with the filled button white so it
+    // is still the only filled button in the card.
+    <Card className="flex flex-col gap-4 border-transparent bg-brand-gradient p-5 text-white shadow-accent-sm">
+      <div className="flex items-center gap-3">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-white/15 ring-1 ring-white/25">
           <FileText className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold leading-tight">Quick report</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">{none ? "No sensors in service yet" : "All sensors"}</p>
+          <p className="mt-0.5 text-sm text-white/75">{none ? "No sensors in service yet" : "All sensors"}</p>
         </div>
-        <Link href={hrefOf(false)} className="shrink-0 text-sm font-medium text-primary hover:underline">
-          Customise
-        </Link>
+        <Button asChild variant="ghost" size="sm" className="shrink-0 rounded-full border border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+          <Link href={hrefOf(false)}>Customise</Link>
+        </Button>
       </div>
 
-      <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block />
+      <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block tone="inverse" />
 
       {none ? (
-        <Button block disabled>
+        <Button block variant="secondary" disabled>
           <Download className="size-4" />
           Generate report
         </Button>
       ) : (
-        <Button block asChild>
+        <Button block variant="secondary" asChild>
           <Link href={hrefOf(true)}>
             <GenerateLabel />
           </Link>

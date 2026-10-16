@@ -25,6 +25,9 @@ interface SegmentedControlProps<T extends string> {
    *  lines up with the fields around it instead of sizing to its labels. Where
    *  the segments would be too narrow for a label, they fall into rows. */
   block?: boolean;
+  /** On a brand-coloured surface the track is a tint of white, the
+   *  selected segment solid white, so the control reads the same way. */
+  tone?: "default" | "inverse";
   className?: string;
 }
 
@@ -34,14 +37,17 @@ export function SegmentedControl<T extends string>({
   onChange,
   "aria-label": ariaLabel,
   block = false,
+  tone = "default",
   className,
 }: SegmentedControlProps<T>) {
+  const inverse = tone === "inverse";
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        "gap-1 rounded-control bg-sunken p-1",
+        "gap-1 rounded-control p-1",
+        inverse ? "bg-white/15" : "bg-sunken",
         block ? "grid w-full grid-cols-[repeat(auto-fit,minmax(6.75rem,1fr))]" : "inline-flex flex-wrap",
         className,
       )}
@@ -63,9 +69,8 @@ export function SegmentedControl<T extends string>({
               "transition-[background-color,color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
               "active:scale-[0.97] motion-reduce:active:scale-100",
               "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32",
-              selected
-                ? "bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
+              selected && "bg-card text-foreground shadow-xs",
+              !selected && (inverse ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"),
             )}
           >
             {Icon && <Icon className="size-4" />}
