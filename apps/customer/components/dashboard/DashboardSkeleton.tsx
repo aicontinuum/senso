@@ -73,8 +73,8 @@ export function DashboardSkeleton() {
             <Skeleton className="size-8 rounded-button" />
           </div>
           <div className="space-y-2">
+            <Skeleton className="h-12 w-full lg:h-10" />
             <Skeleton className="h-10 w-full lg:h-8" />
-            <Skeleton className="h-8 w-full" />
           </div>
         </Card>
       </div>

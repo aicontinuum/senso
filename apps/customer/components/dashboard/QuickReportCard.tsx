@@ -29,6 +29,7 @@ const QUICK_RANGES = RANGES.filter((r) => r.value === "24h" || r.value === "7d")
   label: r.value === "24h" ? "24 hours" : "7 days",
 }));
 const DEFAULT_QUICK_RANGE: RangeValue = "7d";
+const GENERATE_HEIGHT = "h-10 lg:h-8";
 
 // The label says so between the press and the reports page, so a slow
 // connection never reads as an ignored press.
@@ -72,13 +73,15 @@ export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps)
 
       <div className="space-y-2">
         <SegmentedControl aria-label="Period" options={QUICK_RANGES} value={range} onChange={setRange} block columns={2} tone="inverse" />
+        {/* The same height as a segment above it, touch and desktop alike,
+            so the pair keeps one shape wherever it is drawn. */}
         {none ? (
-          <Button block size="sm" variant="secondary" disabled>
+          <Button block size="sm" variant="secondary" className={GENERATE_HEIGHT} disabled>
             <Download className="size-4" />
             Generate
           </Button>
         ) : (
-          <Button block size="sm" variant="secondary" asChild>
+          <Button block size="sm" variant="secondary" className={GENERATE_HEIGHT} asChild>
             <Link href={hrefOf(true)}>
               <GenerateLabel />
             </Link>
