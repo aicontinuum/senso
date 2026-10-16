@@ -49,14 +49,9 @@ export function rangeOption(value: RangeValue) {
 
 // The PDF is the compliance document and carries the supervisor comments; the
 // CSV is a data extract for filtering and pivoting, and deliberately does not.
+// The format is chosen only once the report is on screen: it changes nothing
+// about the report, only which file the download produces.
 export type ReportFormat = "pdf" | "csv";
-
-export const FORMATS: { label: string; value: ReportFormat }[] = [
-  { label: "PDF", value: "pdf" },
-  { label: "CSV", value: "csv" },
-];
-
-export const DEFAULT_FORMAT: ReportFormat = "pdf";
 
 /** The three things that build the PDF after a press, so the bar can say
  *  which one is working. */

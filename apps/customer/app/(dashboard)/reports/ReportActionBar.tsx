@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
-import { ArrowLeft, Download, Mail, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Mail, Printer, Share2, Table } from "lucide-react";
 import { Button } from "@senso/ui";
-import { rangeOption, type PdfAction, type RangeValue, type ReportFormat } from "./report-model";
+import { rangeOption, type PdfAction, type RangeValue } from "./report-model";
 
 // The capability never changes during a page's life, so there is nothing to
 // subscribe to.
@@ -15,14 +15,15 @@ function readCanShare() {
 
 interface ReportActionBarProps {
   range: RangeValue;
-  format: ReportFormat;
   sensorCount: number;
   /** Which PDF action is building its file, if any: that button says so and the others wait. */
   busy: PdfAction | null;
   /** Return to the settings card, keeping the report in memory. */
   onBack: () => void;
   onPrint: () => void;
-  onDownload: () => void;
+  onDownloadPdf: () => void;
+  /** The data extract; built in memory, so it never waits. */
+  onDownloadCsv: () => void;
   /** Web Share, where the browser has it. */
   onShare: () => void;
   /** The mailto fallback where it does not: the body is prepared by the caller. */
@@ -33,17 +34,18 @@ const PREPARING = "Preparing…";
 
 // Once a report exists it is the focus. The settings collapse to this one line:
 // the way back and what was generated on the left, what to do with it on the
-// right. The chosen format's download is the primary action; Print and Share
-// are secondary. Back is a real button, not a link in the caption — it is the
-// first thing most people want after reading a report.
+// right. The PDF is the compliance document, so its download is the primary
+// action; Print, Share and the CSV extract are secondary. Back is a real
+// button, not a link in the caption — it is the first thing most people want
+// after reading a report.
 export function ReportActionBar({
   range,
-  format,
   sensorCount,
   busy,
   onBack,
   onPrint,
-  onDownload,
+  onDownloadPdf,
+  onDownloadCsv,
   onShare,
   mailtoHref,
 }: ReportActionBarProps) {
@@ -83,9 +85,13 @@ export function ReportActionBar({
             </a>
           </Button>
         )}
-        <Button size="sm" onClick={onDownload} disabled={working}>
+        <Button variant="secondary" size="sm" onClick={onDownloadCsv} disabled={working}>
+          <Table className="size-4" />
+          CSV
+        </Button>
+        <Button size="sm" onClick={onDownloadPdf} disabled={working}>
           <Download className="size-4" />
-          {busy === "download" ? PREPARING : `Download ${format.toUpperCase()}`}
+          {busy === "download" ? PREPARING : "Download PDF"}
         </Button>
       </div>
     </div>

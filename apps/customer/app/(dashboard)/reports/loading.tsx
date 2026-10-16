@@ -1,9 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@senso/ui";
 
-// Mirrors ReportClient's settings card: time-range segments, the sensor list,
-// the format toggle and the generate action. The report body only exists after
-// generating, so there is nothing below to stand in for.
+// Mirrors ReportClient's settings card: time-range segments, the sensor list
+// and the generate action. The report body only exists after generating, so
+// there is nothing below to stand in for.
 export default function Loading() {
   return (
     <div>
@@ -26,11 +26,6 @@ export default function Loading() {
                 <Skeleton key={i} className="h-10 w-full rounded-none" />
               ))}
             </div>
-          </div>
-
-          <div>
-            <Skeleton className="mb-2 h-4 w-16" />
-            <Skeleton className="h-10 w-40" />
           </div>
 
           <Skeleton className="h-10 w-full" />

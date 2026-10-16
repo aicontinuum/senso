@@ -24,7 +24,6 @@ import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
 import { ReportPreview } from "./ReportPreview";
 import {
-  DEFAULT_FORMAT,
   DEFAULT_RANGE,
   REPORT_VIEW,
   VIEW_PARAM,
@@ -35,7 +34,6 @@ import {
   type PdfAction,
   type RangeValue,
   type ReadingShape,
-  type ReportFormat,
   type ReportSensor,
   type SensorShape,
 } from "./report-model";
@@ -86,7 +84,6 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   const activeSensors = reportableSensors.filter((s) => s.decommissionedAt === null);
 
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
-  const [format, setFormat] = useState<ReportFormat>(DEFAULT_FORMAT);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(activeSensors.map((s) => s.id)),
   );
@@ -403,8 +400,6 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
           <ReportSettingsCard
             range={range}
             onRangeChange={changeRange}
-            format={format}
-            onFormatChange={setFormat}
             branches={branches}
             siteLabel={isGroup ? "Account" : "Branch"}
             allLabel={isGroup ? "All accounts" : "All branches"}
@@ -422,12 +417,12 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
         ) : (
           <ReportActionBar
             range={range}
-            format={format}
             sensorCount={reportSensors.length}
             busy={pdfBusy}
             onBack={backToSettings}
             onPrint={handlePrint}
-            onDownload={format === "pdf" ? downloadPDF : downloadCSV}
+            onDownloadPdf={downloadPDF}
+            onDownloadCsv={downloadCSV}
             onShare={handleShare}
             mailtoHref={mailtoHref}
           />
