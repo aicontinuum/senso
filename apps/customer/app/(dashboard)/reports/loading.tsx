@@ -9,14 +9,14 @@ export default function Loading() {
     <div>
       <Skeleton className="mb-6 h-8 w-32" />
 
-      <Card className="max-w-xl">
+      <Card className="max-w-lg">
         <CardHeader>
           <Skeleton className="h-5 w-48" />
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
             <Skeleton className="mb-2 h-4 w-24" />
-            <Skeleton className="h-10 w-full max-w-md" />
+            <Skeleton className="h-10 w-full" />
           </div>
 
           <div>

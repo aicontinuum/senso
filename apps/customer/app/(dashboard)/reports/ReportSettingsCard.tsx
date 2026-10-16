@@ -55,7 +55,7 @@ export function ReportSettingsCard({
   const nothingSelected = selectedIds.size === 0;
 
   return (
-    <Card className="max-w-xl">
+    <Card className="max-w-lg">
       <CardHeader>
         <CardTitle>Period and sensors</CardTitle>
       </CardHeader>
@@ -78,6 +78,7 @@ export function ReportSettingsCard({
             options={RANGES}
             value={range}
             onChange={onRangeChange}
+            block
           />
         </Field>
 

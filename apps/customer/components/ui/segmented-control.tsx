@@ -21,6 +21,10 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   /** Accessible name for the group; the visible label is the caller's. */
   "aria-label": string;
+  /** Fill the container, segments sharing the width equally, so the control
+   *  lines up with the fields around it instead of sizing to its labels. Where
+   *  the segments would be too narrow for a label, they fall into rows. */
+  block?: boolean;
   className?: string;
 }
 
@@ -29,13 +33,18 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   "aria-label": ariaLabel,
+  block = false,
   className,
 }: SegmentedControlProps<T>) {
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn("inline-flex flex-wrap gap-1 rounded-control bg-sunken p-1", className)}
+      className={cn(
+        "gap-1 rounded-control bg-sunken p-1",
+        block ? "grid w-full grid-cols-[repeat(auto-fit,minmax(6.75rem,1fr))]" : "inline-flex flex-wrap",
+        className,
+      )}
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -50,6 +59,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               // 40px tall on touch, where a finger lands; 32px from desktop width.
               "inline-flex h-10 items-center gap-1.5 rounded-button px-3.5 text-sm font-semibold tracking-tight lg:h-8",
+              block && "justify-center",
               "transition-[background-color,color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
               "active:scale-[0.97] motion-reduce:active:scale-100",
               "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32",
