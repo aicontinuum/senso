@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Unlink } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, CardTitle, Select, Spinner } from '@senso/ui';
+import { Badge, Button, Card, CardHeader, CardTitle, InlinePanel, Select, Spinner, useDismiss } from '@senso/ui';
 import { networkName } from '@senso/status';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
@@ -43,9 +43,10 @@ interface GatewaysSectionProps {
 
 const TH = 'px-6 py-3 font-medium';
 const TD = 'px-6 py-3';
+const PANEL = 'border-t border-hairline bg-sunken px-5 py-4';
 
 function unlinkWarning(linked: LinkedSensor[]): string {
-  if (linked.length === 0) return 'Unlink this gateway?';
+  if (linked.length === 0) return 'It leaves the customer\'s devices. It can be linked again.';
   const names = linked.map(s => s.name).join(', ');
   return `Unlinking retires ${linked.length} sensor${linked.length > 1 ? 's' : ''} (${names}). Readings are kept.`;
 }
@@ -56,7 +57,20 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
   const [confirmUnlinkId, setConfirmUnlinkId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [unlinkError, setUnlinkError] = useState<string | null>(null);
   const multiBranch = branches.length > 1;
+  // The open unlink panel; a click anywhere else is a Cancel, closing only
+  // that panel so a click on another row's button still opens its own.
+  const confirmRow = useRef<HTMLTableRowElement | null>(null);
+  useDismiss(confirmRow, confirmUnlinkId !== null && busyId === null, () =>
+    setConfirmUnlinkId(open => (open === confirmUnlinkId ? null : open)),
+  );
+  const columns = 7 + (multiBranch ? 1 : 0);
+
+  function openUnlink(id: string) {
+    setUnlinkError(null);
+    setConfirmUnlinkId(id);
+  }
 
   async function moveGateway(gatewayId: string, branchId: string) {
     setError('');
@@ -67,12 +81,14 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
     router.refresh();
   }
 
+  // The panel stays open with the error if unlinking fails, so it is read
+  // where the decision was made.
   async function unlinkGateway(gatewayId: string) {
-    setError('');
+    setUnlinkError(null);
     setBusyId(gatewayId);
     const result = await callApi(`/api/customers/${customerId}/gateways/${gatewayId}`, 'DELETE');
     setBusyId(null);
-    if (!result.ok) { setError(result.error); return; }
+    if (!result.ok) { setUnlinkError(result.error); return; }
     setConfirmUnlinkId(null);
     router.refresh();
   }
@@ -123,7 +139,8 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
                 const linked = sensors.filter(s => s.gateway_id === g.id);
                 const busy = busyId === g.id;
                 return (
-                  <tr key={g.id}>
+                  <Fragment key={g.id}>
+                  <tr>
                     <td className={`${TD} whitespace-nowrap font-medium`}>{g.name ?? g.id}</td>
                     <td className={`${TD} font-mono text-xs text-muted-foreground`}>{g.mac_address ? networkName('gateway', g.mac_address) : '—'}</td>
                     {multiBranch && (
@@ -144,19 +161,33 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
                       <Badge variant={g.is_online ? 'ok' : 'offline'} dot>{g.is_online ? 'Online' : 'Offline'}</Badge>
                     </td>
                     <td className={`${TD} text-right`}>
-                      {confirmUnlinkId === g.id ? (
-                        <span className="flex items-center justify-end gap-2">
-                          <span className="max-w-xs text-right text-xs text-muted-foreground">{unlinkWarning(linked)}</span>
-                          <Button variant="danger" size="sm" onClick={() => unlinkGateway(g.id)} disabled={busy}>{busy ? 'Unlinking…' : 'Unlink'}</Button>
-                          <Button variant="ghost" size="sm" onClick={() => setConfirmUnlinkId(null)} disabled={busy}>Cancel</Button>
-                        </span>
-                      ) : (
-                        <Button variant="ghost" size="icon" aria-label={`Unlink ${g.name ?? g.id}`} title="Unlink" className="hover:text-alert-text" onClick={() => setConfirmUnlinkId(g.id)}>
-                          <Unlink className="size-4" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="icon" aria-label={`Unlink ${g.name ?? g.id}`} title="Unlink" className="hover:text-alert-text" onClick={() => openUnlink(g.id)} disabled={confirmUnlinkId === g.id}>
+                        <Unlink className="size-4" />
+                      </Button>
                     </td>
                   </tr>
+                  {/* The "are you sure" step opens under the row, the shape every
+                      confirmation takes, rather than squeezing into the row. */}
+                  {confirmUnlinkId === g.id && (
+                    <tr ref={confirmRow} className="border-t-0">
+                      <td colSpan={columns} className="p-0">
+                        <div className={PANEL}>
+                          <InlinePanel
+                            title={`Unlink ${g.name ?? g.id}?`}
+                            description={unlinkWarning(linked)}
+                            error={unlinkError ?? undefined}
+                            confirmLabel="Unlink"
+                            busyLabel="Unlinking…"
+                            busy={busy}
+                            danger
+                            onConfirm={() => unlinkGateway(g.id)}
+                            onCancel={() => setConfirmUnlinkId(null)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>

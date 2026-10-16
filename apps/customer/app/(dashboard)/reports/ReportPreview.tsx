@@ -43,7 +43,7 @@ export function ReportPreview({
             <div className="mb-3">
               <h2 className="text-2xl font-bold">{sensor.name}</h2>
               {deviceId && (
-                <p className="font-mono text-xs text-muted-foreground">Device ID: {deviceId}</p>
+                <p className="font-mono text-xs text-muted-foreground">EUI: {deviceId}</p>
               )}
               <h3 className="mt-1 text-base font-semibold">Monitoring Report</h3>
               {/* Each section names its own premises: the branch and its

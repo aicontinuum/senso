@@ -366,7 +366,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
       if (sensor.branchName) lines.push(csvRow(`Branch: ${sensor.branchName}`));
       if (address) lines.push(csvRow(address));
       const csvDeviceId = formatDevEui(sensor.hardwareId);
-      if (csvDeviceId) lines.push(csvRow(`Device ID: ${csvDeviceId}`));
+      if (csvDeviceId) lines.push(csvRow(`EUI: ${csvDeviceId}`));
       const csvCommissioned = commissionedNote(sensor.commissionedAt, periodStart, timezone);
       if (csvCommissioned) lines.push(csvRow(csvCommissioned));
       const csvRetired = retiredNote(sensor, timezone);
