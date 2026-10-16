@@ -5,6 +5,7 @@ import Link, { useLinkStatus } from "next/link";
 import { Download, FileText, SlidersHorizontal } from "lucide-react";
 import { Button, Card } from "@senso/ui";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { QUICK_ACTION_TILE } from "@/components/dashboard/DashboardSkeleton";
 import { BRANCH_PARAM, ALL_BRANCHES } from "@/lib/branches";
 import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/report-model";
 
@@ -13,8 +14,8 @@ import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/r
 // with the report already running, so the next press is Download or
 // Share; the sliders open the same page with its settings instead. The
 // dashboard's branch goes along, so the report covers what the page
-// shows. A widget, half a sensor tile wide, so everything in it is short:
-// the periods as 24h and 7d, the action as Generate.
+// shows. A square widget, well under a sensor tile's width, so everything
+// in it is short: the periods as 24h and 7d, the action as Generate.
 
 interface QuickReportCardProps {
   /** Sensors in service in the dashboard's current scope; none means no report. */
@@ -51,12 +52,12 @@ export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps)
     // it carries the brand: the gradient surface, white type, and the
     // controls drawn as tints of white, with the filled button white so it
     // is still the only filled button in the card.
-    <Card className="flex flex-col gap-3 border-transparent bg-brand-gradient p-4 text-white shadow-accent-sm">
+    <Card className={`${QUICK_ACTION_TILE} border-transparent bg-brand-gradient text-white shadow-accent-sm`}>
       <div className="flex items-center justify-between">
-        <span className="flex size-9 items-center justify-center rounded-control bg-white/15 ring-1 ring-white/25">
+        <span className="flex size-8 items-center justify-center rounded-control bg-white/15 ring-1 ring-white/25">
           <FileText className="size-4" />
         </span>
-        <Button asChild variant="ghost" size="icon" aria-label="Customise report" title="Customise" className="-m-1.5 size-9 text-white/80 hover:bg-white/15 hover:text-white lg:size-9">
+        <Button asChild variant="ghost" size="icon" aria-label="Customise report" title="Customise" className="-m-1 size-8 text-white/80 hover:bg-white/15 hover:text-white lg:size-8">
           <Link href={hrefOf(false)}>
             <SlidersHorizontal className="size-4" />
           </Link>
