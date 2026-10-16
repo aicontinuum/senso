@@ -47,6 +47,26 @@ export function rangeOption(value: RangeValue) {
   return RANGES.find((r) => r.value === value)!;
 }
 
+export function isRangeValue(value: string | null | undefined): value is RangeValue {
+  return RANGES.some((r) => r.value === value);
+}
+
+// The reports page can be opened with its settings made and the report
+// already asked for: the dashboard's quick-report card sends people here
+// with a period, the dashboard's branch, and `generate`, and the page runs
+// the report on arrival. The address of a report is then a thing you can
+// send to someone.
+export const RANGE_PARAM = "range";
+export const GENERATE_PARAM = "generate";
+
+export function reportHref(options: { range: RangeValue; branchId?: string | null; generate?: boolean; branchParam: string; allBranches: string }): string {
+  const params = new URLSearchParams();
+  params.set(RANGE_PARAM, options.range);
+  if (options.branchId && options.branchId !== options.allBranches) params.set(options.branchParam, options.branchId);
+  if (options.generate) params.set(GENERATE_PARAM, "1");
+  return `/reports?${params.toString()}`;
+}
+
 // The PDF is the compliance document and carries the supervisor comments; the
 // CSV is a data extract for filtering and pivoting, and deliberately does not.
 // The format is chosen only once the report is on screen: it changes nothing

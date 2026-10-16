@@ -5,6 +5,7 @@ import { SensorGrid } from "@/components/dashboard/SensorGrid";
 import { BranchFilter } from "@/components/dashboard/BranchFilter";
 import { BranchHeading } from "@/components/dashboard/BranchHeading";
 import { SuspendedSite } from "@/components/dashboard/SuspendedSite";
+import { QuickReportCard } from "@/components/dashboard/QuickReportCard";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { ALL_BRANCHES } from "@/lib/branches";
 import { loadDashboard } from "@/lib/dashboard/load";
@@ -51,8 +52,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       </div>
 
       {/* One card, hairline-divided into three, so the summary reads as a
-          single instrument rather than three boxes. */}
-      <Card className="mb-6 grid grid-cols-3 divide-x divide-hairline overflow-hidden">
+          single instrument rather than three boxes. Beside it on a wide
+          screen, under it on a phone, the quick-report widget. */}
+      <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <Card className="grid grid-cols-3 divide-x divide-hairline overflow-hidden">
         <SummaryItem label={gatewayCount > 1 ? "Gateways" : "Gateway"}>
           {gatewayCount === 0 ? (
             <span className="text-sm text-muted-foreground">None</span>
@@ -90,6 +93,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </SummaryItem>
       </Card>
+      <QuickReportCard
+        sensorCount={sensorCount - pendingCount}
+        branchId={branch}
+        scopeNote={multiBranch && branch === ALL_BRANCHES ? (scope.isGroup ? "sensors across all accounts" : "sensors across all branches") : "sensors"}
+      />
+      </div>
 
       <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
 
