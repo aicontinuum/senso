@@ -16,12 +16,10 @@ import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/r
 // shows.
 
 interface QuickReportCardProps {
-  /** Sensors in service in the dashboard's current scope. */
+  /** Sensors in service in the dashboard's current scope; none means no report. */
   sensorCount: number;
   /** The dashboard's branch, or all. */
   branchId: string;
-  /** "sensors" at one site, "sensors across all branches" on All. */
-  scopeNote: string;
 }
 
 const QUICK_RANGES = RANGES.filter((r) => r.value === "24h" || r.value === "7d").map((r) => ({
@@ -42,7 +40,7 @@ function GenerateLabel() {
   );
 }
 
-export function QuickReportCard({ sensorCount, branchId, scopeNote }: QuickReportCardProps) {
+export function QuickReportCard({ sensorCount, branchId }: QuickReportCardProps) {
   const [range, setRange] = useState<RangeValue>(DEFAULT_QUICK_RANGE);
   const hrefOf = (generate: boolean) => reportHref({ range, branchId, generate, branchParam: BRANCH_PARAM, allBranches: ALL_BRANCHES });
   const none = sensorCount === 0;
@@ -55,11 +53,7 @@ export function QuickReportCard({ sensorCount, branchId, scopeNote }: QuickRepor
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold leading-tight">Quick report</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {none
-              ? "No sensors in service yet"
-              : `All ${sensorCount} ${scopeNote} · Last ${QUICK_RANGES.find((r) => r.value === range)?.label}`}
-          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{none ? "No sensors in service yet" : "All sensors"}</p>
         </div>
         <Link href={hrefOf(false)} className="shrink-0 text-sm font-medium text-primary hover:underline">
           Customise

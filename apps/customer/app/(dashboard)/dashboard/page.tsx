@@ -93,11 +93,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           )}
         </SummaryItem>
       </Card>
-      <QuickReportCard
-        sensorCount={sensorCount - pendingCount}
-        branchId={branch}
-        scopeNote={multiBranch && branch === ALL_BRANCHES ? (scope.isGroup ? "sensors across all accounts" : "sensors across all branches") : "sensors"}
-      />
+      <QuickReportCard sensorCount={sensorCount - pendingCount} branchId={branch} />
       </div>
 
       <h2 className="mb-3 text-lg font-semibold tracking-tight">Sensors</h2>
