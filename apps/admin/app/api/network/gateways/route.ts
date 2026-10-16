@@ -3,7 +3,7 @@ import { failureResponse, isDenied, readJson, requireAdmin } from '@/lib/billing
 import { BillingInputError, MAX_LABEL, requireText } from '@/lib/billing/validate';
 import { isValidGatewayId, normaliseIdentifier } from '@/lib/gateway-id';
 import { registerGateway } from '@/lib/network/registry';
-import { networkName } from '@/lib/network/naming';
+import { networkName } from '@senso/status';
 import { requireRegistry, unwrap } from '@/lib/network/route';
 
 /** Register a gateway on the network server. Linking it to a customer is a

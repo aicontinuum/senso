@@ -85,3 +85,20 @@ export function formatAgo(at: string | null | undefined, now: number = Date.now(
   const d = Math.round(h / 24);
   return `${d} day${d === 1 ? "" : "s"} ago`;
 }
+
+// ── Network name ───────────────────────────────────────────────────────────
+//
+// The name a device carries on the network server, and the ID the office
+// and the customer read off it: a fixed label for the physical unit, for
+// its whole life and every customer it serves. Mechanical on purpose: the
+// last four characters of the EUI, readable off the label, unique in
+// practice, and never in need of an update when the device moves. Upper
+// case, as labels print it. What the fridge *is* ("Walk-in fridge") is the
+// Senso-side name, chosen at install and the customer's to change.
+// Decided 2026-10-02.
+
+const EUI_TAIL = 4;
+
+export function networkName(kind: "gateway" | "sensor", eui: string): string {
+  return `${kind === "gateway" ? "G" : "S"}-${eui.slice(-EUI_TAIL).toUpperCase()}`;
+}

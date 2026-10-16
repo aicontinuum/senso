@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Unlink } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, CardTitle, Select, Spinner } from '@senso/ui';
+import { networkName } from '@senso/status';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
 import { LinkGatewayForm } from '@/components/customers/LinkGatewayForm';
@@ -108,6 +109,7 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Name</th>
+                <th className={`${TH} whitespace-nowrap`}>Gateway ID</th>
                 {multiBranch && <th className={TH}>Branch</th>}
                 <th className={TH}>EUI</th>
                 <th className={TH}>Firmware</th>
@@ -123,6 +125,7 @@ export function GatewaysSection({ customerId, branches, gateways, sensors, avail
                 return (
                   <tr key={g.id}>
                     <td className={`${TD} whitespace-nowrap font-medium`}>{g.name ?? g.id}</td>
+                    <td className={`${TD} font-mono text-xs text-muted-foreground`}>{g.mac_address ? networkName('gateway', g.mac_address) : '—'}</td>
                     {multiBranch && (
                       <td className={TD}>
                         {/* A greyed select reads as locked; the spinner says the move is in flight. */}

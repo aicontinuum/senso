@@ -79,6 +79,7 @@ export default async function SensorDetailPage({
     status: isSensorOnline(sensorRow.status, readingRows?.[0]?.recorded_at) ? "online" : "offline",
     batteryLevel: sensorRow.battery_level ?? undefined,
     commissionedAt: sensorRow.commissioned_at,
+    hardwareId: sensorRow.hardware_id,
     lastReading: readingRows?.[0]
       ? { id: readingRows[0].id, sensorId: id, temperature: readingRows[0].temperature, recordedAt: readingRows[0].recorded_at }
       : undefined,
