@@ -28,7 +28,7 @@ const QUICK_RANGES = RANGES.filter((r) => r.value === "24h" || r.value === "7d")
   value: r.value,
   label: r.value === "24h" ? "24 hours" : "7 days",
 }));
-const DEFAULT_QUICK_RANGE: RangeValue = "7d";
+const DEFAULT_QUICK_RANGE: RangeValue = "24h";
 const GENERATE_HEIGHT = "h-10 lg:h-8";
 
 // The label says so between the press and the reports page, so a slow
