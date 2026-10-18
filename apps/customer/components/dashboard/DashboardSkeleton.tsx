@@ -1,9 +1,10 @@
 import { Card } from "@senso/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Mirrors dashboard/page.tsx: title + action, the three-up summary bar, then
-// the responsive sensor-card grid. Shown while the page loads, and as the
-// stand-in behind a lock screen: it has the page's shape and none of its data.
+// Mirrors dashboard/page.tsx: title + action, the three-up summary bar, the
+// quick-actions tile, then the responsive sensor-card grid. Shown while the
+// page loads, and as the stand-in behind a lock screen: it has the page's
+// shape and none of its data.
 
 export function SensorCardSkeleton() {
   return (
@@ -34,6 +35,13 @@ export function SensorCardSkeleton() {
 
 export const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]";
 
+// Quick actions are widgets, not tiles: near-square, on a fixed column well
+// under a sensor tile's width, never stretched to fill the row, so one
+// action stays small and more line up beside it. The gap between the
+// title and the controls is the widget's breathing room.
+export const QUICK_ACTIONS_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,14rem)]";
+export const QUICK_ACTION_TILE = "flex flex-col gap-8 p-3.5";
+
 export function DashboardSkeleton() {
   return (
     <div>
@@ -50,6 +58,26 @@ export function DashboardSkeleton() {
           </div>
         ))}
       </Card>
+
+      <Skeleton className="mb-3 h-6 w-28" />
+      <div className={`${QUICK_ACTIONS_GRID} mb-8`}>
+        <Card className={QUICK_ACTION_TILE}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-2">
+              <Skeleton className="size-5 rounded-chip" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            </div>
+            <Skeleton className="size-8 rounded-button" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full lg:h-10" />
+            <Skeleton className="h-10 w-full lg:h-8" />
+          </div>
+        </Card>
+      </div>
 
       <Skeleton className="mb-3 h-6 w-20" />
 

@@ -45,6 +45,13 @@ export interface Sensor {
    * `supabase/migrations/20260902_sensor_commissioning.sql`.
    */
   commissionedAt?: string | null;
+  /**
+   * The device's permanent DevEUI (`sensors.hardware_id`). Its last four
+   * characters are the sensor ID shown to the office and the customer; see
+   * `networkName` in `@senso/status`. Undefined when the caller did not load
+   * the column; null when the row has none.
+   */
+  hardwareId?: string | null;
 }
 
 export interface AlertConfig {

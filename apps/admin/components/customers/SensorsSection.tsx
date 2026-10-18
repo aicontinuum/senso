@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Settings, Trash2 } from 'lucide-react';
-import { batteryTier } from '@senso/status';
-import { Badge, BatteryMeter, Button, Card, CardHeader, CardTitle, Input, Select } from '@senso/ui';
+import { batteryTier, networkName } from '@senso/status';
+import { Badge, BatteryMeter, Button, Card, CardHeader, CardTitle, InlinePanel, Input, Select, useDismiss } from '@senso/ui';
+import { callApi } from '@/lib/api-client';
 import type { AvailableDevices } from '@/lib/network/available';
 
 // The customer's sensors, with the technician's two jobs on them: add one
@@ -24,6 +25,8 @@ export type SensorRow = {
   gateway_id: string;
   /** Null until a technician marks the sensor installed. */
   commissioned_at: string | null;
+  /** The DevEUI; its tail is the sensor ID the office and the customer read. */
+  hardware_id: string | null;
 };
 
 type GatewayOption = { id: string; name: string | null };
@@ -38,6 +41,8 @@ interface SensorsSectionProps {
 
 const TH = 'px-6 py-3 font-medium';
 const TD = 'px-6 py-3';
+const COLUMNS = 6;
+const PANEL = 'border-t border-hairline bg-sunken px-5 py-4';
 
 function emptyForm(gateways: GatewayOption[]) {
   return { gatewayId: gateways[0]?.id ?? '', name: '', hardwareId: '' };
@@ -62,6 +67,18 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
 
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  // The open retire panel; a click anywhere else is a Cancel, closing only
+  // that panel so a click on another row's bin still opens its own.
+  const confirmRow = useRef<HTMLTableRowElement | null>(null);
+  useDismiss(confirmRow, confirmRemoveId !== null && !removing, () =>
+    setConfirmRemoveId(open => (open === confirmRemoveId ? null : open)),
+  );
+
+  function openRemove(id: string) {
+    setRemoveError(null);
+    setConfirmRemoveId(id);
+  }
 
   async function addSensor() {
     setFormError('');
@@ -86,17 +103,16 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
     }
   }
 
+  // The panel stays open with the error if retiring fails, so it is read
+  // where the decision was made.
   async function removeSensor(sensorId: string) {
+    setRemoveError(null);
     setRemoving(true);
-    try {
-      const res = await fetch(`/api/customers/${customerId}/sensors/${sensorId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setConfirmRemoveId(null);
-        router.refresh();
-      }
-    } finally {
-      setRemoving(false);
-    }
+    const result = await callApi(`/api/customers/${customerId}/sensors/${sensorId}`, 'DELETE');
+    setRemoving(false);
+    if (!result.ok) { setRemoveError(result.error); return; }
+    setConfirmRemoveId(null);
+    router.refresh();
   }
 
   const canSubmit = !saving && form.gatewayId !== '' && form.name.trim() !== '' && form.hardwareId.trim() !== '';
@@ -182,6 +198,7 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
             <thead>
               <tr className="border-b border-hairline text-left text-muted-foreground">
                 <th className={TH}>Name</th>
+                <th className={`${TH} whitespace-nowrap`}>Sensor ID</th>
                 <th className={TH}>Gateway</th>
                 <th className={TH}>Status</th>
                 <th className={TH}>Battery</th>
@@ -190,8 +207,10 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
             </thead>
             <tbody className="divide-y divide-hairline">
               {sensors.map(s => (
-                <tr key={s.id}>
+                <Fragment key={s.id}>
+                <tr>
                   <td className={`${TD} whitespace-nowrap font-medium`}>{s.name}</td>
+                  <td className={`${TD} font-mono text-xs text-muted-foreground`}>{s.hardware_id ? networkName('sensor', s.hardware_id) : '—'}</td>
                   <td className={`${TD} text-muted-foreground`}>
                     {gateways.find(g => g.id === s.gateway_id)?.name ?? '—'}
                   </td>
@@ -202,38 +221,48 @@ export function SensorsSection({ customerId, gateways, sensors, available }: Sen
                       : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className={`${TD} text-right`}>
-                    {confirmRemoveId === s.id ? (
-                      // The "are you sure" step, inline where the click landed.
-                      <span className="flex items-center justify-end gap-2 whitespace-nowrap">
-                        <span className="text-xs text-muted-foreground">Retire this sensor?</span>
-                        <Button variant="danger" size="sm" onClick={() => removeSensor(s.id)} disabled={removing}>
-                          {removing ? 'Retiring…' : 'Retire'}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmRemoveId(null)} disabled={removing}>
-                          Cancel
-                        </Button>
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-end gap-1">
-                        <Button asChild variant="ghost" size="icon" aria-label={`Settings for ${s.name}`} title="Settings">
-                          <Link href={`/customers/${customerId}/sensors/${s.id}`}>
-                            <Settings className="size-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Remove ${s.name}`}
-                          title="Remove"
-                          className="hover:text-alert-text"
-                          onClick={() => setConfirmRemoveId(s.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </span>
-                    )}
+                    <span className="flex items-center justify-end gap-1">
+                      <Button asChild variant="ghost" size="icon" aria-label={`Settings for ${s.name}`} title="Settings">
+                        <Link href={`/customers/${customerId}/sensors/${s.id}`}>
+                          <Settings className="size-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Retire ${s.name}`}
+                        title="Retire"
+                        className="hover:text-alert-text"
+                        onClick={() => openRemove(s.id)}
+                        disabled={confirmRemoveId === s.id}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </span>
                   </td>
                 </tr>
+                {/* The "are you sure" step opens under the row, the shape every
+                    confirmation takes, rather than squeezing into the row. */}
+                {confirmRemoveId === s.id && (
+                  <tr ref={confirmRow} className="border-t-0">
+                    <td colSpan={COLUMNS} className="p-0">
+                      <div className={PANEL}>
+                        <InlinePanel
+                          title={`Retire ${s.name}?`}
+                          description="It leaves the customer's live devices. Its readings stay on record for compliance."
+                          error={removeError ?? undefined}
+                          confirmLabel="Retire"
+                          busyLabel="Retiring…"
+                          busy={removing}
+                          danger
+                          onConfirm={() => removeSensor(s.id)}
+                          onCancel={() => setConfirmRemoveId(null)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

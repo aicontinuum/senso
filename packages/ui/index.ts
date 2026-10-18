@@ -15,6 +15,8 @@ export { Select, type SelectProps } from "./select";
 export { BatteryMeter } from "./battery-meter";
 export { LinkRow } from "./link-row";
 export { ListLink } from "./list-link";
+export { InlinePanel } from "./inline-panel";
+export { useDismiss } from "./use-dismiss";
 export { StatusDot, type StatusTone } from "./status-dot";
 export { Logo } from "./logo";
 export { Sidebar } from "./sidebar";

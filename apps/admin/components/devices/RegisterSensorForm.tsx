@@ -7,14 +7,14 @@ import { Button, CardContent, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { normaliseDevEui, isValidDevEui, normaliseAppKey, isValidAppKey } from '@/lib/deveui';
 import { NETWORK_DEVICE_PROFILE, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
-import { networkName } from '@/lib/network/naming';
+import { networkName } from '@senso/status';
 import { RegisterPage, RegisteredNotice } from '@/components/devices/RegisterPage';
 
 // Register a sensor on the network server so it can join and be decoded.
 // The DevEUI and AppKey come off the device label; the profile and the
 // reporting interval are the same for every sensor, so they are stated,
 // not chosen, and the network name is derived from the DevEUI
-// (lib/network/naming.ts). What the fridge is called is set at install.
+// (networkName in @senso/status). What the fridge is called is set at install.
 
 const IDENTIFIER_INPUT = {
   className: 'font-mono',

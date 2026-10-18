@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatTemp, formatReadingTime, formatDateTimeLong } from "@/lib/temperature";
@@ -16,7 +16,7 @@ import { formatDevEui } from "@/lib/deveui";
 import { commissionedNote, inServiceReadings } from "@/lib/commissioning";
 import type { AlertNote } from "@/lib/alert-comments";
 import { REPORT_ALERT_LOOKBACK } from "@/lib/constants";
-import { ALL_BRANCHES, hasBranches } from "@/lib/branches";
+import { ALL_BRANCHES, BRANCH_PARAM, hasBranches } from "@/lib/branches";
 import type { Site } from "@/lib/scope";
 import { csvRow } from "@/lib/csv";
 import { buildReportPDF } from "./build-report-pdf";
@@ -24,10 +24,12 @@ import { ReportSettingsCard } from "./ReportSettingsCard";
 import { ReportActionBar } from "./ReportActionBar";
 import { ReportPreview } from "./ReportPreview";
 import {
-  DEFAULT_FORMAT,
   DEFAULT_RANGE,
+  GENERATE_PARAM,
+  RANGE_PARAM,
   REPORT_VIEW,
   VIEW_PARAM,
+  isRangeValue,
   rangeOption,
   reportFileName,
   reportSubject as subjectOf,
@@ -35,7 +37,6 @@ import {
   type PdfAction,
   type RangeValue,
   type ReadingShape,
-  type ReportFormat,
   type ReportSensor,
   type SensorShape,
 } from "./report-model";
@@ -68,7 +69,16 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   // inspector asking for one location picks that branch. With a single
   // branch the choice does not exist and the whole account is the branch.
   const multiBranch = hasBranches(branches);
-  const [branchId, setBranchId] = useState(ALL_BRANCHES);
+  // Arriving from the dashboard's quick-report card, the branch and period
+  // come in the address (see RANGE_PARAM in report-model) and the report
+  // is asked for straight away.
+  const searchParams = useSearchParams();
+  const requestedBranch = searchParams.get(BRANCH_PARAM);
+  const requestedRange = searchParams.get(RANGE_PARAM);
+  const autoGenerate = searchParams.get(GENERATE_PARAM) !== null;
+  const [branchId, setBranchId] = useState(
+    multiBranch && requestedBranch && branches.some((b) => b.id === requestedBranch) ? requestedBranch : ALL_BRANCHES,
+  );
   const sensorsOf = (id: string) => (multiBranch && id !== ALL_BRANCHES ? allSensors.filter((s) => s.branchId === id) : allSensors);
   const sensors = sensorsOf(branchId);
   const addressOf = (s: SensorShape) => branches.find((b) => b.id === s.branchId)?.address ?? null;
@@ -85,8 +95,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   const reportableSensors = sensors.filter((s) => s.commissionedAt !== null);
   const activeSensors = reportableSensors.filter((s) => s.decommissionedAt === null);
 
-  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE);
-  const [format, setFormat] = useState<ReportFormat>(DEFAULT_FORMAT);
+  const [range, setRange] = useState<RangeValue>(isRangeValue(requestedRange) ? requestedRange : DEFAULT_RANGE);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     new Set(activeSensors.map((s) => s.id)),
   );
@@ -95,25 +104,39 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
   // from the data that was fetched as the page re-renders.
   const [generatedAt, setGeneratedAt] = useState<number | null>(null);
   const generated = generatedAt !== null;
-  const [generating, setGenerating] = useState(false);
+  // Asked for on arrival, the report is already generating from the first
+  // frame, so the card never shows an idle button that is about to act.
+  const [generating, setGenerating] = useState(autoGenerate);
   const [pdfBusy, setPdfBusy] = useState<PdfAction | null>(null);
 
   // The view is read from the URL (see VIEW_PARAM). A generated report is shown
   // only while the URL says so; leaving by any route — the back button here,
   // the sidebar link, the browser's back — lands on the settings with the
   // report still in memory, so a tweak and regenerate stays quick.
+  //
+  // The view changes through the browser's own history, which the router
+  // keeps in step with, rather than router.push: nothing on the server
+  // depends on the view, and a push would fetch the page again for no
+  // reason, leaving the screen still for as long as that took. The
+  // switch is then only the render, and until the URL has caught up with
+  // the view that was asked for, the button that asked stays busy: a
+  // report of a week's readings is a long table, and the press must look
+  // answered while it is drawn.
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const reportView = searchParams.get(VIEW_PARAM) === REPORT_VIEW;
   const showReport = generated && reportView;
+  const [requestedView, setRequestedView] = useState<"report" | "settings" | null>(null);
+  const switching = requestedView !== null && requestedView !== (reportView ? "report" : "settings");
 
   function openReportView() {
-    router.push(`${pathname}?${VIEW_PARAM}=${REPORT_VIEW}`);
+    setRequestedView("report");
+    window.history.pushState(null, "", `${pathname}?${VIEW_PARAM}=${REPORT_VIEW}`);
   }
 
   function backToSettings() {
-    router.push(pathname);
+    setRequestedView("settings");
+    window.history.pushState(null, "", pathname);
   }
   const [readingsBySensor, setReadingsBySensor] = useState<Map<string, ReadingShape[]>>(new Map());
   const [historyBySensor, setHistoryBySensor] = useState<Map<string, ThresholdVersion[]>>(new Map());
@@ -169,10 +192,9 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     setGeneratedAt(null);
   }
 
-  // `now` is the instant Generate was pressed: the report's period ends
-  // there and its "generated" stamp says so.
-  async function generate(now: number) {
-    setGenerating(true);
+  // `now` is the instant the report was asked for: its period ends there
+  // and its "generated" stamp says so.
+  async function loadReport(now: number) {
     const supabase = createClient();
     const since = new Date(now - rangeMs).toISOString();
     // Never query for a sensor that has nothing reportable, whatever state the
@@ -297,6 +319,24 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
     openReportView();
   }
 
+  function generate(now: number) {
+    setGenerating(true);
+    void loadReport(now);
+  }
+
+  // The report asked for in the address runs once, when the page arrives.
+  // The load is what the effect starts; every state change in it comes
+  // after a response, never in the effect itself.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoGenerate || autoStarted.current) return;
+    autoStarted.current = true;
+    void loadReport(Date.now());
+    // loadReport reads the selection and range of this first render, which
+    // the address set; it is not re-run on later renders by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoGenerate]);
+
   // Nothing below is shown until a report exists, so the fallback never prints.
   const now = generatedAt ?? 0;
   const periodStart = now - rangeMs;
@@ -366,7 +406,7 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
       if (sensor.branchName) lines.push(csvRow(`Branch: ${sensor.branchName}`));
       if (address) lines.push(csvRow(address));
       const csvDeviceId = formatDevEui(sensor.hardwareId);
-      if (csvDeviceId) lines.push(csvRow(`Device ID: ${csvDeviceId}`));
+      if (csvDeviceId) lines.push(csvRow(`EUI: ${csvDeviceId}`));
       const csvCommissioned = commissionedNote(sensor.commissionedAt, periodStart, timezone);
       if (csvCommissioned) lines.push(csvRow(csvCommissioned));
       const csvRetired = retiredNote(sensor, timezone);
@@ -403,8 +443,6 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
           <ReportSettingsCard
             range={range}
             onRangeChange={changeRange}
-            format={format}
-            onFormatChange={setFormat}
             branches={branches}
             siteLabel={isGroup ? "Account" : "Branch"}
             allLabel={isGroup ? "All accounts" : "All branches"}
@@ -417,17 +455,18 @@ export function ReportClient({ customerName, branches, isGroup, sensors: allSens
             onToggleSensor={toggleSensor}
             onHideSensor={isGroup ? undefined : hideSensor}
             onGenerate={generate}
-            generating={generating}
+            generating={generating || switching}
           />
         ) : (
           <ReportActionBar
             range={range}
-            format={format}
             sensorCount={reportSensors.length}
             busy={pdfBusy}
+            leaving={switching}
             onBack={backToSettings}
             onPrint={handlePrint}
-            onDownload={format === "pdf" ? downloadPDF : downloadCSV}
+            onDownloadPdf={downloadPDF}
+            onDownloadCsv={downloadCSV}
             onShare={handleShare}
             mailtoHref={mailtoHref}
           />

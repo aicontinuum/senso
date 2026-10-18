@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Button, CardContent, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { normaliseIdentifier, isValidGatewayId } from '@/lib/gateway-id';
-import { networkName } from '@/lib/network/naming';
+import { networkName } from '@senso/status';
 import { RegisterPage, RegisteredNotice } from '@/components/devices/RegisterPage';
 
 // Register a gateway on the network server so it can relay packets. This
 // is the radio side; linking it to a customer happens on the customer's
-// page. Its network name is derived from the EUI (lib/network/naming.ts),
+// page. Its network name is derived from the EUI (networkName in @senso/status),
 // so there is nothing to decide here.
 
 export function RegisterGatewayForm() {

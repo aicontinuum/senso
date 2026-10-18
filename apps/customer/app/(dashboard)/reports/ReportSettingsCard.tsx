@@ -1,21 +1,13 @@
-import { Download, FileText, Table } from "lucide-react";
+import { Download } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, Select } from "@senso/ui";
-import { SegmentedControl, type SegmentedOption } from "@/components/ui/segmented-control";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SensorPicker } from "./SensorPicker";
 import { ALL_BRANCHES, hasBranches } from "@/lib/branches";
-import {
-  FORMATS,
-  RANGES,
-  type RangeValue,
-  type ReportFormat,
-  type SensorShape,
-} from "./report-model";
+import { RANGES, type RangeValue, type SensorShape } from "./report-model";
 
 interface ReportSettingsCardProps {
   range: RangeValue;
   onRangeChange: (range: RangeValue) => void;
-  format: ReportFormat;
-  onFormatChange: (format: ReportFormat) => void;
   branches: { id: string; name: string }[];
   /** "Branch", or "Account" for an owner login; and the All option's words. */
   siteLabel: string;
@@ -34,16 +26,6 @@ interface ReportSettingsCardProps {
   generating: boolean;
 }
 
-const FORMAT_ICONS: Record<ReportFormat, SegmentedOption<ReportFormat>["icon"]> = {
-  pdf: FileText,
-  csv: Table,
-};
-
-const FORMAT_OPTIONS: SegmentedOption<ReportFormat>[] = FORMATS.map((f) => ({
-  ...f,
-  icon: FORMAT_ICONS[f.value],
-}));
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -56,8 +38,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export function ReportSettingsCard({
   range,
   onRangeChange,
-  format,
-  onFormatChange,
   branches,
   siteLabel,
   allLabel,
@@ -75,9 +55,9 @@ export function ReportSettingsCard({
   const nothingSelected = selectedIds.size === 0;
 
   return (
-    <Card className="max-w-xl">
+    <Card className="max-w-lg">
       <CardHeader>
-        <CardTitle>Period, sensors and format</CardTitle>
+        <CardTitle>Period and sensors</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* All branches or one, chosen first because it decides which
@@ -98,6 +78,7 @@ export function ReportSettingsCard({
             options={RANGES}
             value={range}
             onChange={onRangeChange}
+            block
           />
         </Field>
 
@@ -110,15 +91,6 @@ export function ReportSettingsCard({
             onToggleSensor={onToggleSensor}
             showBranch={branchId === ALL_BRANCHES}
             onHide={onHideSensor}
-          />
-        </Field>
-
-        <Field label="Format">
-          <SegmentedControl
-            aria-label="Format"
-            options={FORMAT_OPTIONS}
-            value={format}
-            onChange={onFormatChange}
           />
         </Field>
 

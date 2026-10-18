@@ -4,11 +4,10 @@ import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Trash2 } from 'lucide-react';
-import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, cn } from '@senso/ui';
+import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, cn, InlinePanel } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import { formatAgo } from '@/lib/platform-status';
 import { READING_RATE_WINDOW_DAYS, SENSOR_REPORTING_INTERVAL_MIN } from '@/lib/constants';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 import type { NetworkDeviceRow } from '@/lib/network/load';
 
 // One kind of device the network server knows, with what our records say
@@ -28,10 +27,11 @@ type Props = { kind: Kind; rows: NetworkDeviceRow[]; now: number };
 /** Below this share received live, the figure turns red: worth a visit. */
 const RATE_WARN_BELOW = 95;
 
-const WORDS: Record<Kind, { title: string; hint: string | null; empty: string; apiPath: string }> = {
-  gateway: { title: 'Gateways', hint: null, empty: 'No gateways registered yet.', apiPath: 'gateways' },
+const WORDS: Record<Kind, { title: string; idColumn: string; hint: string | null; empty: string; apiPath: string }> = {
+  gateway: { title: 'Gateways', idColumn: 'Gateway ID', hint: null, empty: 'No gateways registered yet.', apiPath: 'gateways' },
   sensor: {
     title: 'Sensors',
+    idColumn: 'Sensor ID',
     hint: `Readings is the share of expected readings received live over the last ${READING_RATE_WINDOW_DAYS} days. Under ${RATE_WARN_BELOW}% is worth a visit.`,
     empty: 'No sensors registered yet.',
     apiPath: 'sensors',
@@ -210,7 +210,7 @@ export function NetworkDevicesCard({ kind, rows, now }: Props) {
             <table className="hidden w-full text-sm lg:table">
               <thead>
                 <tr className="border-b border-hairline text-left text-muted-foreground">
-                  <th className={TH}>Name</th>
+                  <th className={TH}>{words.idColumn}</th>
                   <th className={TH}>EUI</th>
                   <th className={`${TH} whitespace-nowrap text-right`}>Last heard</th>
                   <th className={TH}>Linked to</th>

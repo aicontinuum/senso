@@ -26,7 +26,7 @@ export type CustomerDetail = {
   groupOf: GroupRef | null;
 };
 
-type SensorSource = { id: string; name: string; status: string; gateway_id: string; commissioned_at: string | null };
+type SensorSource = { id: string; name: string; status: string; gateway_id: string; commissioned_at: string | null; hardware_id: string | null };
 
 export async function loadCustomerDetail(admin: Admin, id: string, now: number = Date.now()): Promise<CustomerDetail | null> {
   const { data: customer } = await admin
@@ -58,7 +58,7 @@ export async function loadCustomerDetail(admin: Admin, id: string, now: number =
   // Retired sensors keep their readings for the compliance record but are not
   // listed as live devices.
   const { data: sensors } = gatewayIds.length > 0
-    ? await admin.from('sensors').select('id, name, status, gateway_id, commissioned_at').in('gateway_id', gatewayIds).is('decommissioned_at', null)
+    ? await admin.from('sensors').select('id, name, status, gateway_id, commissioned_at, hardware_id').in('gateway_id', gatewayIds).is('decommissioned_at', null)
     : { data: [] as SensorSource[] };
 
   // Freshness-based status, same rules as the customer site — the raw

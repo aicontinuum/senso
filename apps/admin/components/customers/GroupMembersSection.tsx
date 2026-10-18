@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Plus, Unlink } from 'lucide-react';
-import { Button, Card, CardDescription, CardHeader, CardTitle, cn, ListLink, Select } from '@senso/ui';
+import { Button, Card, CardDescription, CardHeader, CardTitle, cn, InlinePanel, ListLink, Select } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
 import type { AccountRef, GroupMember } from '@/lib/groups/load';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 import { GatewayDot, LIST_ROW, sensorsLabel } from '@/components/customers/CustomersTable';
 
 // The accounts an owner login can see, each a row you can open, with its

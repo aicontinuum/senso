@@ -21,21 +21,45 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   /** Accessible name for the group; the visible label is the caller's. */
   "aria-label": string;
+  /** Fill the container, segments sharing the width equally, so the control
+   *  lines up with the fields around it instead of sizing to its labels. Where
+   *  the segments would be too narrow for a label, they fall into rows. */
+  block?: boolean;
+  /** On a brand-coloured surface the track is a tint of white, the
+   *  selected segment solid white, so the control reads the same way. */
+  tone?: "default" | "inverse";
+  /** With block, a fixed number of equal columns instead of as many as
+   *  fit: for a control whose labels are short enough to share a narrow
+   *  width, such as "24h" and "7d" in a widget. */
+  columns?: 2 | 3 | 4;
   className?: string;
 }
+
+const COLUMNS = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" } as const;
 
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
   "aria-label": ariaLabel,
+  block = false,
+  tone = "default",
+  columns,
   className,
 }: SegmentedControlProps<T>) {
+  const inverse = tone === "inverse";
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn("inline-flex flex-wrap gap-1 rounded-control bg-sunken p-1", className)}
+      className={cn(
+        "gap-1 rounded-control p-1",
+        inverse ? "bg-white/15" : "bg-sunken",
+        block
+          ? cn("grid w-full", columns ? COLUMNS[columns] : "grid-cols-[repeat(auto-fit,minmax(6.75rem,1fr))]")
+          : "inline-flex flex-wrap",
+        className,
+      )}
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -49,13 +73,13 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               // 40px tall on touch, where a finger lands; 32px from desktop width.
-              "inline-flex h-10 items-center gap-1.5 rounded-button px-3.5 text-sm font-semibold tracking-tight lg:h-8",
+              "inline-flex h-10 items-center gap-1.5 rounded-button text-sm font-semibold tracking-tight lg:h-8",
+              block ? "justify-center px-2" : "px-3.5",
               "transition-[background-color,color,box-shadow,transform] duration-[--dur-fast] ease-[--ease-out]",
               "active:scale-[0.97] motion-reduce:active:scale-100",
               "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/32",
-              selected
-                ? "bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
+              selected && "bg-card text-foreground shadow-xs",
+              !selected && (inverse ? "text-white/70 hover:text-white" : "text-muted-foreground hover:text-foreground"),
             )}
           >
             {Icon && <Icon className="size-4" />}

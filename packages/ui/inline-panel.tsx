@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@senso/ui';
+import { Button } from './button';
 
 // The one shape for a confirmation or a small form that opens under a row:
 // a title saying what is about to happen, a line of consequence, labelled

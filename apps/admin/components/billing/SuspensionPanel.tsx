@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Input } from '@senso/ui';
+import { InlinePanel, Input } from '@senso/ui';
 import { callApi } from '@/lib/api-client';
-import { InlinePanel } from '@/components/billing/InlinePanel';
 
 // The "are you sure" step for suspending or reactivating a customer, with
 // the reason that goes into the change log. Used from the billing page

@@ -75,7 +75,7 @@ export async function buildReportPDF(
       doc.setFontSize(9);
       doc.setFont("courier", "normal");
       doc.setTextColor(...NEUTRAL_RGB.muted);
-      doc.text(`Device ID: ${pdfDeviceId}`, margin, y);
+      doc.text(`EUI: ${pdfDeviceId}`, margin, y);
       doc.setTextColor(...NEUTRAL_RGB.primary);
       doc.setFont("helvetica", "normal");
       y += 5;

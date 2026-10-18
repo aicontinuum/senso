@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Sensor, AlertConfig } from "@senso/types";
 import { Card } from "@senso/ui";
-import { READING_STALE_WARN_MS, formatAgo } from "@senso/status";
+import { READING_STALE_WARN_MS, formatAgo, networkName } from "@senso/status";
 import { cn } from "@/lib/utils";
 import { SensorStatusBadge } from "@/components/SensorStatusBadge";
 import { RangeTrack } from "@/components/dashboard/RangeTrack";
@@ -64,9 +64,15 @@ export function SensorCard({
       )}
     >
     <Link href={`/sensors/${sensor.id}`}>
-      {/* Header row */}
+      {/* Header row: the name the customer gave it, and under it the ID on
+          the device's label, so a card can be matched to a unit on site. */}
       <div className="mb-4 flex items-start justify-between gap-2">
-        <span className="font-semibold leading-tight">{sensor.name}</span>
+        <span className="flex min-w-0 flex-col">
+          <span className="font-semibold leading-tight">{sensor.name}</span>
+          {sensor.hardwareId && (
+            <span className="mt-0.5 font-mono text-xs text-muted-foreground">{networkName("sensor", sensor.hardwareId)}</span>
+          )}
+        </span>
         <SensorStatusBadge state={state} className="shrink-0" />
       </div>
 

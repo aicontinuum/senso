@@ -40,7 +40,7 @@ export async function loadDashboard(
   const scope = await loadScope(supabase, customer);
   const { data: allGateways } = await supabase
     .from("gateways")
-    .select("id, name, customer_id, branch_id, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at)")
+    .select("id, name, customer_id, branch_id, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at, hardware_id)")
     .in("customer_id", scope.customerIds)
     .is("decommissioned_at", null);
   const branches = scope.sites;
@@ -60,6 +60,7 @@ export async function loadDashboard(
         status: string;
         battery_level: number | null;
         commissioned_at: string | null;
+        hardware_id: string | null;
       }) => ({
         ...s,
         gatewayId: g.id,
@@ -144,6 +145,7 @@ export async function loadDashboard(
       status: sensorOnlineById.get(s.id) ? 'online' : 'offline',
       batteryLevel: s.battery_level ?? undefined,
       commissionedAt: s.commissioned_at,
+      hardwareId: s.hardware_id,
       lastReading: lr ? { id: lr.id, sensorId: s.id, temperature: lr.temperature, recordedAt: lr.recorded_at } : undefined,
     };
   });

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Badge, Button, Card } from "@senso/ui";
+import { Badge, Button, Card, InlinePanel, useDismiss } from "@senso/ui";
 import { cn } from "@/lib/utils";
 import type { SensorShape } from "./report-model";
 
@@ -21,6 +21,7 @@ interface SensorPickerProps {
 }
 
 const CHECKBOX = "size-4 shrink-0 accent-primary";
+const ROW = "flex items-center gap-3 px-3 py-2.5 text-sm";
 
 export function SensorPicker({
   sensors,
@@ -32,17 +33,31 @@ export function SensorPicker({
   onHide,
 }: SensorPickerProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [hideError, setHideError] = useState<{ id: string; message: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [hideError, setHideError] = useState<string | null>(null);
+  // The row whose panel is open; a click anywhere else is a Cancel. Only
+  // that row's panel is closed: a click on another row's remove button has
+  // already opened that row's panel, which must stay.
+  const confirmRow = useRef<HTMLDivElement | null>(null);
+  useDismiss(confirmRow, confirmId !== null && !busy, () =>
+    setConfirmId((open) => (open === confirmId ? null : open)),
+  );
 
+  function openConfirm(id: string) {
+    setHideError(null);
+    setConfirmId(id);
+  }
+
+  // The panel stays open on failure so the error is read where the
+  // decision was made; it closes only once the sensor is gone.
   async function hide(id: string) {
     if (!onHide) return;
     setHideError(null);
-    setBusyId(id);
+    setBusy(true);
     const error = await onHide(id);
-    setBusyId(null);
-    setConfirmId(null);
-    if (error) setHideError({ id, message: error });
+    setBusy(false);
+    if (error) setHideError(error);
+    else setConfirmId(null);
   }
 
   if (sensors.length === 0) {
@@ -54,7 +69,7 @@ export function SensorPicker({
       {/* "Select all" heads the list it controls, and the count says what it
           did — retired sensors are governed by it only in the deselect
           direction, which the number makes visible. */}
-      <label className="flex cursor-pointer items-center justify-between gap-3 border-b border-hairline px-3 py-2.5 text-sm">
+      <label className={cn(ROW, "cursor-pointer justify-between border-b border-hairline")}>
         <span className="flex items-center gap-3">
           <input type="checkbox" checked={allSelected} onChange={onToggleAll} className={CHECKBOX} />
           <span className="font-semibold">{allSelected ? "Deselect all" : "Select all"}</span>
@@ -70,53 +85,70 @@ export function SensorPicker({
           // Listed but not selectable: showing it explains why a sensor on their
           // dashboard is missing here, which silently omitting it would not.
           const reportable = s.commissionedAt !== null;
+          const removable = onHide !== undefined && s.decommissionedAt !== null;
           return (
-            <label
-              key={s.id}
-              className={cn(
-                "flex items-center justify-between gap-3 px-3 py-2.5 text-sm transition-colors",
-                reportable ? "cursor-pointer hover:bg-inset" : "cursor-not-allowed opacity-60",
-              )}
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(s.id)}
-                  onChange={() => onToggleSensor(s.id)}
-                  disabled={!reportable}
-                  className={CHECKBOX}
-                />
-                <span className="truncate">{s.name}</span>
-              </span>
-              <span className="flex shrink-0 items-center gap-2">
-              {showBranch && s.branchName && (
-                <Badge variant="outline" className="text-muted-foreground">{s.branchName}</Badge>
-              )}
-              {s.decommissionedAt && (
-                <Badge variant="offline" className="shrink-0">Retired</Badge>
-              )}
-              {!reportable && (
-                <Badge variant="offline" className="shrink-0">Not in service</Badge>
-              )}
-              {/* A retired sensor can be taken off this page, for good as
-                  far as the customer is concerned; the readings stay on
-                  record for the office. */}
-              {onHide && s.decommissionedAt && (confirmId === s.id ? (
-                <span className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
-                  <span className="text-xs text-muted-foreground">Remove retired sensor? There is no way to undo this.</span>
-                  <Button variant="danger" size="sm" onClick={() => hide(s.id)} disabled={busyId === s.id}>{busyId === s.id ? "Removing…" : "Remove"}</Button>
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)} disabled={busyId === s.id}>Cancel</Button>
-                </span>
-              ) : (
-                <span className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
-                  {hideError?.id === s.id && <span className="text-xs text-alert-text">{hideError.message}</span>}
-                  <Button variant="ghost" size="icon" aria-label={`Remove ${s.name} from reports`} title="Remove from reports" className="hover:text-alert-text" onClick={() => setConfirmId(s.id)}>
+            <div key={s.id} ref={confirmId === s.id ? confirmRow : undefined}>
+              {/* The checkbox label covers the name and chips; the remove
+                  button sits beside it, outside the label, so pressing it
+                  never toggles the box. */}
+              <div className={cn(ROW, !reportable && "opacity-60")}>
+                <label
+                  className={cn(
+                    "flex min-w-0 flex-1 items-center justify-between gap-3",
+                    reportable ? "cursor-pointer" : "cursor-not-allowed",
+                  )}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(s.id)}
+                      onChange={() => onToggleSensor(s.id)}
+                      disabled={!reportable}
+                      className={CHECKBOX}
+                    />
+                    <span className="truncate">{s.name}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {showBranch && s.branchName && (
+                      <Badge variant="outline" className="text-muted-foreground">{s.branchName}</Badge>
+                    )}
+                    {s.decommissionedAt && <Badge variant="offline">Retired</Badge>}
+                    {!reportable && <Badge variant="offline">Not in service</Badge>}
+                  </span>
+                </label>
+                {/* A retired sensor can be taken off this page, for good as
+                    far as the customer is concerned; the readings stay on
+                    record for the office. */}
+                {removable && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove ${s.name} from reports`}
+                    title="Remove from reports"
+                    className="-my-2 -mr-2 hover:text-alert-text"
+                    onClick={() => openConfirm(s.id)}
+                    disabled={confirmId === s.id}
+                  >
                     <Trash2 className="size-4" />
                   </Button>
-                </span>
-              ))}
-              </span>
-            </label>
+                )}
+              </div>
+              {confirmId === s.id && (
+                <div className="border-t border-hairline bg-inset px-3 py-3">
+                  <InlinePanel
+                    title={`Remove ${s.name} from reports?`}
+                    description="There is no way to undo this. Its readings stay on record."
+                    error={hideError ?? undefined}
+                    confirmLabel="Remove"
+                    busyLabel="Removing…"
+                    busy={busy}
+                    danger
+                    onConfirm={() => hide(s.id)}
+                    onCancel={() => setConfirmId(null)}
+                  />
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

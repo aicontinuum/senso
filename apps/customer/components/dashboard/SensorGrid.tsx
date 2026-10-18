@@ -1,9 +1,10 @@
 import type { Sensor, AlertConfig } from "@senso/types";
 import { SensorCard } from "@/components/dashboard/SensorCard";
+import { SENSOR_GRID } from "@/components/dashboard/DashboardSkeleton";
 
-// The sensor tiles. The design system fixes the tile floor at 268px: below
-// that a tile cannot hold a reading and its supporting rows side by side.
-const SENSOR_GRID = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(268px,1fr))]";
+// The sensor tiles, on the grid the skeleton and the quick actions share.
+// The design system fixes the tile floor at 268px: below that a tile cannot
+// hold a reading and its supporting rows side by side.
 
 // Tiles cascade in rather than all landing at once. The step stays short and
 // caps early: a fleet of forty fridges must not take two seconds to appear.
