@@ -7,7 +7,7 @@ import { Button, Card } from "@senso/ui";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { QUICK_ACTION_TILE } from "@/components/dashboard/DashboardSkeleton";
 import { BRANCH_PARAM, ALL_BRANCHES } from "@/lib/branches";
-import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/report-model";
+import { reportHref, type RangeValue } from "@/app/(dashboard)/reports/report-model";
 
 // The report most people want, one press away: every sensor in service on
 // the dashboard, over a day or a week. The press opens the reports page
@@ -15,7 +15,7 @@ import { RANGES, reportHref, type RangeValue } from "@/app/(dashboard)/reports/r
 // Share; the sliders open the same page with its settings instead. The
 // dashboard's branch goes along, so the report covers what the page
 // shows. A small widget, well under a sensor tile's width, so everything
-// in it is short: the periods as "24 hours" and "7 days", the action as Generate.
+// in it is short: the periods as "7 days" and "24 hours", the action as Generate.
 
 interface QuickReportCardProps {
   /** Sensors in service in the dashboard's current scope; none means no report. */
@@ -24,11 +24,14 @@ interface QuickReportCardProps {
   branchId: string;
 }
 
-const QUICK_RANGES = RANGES.filter((r) => r.value === "24h" || r.value === "7d").map((r) => ({
-  value: r.value,
-  label: r.value === "24h" ? "24 hours" : "7 days",
+// A week first and preselected: the report most people want; a day is the
+// alternative beside it.
+const QUICK_RANGE_ORDER: RangeValue[] = ["7d", "24h"];
+const QUICK_RANGES = QUICK_RANGE_ORDER.map((value) => ({
+  value,
+  label: value === "24h" ? "24 hours" : "7 days",
 }));
-const DEFAULT_QUICK_RANGE: RangeValue = "24h";
+const DEFAULT_QUICK_RANGE: RangeValue = QUICK_RANGE_ORDER[0];
 const GENERATE_HEIGHT = "h-10 lg:h-8";
 
 // The label says so between the press and the reports page, so a slow

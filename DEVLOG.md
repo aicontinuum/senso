@@ -194,6 +194,34 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-17 — First real platform outage: Hostinger stopped the VPS for 38 minutes
+
+At 15:15 UTC (18:15 Doha) the VPS shut down cleanly and stayed off
+until 15:54 UTC. The cause is in the journal of the previous boot:
+`qemu-ga: guest-shutdown called` followed by `systemd-logind: System is
+powering down (hypervisor initiated shutdown)`. That is Hostinger's host
+telling the virtual machine to power off, not anything on the server:
+no reboot was requested from inside, unattended-upgrades does not
+reboot, and the machine came back on the kernel that an earlier update
+had left waiting (6.8.0-137 → 6.8.0-147). Most likely host maintenance
+or a migration; Hostinger's panel showed nothing.
+
+What held up, end to end: the watchdog emailed "platform is DOWN" at
+15:30 UTC and "back" after the boot; every container came up on its own
+with the host (restart policy); the two Home sensors kept transmitting
+through the gap (frame counters 4912–4914 were sent with nobody
+listening) and the backfill fetched them afterwards; the Vercel side
+(offline sweep, email run) never stopped. Readings resumed at 16:08
+UTC.
+
+Lessons: a "gateway offline" on the admin dashboard with the VPS
+pulse also stale is the server, not the site; look at the watchdog card
+before touching hardware at the customer. The gateway was power-cycled
+unnecessarily and the probes were handled, which produced an hour of
+warm readings and an out-of-range alert that cleared by itself. Pending:
+31 apt updates on the VPS, to be applied after a snapshot on a quiet
+day; and find Hostinger's maintenance-notification setting.
+
 ## 2026-10-09 — www: no form, every inquiry button is a WhatsApp link
 
 Asked whether the booking form was needed when it only led to WhatsApp.
