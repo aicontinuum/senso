@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 import type { BillingStatus } from '@senso/types';
@@ -24,7 +25,10 @@ export function isSuspended(customer: CustomerRecord): boolean {
   return customer.status === SUSPENDED;
 }
 
-export async function getCustomer(): Promise<CustomerRecord | null> {
+// Resolved once per request. The layout and the page both ask, and before
+// this each asked Supabase twice (the sign-in check, then the customer row);
+// now the second caller gets the first caller's answer.
+export const getCustomer = cache(async (): Promise<CustomerRecord | null> => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -35,7 +39,7 @@ export async function getCustomer(): Promise<CustomerRecord | null> {
     .single();
   if (!data) return null;
   return { ...data, timezone: data.timezone ?? DEFAULT_TIMEZONE };
-}
+});
 
 // Like getCustomer(), but redirects to login (with an error param so the
 // middleware won't bounce back into a loop) when no customer resolves.

@@ -194,6 +194,29 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-24 — Page speed: functions moved next to the database, fewer round trips
+
+Every page felt slow. The cause was mostly distance: the Vercel projects
+had no region set, so the functions ran in Washington while Supabase is
+in Singapore, and a customer page made about ten calls in a row, each
+a quarter of a second across the Pacific. Done today:
+
+- **Vercel Function Region → Singapore (sin1)** on the customer and admin
+  projects, by hand in the Vercel settings, Washington unticked. The
+  marketing site is static and needs nothing.
+- **One client, one sign-in check, one customer row, one scope per
+  request** in the customer app: `createClient`, `getCustomer` and
+  `loadScope` are wrapped in React's `cache`, so the layout, the page and
+  the loaders share the answers instead of each asking Supabase again.
+  Four calls fewer on every page. `cache` is scoped to one request's
+  render and is a plain call in route handlers.
+- **Independent queries run together**: the customer dashboard fetches
+  an ordinary account's gateways alongside its scope; the admin dashboard
+  fetches recent readings and alert configs in one go.
+
+Not changed: pages stay fully dynamic (the CSP nonce needs it), and no
+response is cached, so nothing a customer sees can be stale or shared.
+
 ## 2026-10-24 — Reports: a sensor linked by mistake and unlinked leaves no trace
 
 S-0118 was linked to the Home account, never activated, and unlinked

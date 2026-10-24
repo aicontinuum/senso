@@ -37,12 +37,18 @@ export async function loadDashboard(
   params: Record<string, string | string[] | undefined>,
   now: number = Date.now(),
 ): Promise<DashboardData> {
-  const scope = await loadScope(supabase, customer);
-  const { data: allGateways } = await supabase
+  const gatewaysOf = (customerIds: string[]) => supabase
     .from("gateways")
     .select("id, name, customer_id, branch_id, is_online, last_seen_at, sensors (id, name, status, battery_level, decommissioned_at, commissioned_at, hardware_id)")
-    .in("customer_id", scope.customerIds)
+    .in("customer_id", customerIds)
     .is("decommissioned_at", null);
+  // An ordinary account reads its own devices, so the gateways do not wait
+  // for the scope; a group's depend on which members the scope resolves.
+  const [scope, ownGateways] = await Promise.all([
+    loadScope(supabase, customer),
+    customer.is_group ? null : gatewaysOf([customer.id]),
+  ]);
+  const { data: allGateways } = ownGateways ?? await gatewaysOf(scope.customerIds);
   const branches = scope.sites;
   const multiBranch = hasBranches(branches);
   const branch = selectedBranch(params[BRANCH_PARAM], branches);
