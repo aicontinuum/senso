@@ -54,6 +54,14 @@ export default async function ReportsPage() {
         commissionedAt: s.commissioned_at,
       })),
   );
+  // Within a branch the sensors in service come first and the retired ones
+  // last: the list opens on what can be reported today. The sort is stable,
+  // so the branch order above and the order within each group are kept.
+  sensors.sort((a, b) => {
+    const branch = (branchRank.get(a.branchId) ?? 0) - (branchRank.get(b.branchId) ?? 0);
+    if (branch !== 0) return branch;
+    return Number(a.decommissionedAt !== null) - Number(b.decommissionedAt !== null);
+  });
   // Thresholds are deliberately not fetched here. A report judges each reading
   // against the limits in force when it was recorded, so the client loads the
   // effective-dated history alongside the readings once a period is chosen —
