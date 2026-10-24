@@ -194,6 +194,18 @@ an outsider seeing nothing of the group, grants, the definer function.
 - Routes `POST /api/customers/[id]/members` and `DELETE …/members/[memberId]`,
   admin-only; the database's guards come back as 409 in their own words.
 
+## 2026-10-24 — Reports: a sensor linked by mistake and unlinked leaves no trace
+
+S-0118 was linked to the Home account, never activated, and unlinked
+again; the Reports picker still listed it, "Retired · Not in service",
+unselectable, with a bin. A retired sensor is listed so its history can
+still be reported; one that was never commissioned has no history, so
+listing it only invites the question. The Reports loader now leaves out
+a sensor that is both retired and never commissioned. Nothing is
+deleted and no migration: the row and the invariant stay, the page just
+stops showing a sensor that has nothing to say. A live sensor that is
+not yet in service is still listed as before.
+
 ## 2026-10-17 — First real platform outage: Hostinger stopped the VPS for 38 minutes
 
 At 15:15 UTC (18:15 Doha) the VPS shut down cleanly and stayed off

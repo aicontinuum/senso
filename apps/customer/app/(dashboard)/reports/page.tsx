@@ -18,7 +18,9 @@ export default async function ReportsPage() {
   //
   // Sensors that were never commissioned are the opposite case: they have no
   // history to report, only bench readings, so they are listed but cannot be
-  // selected at all.
+  // selected at all. One that was never commissioned *and* has since been
+  // retired has nothing to report and nothing to wait for, so it is not
+  // listed: a sensor linked by mistake and unlinked again leaves no trace here.
   const scope = await loadScope(supabase, customer);
   const { data: gateways } = await supabase
     .from("gateways")
@@ -41,7 +43,7 @@ export default async function ReportsPage() {
       commissioned_at: string | null;
       hidden_at: string | null;
     }[])
-      .filter((s) => s.hidden_at === null)
+      .filter((s) => s.hidden_at === null && !(s.decommissioned_at !== null && s.commissioned_at === null))
       .map((s) => ({
         id: s.id,
         name: s.name,

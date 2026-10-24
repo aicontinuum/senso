@@ -92,6 +92,14 @@ with verification queries.
 from the UI: one rendered "No limit set" on every report row, the other left the
 alert sender claiming nothing and sending nothing while looking healthy.
 
+**Every new table needs its own grants.** Since 2026-10-30 Supabase no longer
+grants the API roles access to a new table in `public` by itself: a table
+created without a `grant … on table … to authenticated` / `to service_role`
+is invisible to both apps and the API answers "permission denied". Our
+migrations have always granted explicitly, one grant per table, the least the
+role needs; keep doing that in the same block that creates the table. Existing
+tables keep their grants.
+
 ## Invariants — things a change must not break
 
 1. **History is never destroyed.** `readings` and `alert_logs` are `ON DELETE
