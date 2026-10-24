@@ -65,26 +65,19 @@ export default async function AdminDashboardPage() {
   // Freshness-based status, same rules as the customer site: a sensor is
   // online only if it has a reading newer than the staleness cutoff, so one
   // bounded query for recent readings is all we need.
-  const freshReadingBySensor = new Map<string, string>();
-  if (allSensorIds.length > 0) {
-    const sinceStale = new Date(Date.now() - SENSOR_STALE_MS).toISOString();
-    const { data: freshReadings } = await admin
-      .from('readings')
-      .select('sensor_id, recorded_at')
-      .in('sensor_id', allSensorIds)
-      .gte('recorded_at', sinceStale);
-    for (const r of freshReadings ?? []) freshReadingBySensor.set(r.sensor_id, r.recorded_at);
-  }
-
   // alert_logs links to alert_configs, not sensors directly
+  const freshReadingBySensor = new Map<string, string>();
   let totalAlerts = 0;
   const alertsBySensorId = new Map<string, number>();
 
   if (allSensorIds.length > 0) {
-    const { data: alertConfigs } = await admin
-      .from('alert_configs')
-      .select('id, sensor_id')
-      .in('sensor_id', allSensorIds);
+    const sinceStale = new Date(now - SENSOR_STALE_MS).toISOString();
+    // Both depend only on the sensor list, so they go out together.
+    const [{ data: freshReadings }, { data: alertConfigs }] = await Promise.all([
+      admin.from('readings').select('sensor_id, recorded_at').in('sensor_id', allSensorIds).gte('recorded_at', sinceStale),
+      admin.from('alert_configs').select('id, sensor_id').in('sensor_id', allSensorIds),
+    ]);
+    for (const r of freshReadings ?? []) freshReadingBySensor.set(r.sensor_id, r.recorded_at);
 
     const configIds = (alertConfigs ?? []).map(c => c.id);
     const configToSensor = new Map((alertConfigs ?? []).map(c => [c.id, c.sensor_id]));

@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SUSPENDED, type CustomerRecord } from '@/lib/supabase/get-customer';
 import { loadBranches } from '@/lib/branches';
@@ -34,7 +35,9 @@ export type ViewScope = {
 
 type MemberRow = { member_id: string; customers: { id: string; name: string; status: string } | null };
 
-export async function loadScope(supabase: SupabaseClient, customer: CustomerRecord): Promise<ViewScope> {
+// Once per request: the client and the customer record are themselves
+// per-request singletons, so a page and the loaders under it share one scope.
+export const loadScope = cache(async (supabase: SupabaseClient, customer: CustomerRecord): Promise<ViewScope> => {
   if (!customer.is_group) {
     const branches = await loadBranches(supabase, customer.id);
     return {
@@ -76,7 +79,7 @@ export async function loadScope(supabase: SupabaseClient, customer: CustomerReco
     suspendedSites: suspended.map((m) => ({ id: m.id, name: m.name, address: null })),
     siteKey: 'customer_id',
   };
-}
+});
 
 /** Whether a gateway's account is one this login may read. RLS already
  *  refuses the rows; this turns "nothing came back" into a clear 404. */
